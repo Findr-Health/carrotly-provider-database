@@ -1,0 +1,25 @@
+# ========================================
+# CARROTLY AI AGENT - Python Dependencies
+# ========================================
+
+# Core
+requests==2.31.0
+python-dotenv==1.0.0
+
+# Google Maps
+googlemaps==4.10.0
+
+# OpenAI
+openai==1.6.1
+
+# Web Scraping
+beautifulsoup4==4.12.2
+selenium==4.16.0
+lxml==4.9.4
+
+# Optional: Advanced scraping
+# playwright==1.40.0
+# scrapy==2.11.0
+
+# Utilities
+python-dateutil==2.8.2
