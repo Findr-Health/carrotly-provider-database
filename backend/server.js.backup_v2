@@ -1,0 +1,849 @@
+// ========================================
+// CARROTLY PROVIDER API - Backend Server
+// Framework: Express.js + PostgreSQL
+// Deploy to: Railway
+// ========================================
+
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ========================================
+// DATABASE CONNECTION
+// ========================================
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('❌ Database connection failed:', err);
+  } else {
+    console.log('✅ Database connected at:', res.rows[0].now);
+  }
+});
+
+// ========================================
+// MIDDLEWARE
+// ========================================
+
+app.use(helmet()); // Security headers
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan('combined')); // Logging
+
+// ========================================
+// AUTHENTICATION MIDDLEWARE
+// ========================================
+
+const authenticateAdmin = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    
+    const result = await pool.query(
+      'SELECT id, email, full_name, role FROM admin_users WHERE id = $1 AND is_active = TRUE',
+      [decoded.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    req.admin = result.rows[0];
+    next();
+  } catch (error) {
+    console.error('Auth error:', error);
+    return res.status(401).json({ error: 'Authentication failed' });
+  }
+};
+
+// ========================================
+// ADMIN AUTH ROUTES
+// ========================================
+
+// Admin login
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const result = await pool.query(
+      'SELECT * FROM admin_users WHERE email = $1 AND is_active = TRUE',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const admin = result.rows[0];
+    const validPassword = await bcrypt.compare(password, admin.password_hash);
+    
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Update last login
+    await pool.query(
+      'UPDATE admin_users SET last_login_at = NOW() WHERE id = $1',
+      [admin.id]
+    );
+    
+    const token = jwt.sign(
+      { userId: admin.id, email: admin.email, role: admin.role },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+    
+    res.json({
+      token,
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        fullName: admin.full_name,
+        role: admin.role
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Get current admin
+app.get('/api/admin/me', authenticateAdmin, (req, res) => {
+  res.json({ admin: req.admin });
+});
+
+// ========================================
+// PROVIDER CRUD ROUTES
+// ========================================
+
+// Get all providers (with filters)
+app.get('/api/admin/providers', authenticateAdmin, async (req, res) => {
+  try {
+    const { status, source, city, state, search, limit = 50, offset = 0 } = req.query;
+    
+    let query = `
+      SELECT 
+        p.*,
+        pd.years_experience,
+        pd.bio,
+        (SELECT COUNT(*) FROM provider_photos WHERE provider_id = p.id) as photo_count,
+        (SELECT COUNT(*) FROM provider_services WHERE provider_id = p.id) as service_count,
+        (SELECT cloudinary_url FROM provider_photos WHERE provider_id = p.id AND is_primary = TRUE LIMIT 1) as primary_photo
+      FROM providers p
+      LEFT JOIN provider_details pd ON pd.provider_id = p.id
+      WHERE p.deleted_at IS NULL
+    `;
+    
+    const params = [];
+    let paramIndex = 1;
+    
+    if (status) {
+      query += ` AND p.status = $${paramIndex++}`;
+      params.push(status);
+    }
+    
+    if (source) {
+      query += ` AND p.source = $${paramIndex++}`;
+      params.push(source);
+    }
+    
+    if (city) {
+      query += ` AND LOWER(p.city) = LOWER($${paramIndex++})`;
+      params.push(city);
+    }
+    
+    if (state) {
+      query += ` AND p.state = $${paramIndex++}`;
+      params.push(state);
+    }
+    
+    if (search) {
+      query += ` AND (
+        p.practice_name ILIKE $${paramIndex} 
+        OR p.email ILIKE $${paramIndex}
+        OR p.street_address ILIKE $${paramIndex}
+      )`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+    
+    query += ` ORDER BY p.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    params.push(limit, offset);
+    
+    const result = await pool.query(query, params);
+    
+    // Get total count
+    const countResult = await pool.query(
+      'SELECT COUNT(*) FROM providers WHERE deleted_at IS NULL'
+    );
+    
+    res.json({
+      providers: result.rows,
+      total: parseInt(countResult.rows[0].count),
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (error) {
+    console.error('Error fetching providers:', error);
+    res.status(500).json({ error: 'Failed to fetch providers' });
+  }
+});
+
+// Get single provider by ID
+app.get('/api/admin/providers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const providerResult = await pool.query(
+      'SELECT * FROM providers WHERE id = $1',
+      [id]
+    );
+    
+    if (providerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    const provider = providerResult.rows[0];
+    
+    // Get photos
+    const photosResult = await pool.query(
+      'SELECT * FROM provider_photos WHERE provider_id = $1 ORDER BY is_primary DESC, display_order ASC',
+      [id]
+    );
+    
+    // Get services
+    const servicesResult = await pool.query(
+      'SELECT * FROM provider_services WHERE provider_id = $1 ORDER BY display_order ASC',
+      [id]
+    );
+    
+    // Get agreement
+    const agreementResult = await pool.query(
+      'SELECT * FROM provider_agreements WHERE provider_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [id]
+    );
+    
+    res.json({
+      provider,
+      photos: photosResult.rows,
+      services: servicesResult.rows,
+      agreement: agreementResult.rows[0] || null
+    });
+  } catch (error) {
+    console.error('Error fetching provider:', error);
+    res.status(500).json({ error: 'Failed to fetch provider' });
+  }
+});
+
+// Create provider
+app.post('/api/admin/providers', authenticateAdmin, async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    const {
+      practiceName, email, phone, providerTypes,
+      streetAddress, suiteNumber, city, state, zipCode, website,
+      status = 'draft',
+      source = 'manual'
+    } = req.body;
+    
+    // Check for duplicates
+    const duplicateCheck = await client.query(
+      'SELECT * FROM check_duplicate_provider($1, $2, $3, $4)',
+      [practiceName, streetAddress, zipCode, phone]
+    );
+    
+    const exactDuplicate = duplicateCheck.rows.find(row => 
+      row.match_type === 'exact' || row.match_type === 'phone'
+    );
+    
+    if (exactDuplicate) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ 
+        error: 'Duplicate provider found',
+        existingProvider: exactDuplicate
+      });
+    }
+    
+    // Insert provider
+    const result = await client.query(`
+      INSERT INTO providers (
+        practice_name, email, phone, provider_types,
+        street_address, suite_number, city, state, zip_code, website,
+        status, source
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *
+    `, [
+      practiceName, email, phone, providerTypes,
+      streetAddress, suiteNumber, city, state, zipCode, website,
+      status, source
+    ]);
+    
+    // Log audit
+    await client.query(`
+      INSERT INTO audit_log (entity_type, entity_id, action, changed_by)
+      VALUES ('provider', $1, 'created', $2)
+    `, [result.rows[0].id, req.admin.id]);
+    
+    await client.query('COMMIT');
+    
+    res.status(201).json({ provider: result.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error creating provider:', error);
+    res.status(500).json({ error: 'Failed to create provider' });
+  } finally {
+    client.release();
+  }
+});
+
+// Update provider
+app.put('/api/admin/providers/:id', authenticateAdmin, async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    const { id } = req.params;
+    const updates = req.body;
+    
+    // Build dynamic UPDATE query
+    const fields = Object.keys(updates);
+    const values = Object.values(updates);
+    
+    const setClause = fields.map((field, i) => {
+      const snakeCase = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      return `${snakeCase} = $${i + 1}`;
+    }).join(', ');
+    
+    const query = `
+      UPDATE providers 
+      SET ${setClause}, updated_at = NOW()
+      WHERE id = $${fields.length + 1}
+      RETURNING *
+    `;
+    
+    const result = await client.query(query, [...values, id]);
+    
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Log audit
+    await client.query(`
+      INSERT INTO audit_log (entity_type, entity_id, action, changed_by, changes)
+      VALUES ('provider', $1, 'updated', $2, $3)
+    `, [id, req.admin.id, JSON.stringify(updates)]);
+    
+    await client.query('COMMIT');
+    
+    res.json({ provider: result.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error updating provider:', error);
+    res.status(500).json({ error: 'Failed to update provider' });
+  } finally {
+    client.release();
+  }
+});
+
+// Update provider status (approve/reject/suspend)
+app.patch('/api/admin/providers/:id/status', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const validStatuses = ['draft', 'pending', 'approved', 'live', 'suspended', 'rejected'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    const result = await pool.query(`
+      UPDATE providers 
+      SET status = $1, 
+          approved_at = CASE WHEN $1 = 'approved' THEN NOW() ELSE approved_at END,
+          approved_by = CASE WHEN $1 = 'approved' THEN $2 ELSE approved_by END
+      WHERE id = $3
+      RETURNING *
+    `, [status, req.admin.id, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Log audit
+    await pool.query(`
+      INSERT INTO audit_log (entity_type, entity_id, action, changed_by, changes)
+      VALUES ('provider', $1, $2, $3, $4)
+    `, [id, status, req.admin.id, JSON.stringify({ status })]);
+    
+    res.json({ provider: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating status:', error);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// Delete provider (soft delete)
+app.delete('/api/admin/providers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      'UPDATE providers SET deleted_at = NOW() WHERE id = $1 RETURNING *',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Log audit
+    await pool.query(`
+      INSERT INTO audit_log (entity_type, entity_id, action, changed_by)
+      VALUES ('provider', $1, 'deleted', $2)
+    `, [id, req.admin.id]);
+    
+    res.json({ message: 'Provider deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting provider:', error);
+    res.status(500).json({ error: 'Failed to delete provider' });
+  }
+});
+
+// ========================================
+// AI AGENT ROUTES
+// ========================================
+
+// Create agent run
+app.post('/api/admin/agent/run', authenticateAdmin, async (req, res) => {
+  try {
+    const { 
+      city, 
+      state, 
+      zip, 
+      categories, 
+      maxProfiles = 25 
+    } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO agent_runs (
+        search_city, search_state, search_zip,
+        categories, max_profiles, executed_by, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'running')
+      RETURNING *
+    `, [city, state, zip, categories, maxProfiles, req.admin.id]);
+    
+    const runId = result.rows[0].id;
+    
+    // Here you would trigger the Python agent
+    // For now, return the run ID and let the agent poll for it
+    // OR trigger via webhook/queue system
+    
+    res.status(201).json({
+      runId,
+      status: 'running',
+      message: 'Agent run created. Processing will begin shortly.',
+      pollUrl: `/api/admin/agent/runs/${runId}/status`
+    });
+  } catch (error) {
+    console.error('Error creating agent run:', error);
+    res.status(500).json({ error: 'Failed to create agent run' });
+  }
+});
+
+// Get agent run status
+app.get('/api/admin/agent/runs/:id/status', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      'SELECT * FROM agent_runs WHERE id = $1',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Agent run not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching agent run:', error);
+    res.status(500).json({ error: 'Failed to fetch agent run status' });
+  }
+});
+
+// Get all agent runs
+app.get('/api/admin/agent/runs', authenticateAdmin, async (req, res) => {
+  try {
+    const { limit = 20, offset = 0 } = req.query;
+    
+    const result = await pool.query(`
+      SELECT * FROM agent_runs 
+      ORDER BY started_at DESC 
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+    
+    res.json({ runs: result.rows });
+  } catch (error) {
+    console.error('Error fetching agent runs:', error);
+    res.status(500).json({ error: 'Failed to fetch agent runs' });
+  }
+});
+
+// ========================================
+// DATA EXPORT ROUTES
+// ========================================
+
+// Export providers as JSON
+app.get('/api/admin/export/providers.json', authenticateAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        p.*,
+        json_agg(DISTINCT ph.*) FILTER (WHERE ph.id IS NOT NULL) as photos,
+        json_agg(DISTINCT ps.*) FILTER (WHERE ps.id IS NOT NULL) as services,
+        pd.* as details
+      FROM providers p
+      LEFT JOIN provider_photos ph ON ph.provider_id = p.id
+      LEFT JOIN provider_services ps ON ps.provider_id = p.id
+      LEFT JOIN provider_details pd ON pd.provider_id = p.id
+      WHERE p.deleted_at IS NULL
+      GROUP BY p.id, pd.provider_id
+    `);
+    
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      totalProviders: result.rows.length,
+      providers: result.rows
+    };
+    
+    // Log export
+    await pool.query(`
+      INSERT INTO export_logs (export_type, record_count, exported_by)
+      VALUES ('json', $1, $2)
+    `, [result.rows.length, req.admin.id]);
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=providers-export.json');
+    res.json(exportData);
+  } catch (error) {
+    console.error('Error exporting providers:', error);
+    res.status(500).json({ error: 'Export failed' });
+  }
+});
+
+// Export providers as CSV
+app.get('/api/admin/export/providers.csv', authenticateAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        p.id, p.practice_name, p.email, p.phone,
+        array_to_string(p.provider_types, ';') as provider_types,
+        p.street_address, p.suite_number, p.city, p.state, p.zip_code,
+        p.website, p.status, p.source,
+        pd.years_experience, pd.bio,
+        array_to_string(pd.languages_spoken, ';') as languages
+      FROM providers p
+      LEFT JOIN provider_details pd ON pd.provider_id = p.id
+      WHERE p.deleted_at IS NULL
+      ORDER BY p.created_at DESC
+    `);
+    
+    // Convert to CSV
+    const headers = Object.keys(result.rows[0] || {});
+    const csv = [
+      headers.join(','),
+      ...result.rows.map(row => 
+        headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(',')
+      )
+    ].join('\n');
+    
+    // Log export
+    await pool.query(`
+      INSERT INTO export_logs (export_type, record_count, exported_by)
+      VALUES ('csv', $1, $2)
+    `, [result.rows.length, req.admin.id]);
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=providers-export.csv');
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting CSV:', error);
+    res.status(500).json({ error: 'Export failed' });
+  }
+});
+
+// ========================================
+// PUBLIC API ROUTES (for consumer app)
+// ========================================
+
+// Get public providers
+app.get('/api/public/providers', async (req, res) => {
+  try {
+    const { 
+      city, 
+      state, 
+      zip, 
+      category, 
+      search,
+      limit = 20, 
+      offset = 0 
+    } = req.query;
+    
+    let query = 'SELECT * FROM public_providers WHERE 1=1';
+    const params = [];
+    let paramIndex = 1;
+    
+    if (city) {
+      query += ` AND LOWER(city) = LOWER($${paramIndex++})`;
+      params.push(city);
+    }
+    
+    if (state) {
+      query += ` AND state = $${paramIndex++}`;
+      params.push(state);
+    }
+    
+    if (zip) {
+      query += ` AND zip_code = $${paramIndex++}`;
+      params.push(zip);
+    }
+    
+    if (category) {
+      query += ` AND $${paramIndex++} = ANY(provider_types)`;
+      params.push(category);
+    }
+    
+    if (search) {
+      query += ` AND practice_name ILIKE $${paramIndex++}`;
+      params.push(`%${search}%`);
+    }
+    
+    query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    params.push(limit, offset);
+    
+    const result = await pool.query(query, params);
+    
+    res.json({ providers: result.rows });
+  } catch (error) {
+    console.error('Error fetching public providers:', error);
+    res.status(500).json({ error: 'Failed to fetch providers' });
+  }
+});
+
+// Get public provider by ID
+app.get('/api/public/providers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      'SELECT * FROM public_providers WHERE id = $1',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching provider:', error);
+    res.status(500).json({ error: 'Failed to fetch provider' });
+  }
+});
+
+// ========================================
+// HEALTH CHECK
+// ========================================
+
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ 
+      status: 'healthy', 
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'unhealthy', 
+      database: 'disconnected',
+      error: error.message
+    });
+  }
+});
+
+// ========================================
+// START SERVER
+// ========================================
+
+app.listen(PORT, () => {
+  console.log(`
+  ✅ Carrotly Provider API running on port ${PORT}
+  📊 Environment: ${process.env.NODE_ENV || 'development'}
+  🗄️  Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}
+  `);
+});
+
+module.exports = app;
+
+// Get provider services
+app.get('/api/admin/providers/:id/services', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM provider_services WHERE provider_id = $1 ORDER BY display_order ASC',
+      [id]
+    );
+    res.json({ services: result.rows });
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({ error: 'Failed to fetch services' });
+  }
+});
+
+// Create provider service
+app.post('/api/admin/providers/:id/services', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { serviceName, description, price, duration, category, isActive } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO provider_services 
+       (provider_id, service_name, description, price_cents, duration_minutes, category, is_active) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING *`,
+      [id, serviceName, description, Math.round(price * 100), duration, category || 'General', isActive !== false]
+    );
+    
+    res.status(201).json({ service: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating service:', error);
+    res.status(500).json({ error: 'Failed to create service' });
+  }
+});
+
+
+// ============================================
+// TEAM MEMBERS ENDPOINTS
+// ============================================
+
+// Get team members for a provider
+app.get('/api/admin/providers/:id/team', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM team_members WHERE provider_id = $1 AND is_active = TRUE ORDER BY display_order ASC',
+      [id]
+    );
+    res.json({ team_members: result.rows });
+  } catch (error) {
+    console.error('Error fetching team:', error);
+    res.status(500).json({ error: 'Failed to fetch team members' });
+  }
+});
+
+// Create team member
+app.post('/api/admin/providers/:id/team', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, title, photo_url, bio, specialties, credentials } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO team_members (provider_id, name, title, photo_url, bio, specialties, credentials)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [id, name, title, photo_url, bio, specialties || [], credentials || []]
+    );
+    
+    res.status(201).json({ team_member: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating team member:', error);
+    res.status(500).json({ error: 'Failed to create team member' });
+  }
+});
+
+// ============================================
+// PHOTOS ENDPOINTS
+// ============================================
+
+// Create photo
+app.post('/api/admin/providers/:id/photos', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cloudinary_url, caption, is_primary, display_order } = req.body;
+    
+    if (is_primary) {
+      await pool.query('UPDATE provider_photos SET is_primary = FALSE WHERE provider_id = $1', [id]);
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO provider_photos (provider_id, cloudinary_url, is_primary, display_order)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [id, cloudinary_url, is_primary || false, display_order || 0]
+    );
+    
+    res.status(201).json({ photo: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating photo:', error);
+    res.status(500).json({ error: 'Failed to create photo' });
+  }
+});
+
+// GET photos for a provider
+app.get('/api/admin/providers/:id/photos', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM provider_photos WHERE provider_id = $1 ORDER BY is_primary DESC, display_order ASC',
+      [id]
+    );
+    res.json({ photos: result.rows });
+  } catch (error) {
+    console.error('Error fetching photos:', error);
+    res.status(500).json({ error: 'Failed to fetch photos' });
+  }
+});
+
+
+// DELETE all photos for a provider
+app.delete('/api/admin/providers/:id/photos/all', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'DELETE FROM provider_photos WHERE provider_id = $1 RETURNING *',
+      [id]
+    );
+    res.json({ deleted: result.rowCount, photos: result.rows });
+  } catch (error) {
+    console.error('Error deleting photos:', error);
+    res.status(500).json({ error: 'Failed to delete photos' });
+  }
+});
+
