@@ -1,23 +1,42 @@
 const mongoose = require('mongoose');
 
+// Standard provider types
+const PROVIDER_TYPES = [
+  'Medical',
+  'Urgent Care', 
+  'Dental',
+  'Mental Health',
+  'Skincare/Aesthetics',
+  'Massage/Bodywork',
+  'Fitness/Training',
+  'Yoga/Pilates',
+  'Nutrition/Wellness',
+  'Pharmacy/RX'
+];
+
 const providerSchema = new mongoose.Schema({
-  placeId: {
-    type: String,
-    sparse: true
-  },
+  // Basic Information
+  placeId: String,
   practiceName: {
     type: String,
     required: true
   },
   providerTypes: [{
     type: String,
-    required: true
+    enum: PROVIDER_TYPES
   }],
+  
+  // Contact Info
   contactInfo: {
-    phone: String,
     email: String,
+    phone: String,
     website: String
   },
+  email: String,
+  phone: String,
+  website: String,
+
+  // Location
   address: {
     street: String,
     suite: String,
@@ -25,43 +44,69 @@ const providerSchema = new mongoose.Schema({
     state: String,
     zip: String
   },
+
+  // Photos
   photos: [{
     url: String,
-    isPrimary: { type: Boolean, default: false }
+    isPrimary: { type: Boolean, default: false },
+    caption: String,
+    uploadedAt: { type: Date, default: Date.now }
   }],
+
+  // Services
   services: [{
     serviceId: String,
-    name: String,
+    name: { type: String, required: true },
     category: String,
     duration: Number,
-    price: Number
+    price: Number,
+    description: String,
+    isActive: { type: Boolean, default: true }
   }],
+
+  // Credentials
   credentials: {
     licenseNumber: String,
     licenseState: String,
     licenseExpiration: Date,
-    certifications: [String],
     yearsExperience: Number,
-    education: String
+    education: String,
+    certifications: [String]
   },
+
+  // Insurance & Languages
   insuranceAccepted: [String],
   languagesSpoken: [String],
+
+  // Team Members
   teamMembers: [{
-    name: String,
+    name: { type: String, required: true },
     title: String,
+    credentials: String,
+    bio: String,
     photo: String,
-    bio: String
+    specialties: [String],
+    yearsExperience: Number,
+    acceptsBookings: { type: Boolean, default: true }
   }],
+
+  // Agreement
   agreement: {
-    signed: { type: Boolean, default: false },
+    signed: Boolean,
     signedAt: Date,
     signature: String,
     signerTitle: String,
-    version: String
+    version: String,
+    initials: {
+      type: Map,
+      of: String
+    }
   },
+
+  // Status
   status: {
     type: String,
-    enum: ['draft', 'pending', 'approved', 'rejected'],
+    enum: ['draft', 'pending', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
   visibility: {
@@ -69,14 +114,13 @@ const providerSchema = new mongoose.Schema({
     enum: ['hidden', 'visible'],
     default: 'hidden'
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+
+  // Metadata
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  approvedAt: Date,
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+  adminNotes: String
 });
 
 // Update timestamp on save
@@ -84,5 +128,8 @@ providerSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
+
+// Export the types for use in other files
+providerSchema.statics.PROVIDER_TYPES = PROVIDER_TYPES;
 
 module.exports = mongoose.model('Provider', providerSchema);

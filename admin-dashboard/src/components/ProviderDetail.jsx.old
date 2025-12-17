@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { providersAPI, servicesAPI } from '../utils/api';
+import { providersAPI } from '../utils/api';
 
 export default function ProviderDetail() {
   const { id } = useParams();
@@ -8,52 +8,40 @@ export default function ProviderDetail() {
   const [provider, setProvider] = useState(null);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadProvider();
-    loadServices();
+    loadProviderData();
   }, [id]);
 
-  const loadProvider = async () => {
+  const loadProviderData = async () => {
     try {
-      const { data } = await providersAPI.getById(id);
-      setProvider(data.provider);
+      const { data: providerData } = await providersAPI.getById(id);
+      
+      console.log('Raw provider data:', providerData);
+      
+      // Services are EMBEDDED in the provider object
+      const embeddedServices = providerData.services || [];
+      console.log('Embedded services:', embeddedServices);
+      
+      setProvider(providerData);
+      setServices(embeddedServices);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load provider:', error);
+      setError(error.response?.data?.error || error.message);
       setLoading(false);
     }
   };
 
-  const loadServices = async () => {
-    try {
-      const { data } = await servicesAPI.getByProvider(id);
-      setServices(data.services || []);
-    } catch (error) {
-      console.error('Failed to load services:', error);
-    }
-  };
-
-  const updateStatus = async (newStatus) => {
+  const handleStatusUpdate = async (newStatus) => {
     try {
       await providersAPI.updateStatus(id, newStatus);
       setProvider({ ...provider, status: newStatus });
-      alert('Status updated successfully!');
+      alert(`Provider ${newStatus}!`);
     } catch (error) {
-      alert('Failed to update status');
+      alert('Failed to update status: ' + error.message);
     }
-  };
-
-  // FIXED: Format price from cents to dollars
-  const formatPrice = (priceCents) => {
-    if (!priceCents && priceCents !== 0) return 'N/A';
-    const dollars = priceCents / 100;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(dollars);
   };
 
   if (loading) {
@@ -64,136 +52,238 @@ export default function ProviderDetail() {
     );
   }
 
-  if (!provider) {
-    return <div className="text-center py-12 text-gray-600">Provider not found</div>;
+  if (error || !provider) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h3 className="text-red-800 font-semibold mb-2">Error Loading Provider</h3>
+        <p className="text-red-600">{error || 'Provider not found'}</p>
+        <button 
+          onClick={() => navigate('/providers')}
+          className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+        >
+          ← Back to Providers
+        </button>
+      </div>
+    );
   }
+
+  // Extract fields with camelCase priority
+  const practiceName = provider.practiceName || provider.practice_name || 'Unnamed';
+  const phone = provider.contactInfo?.phone || provider.phone || 'No phone';
+  const email = provider.contactInfo?.email || provider.email || 'No email';
+  const website = provider.contactInfo?.website || provider.website || null;
+  
+  const street = provider.address?.street || provider.street || '';
+  const suite = provider.address?.suite || provider.suite || '';
+  const city = provider.address?.city || provider.city || '';
+  const state = provider.address?.state || provider.state || '';
+  const zip = provider.address?.zip || provider.zip || '';
+  
+  const providerTypes = provider.providerTypes || provider.provider_types || [];
+  const status = provider.status || 'pending';
+  
+  const licenseNumber = provider.credentials?.licenseNumber || provider.licenseNumber || null;
+  const licenseState = provider.credentials?.licenseState || provider.licenseState || null;
+  const certifications = provider.credentials?.certifications || provider.certifications || [];
+  const yearsExperience = provider.credentials?.yearsExperience || provider.yearsExperience || null;
+  const education = provider.credentials?.education || provider.education || null;
+  
+  const insuranceAccepted = provider.insuranceAccepted || [];
+  const languagesSpoken = provider.languagesSpoken || [];
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div>
           <button
             onClick={() => navigate('/providers')}
-            className="text-teal-600 hover:text-teal-700 mb-2 flex items-center gap-1"
+            className="text-teal-600 hover:text-teal-700 mb-2"
           >
-            <span>←</span> Back to Providers
+            ← Back to Providers
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">{provider.practice_name}</h1>
-          <p className="text-gray-600 mt-1">{provider.provider_types.join(', ')}</p>
+          <h1 className="text-3xl font-bold text-gray-900">{practiceName}</h1>
+          <p className="text-gray-600">{providerTypes.join(', ')}</p>
         </div>
-        <div className="flex gap-2">
-          {provider.status !== 'approved' && (
-            <button
-              onClick={() => updateStatus('approved')}
-              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition shadow-sm"
-            >
-              Approve
-            </button>
-          )}
-          {provider.status !== 'rejected' && (
-            <button
-              onClick={() => updateStatus('rejected')}
-              className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition shadow-sm"
-            >
-              Reject
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
-          <dl className="space-y-4">
-            <div>
-              <dt className="text-sm text-gray-600 mb-1">Phone</dt>
-              <dd className="text-base font-medium text-gray-900">{provider.phone}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600 mb-1">Email</dt>
-              <dd className="text-base font-medium text-gray-900">{provider.email}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600 mb-1">Website</dt>
-              <dd className="text-base font-medium text-teal-600">
-                {provider.website ? (
-                  <a href={provider.website} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                    {provider.website}
-                  </a>
-                ) : 'N/A'}
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Location</h2>
-          <dl className="space-y-4">
-            <div>
-              <dt className="text-sm text-gray-600 mb-1">Address</dt>
-              <dd className="text-base font-medium text-gray-900">{provider.street_address}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600 mb-1">City, State</dt>
-              <dd className="text-base font-medium text-gray-900">
-                {provider.city}, {provider.state} {provider.zip_code}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600 mb-1">Source</dt>
-              <dd>
-                <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium inline-block">
-                  {provider.source}
-                </span>
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Services ({services.length})
-        </h2>
         
-        {services.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <div className="text-4xl mb-2">📋</div>
-            <p>No services added yet</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {services.map(service => (
-              <div
-                key={service.id}
-                className="border border-gray-200 rounded-xl p-4 hover:border-teal-300 hover:bg-teal-50 transition"
+        <div className="flex gap-3">
+          {status === 'pending' && (
+            <>
+              <button
+                onClick={() => handleStatusUpdate('approved')}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
               >
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 flex-1">
-                    {service.service_name}
-                  </h3>
-                  {service.category && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full ml-2">
-                      {service.category}
+                ✓ Approve
+              </button>
+              <button
+                onClick={() => handleStatusUpdate('rejected')}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+              >
+                ✗ Reject
+              </button>
+            </>
+          )}
+          {status === 'approved' && (
+            <span className="px-6 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
+              ✓ Approved
+            </span>
+          )}
+          {status === 'rejected' && (
+            <span className="px-6 py-2 bg-red-100 text-red-800 rounded-lg font-semibold">
+              ✗ Rejected
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Contact Information */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Contact Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm text-gray-500">Phone</label>
+            <p className="font-medium">{phone}</p>
+          </div>
+          <div>
+            <label className="text-sm text-gray-500">Email</label>
+            <p className="font-medium">{email}</p>
+          </div>
+          {website && (
+            <div className="md:col-span-2">
+              <label className="text-sm text-gray-500">Website</label>
+              <p className="font-medium">
+                <a href={website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700">
+                  {website}
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Address */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Location</h2>
+        <div className="text-gray-700">
+          <p className="font-medium">{street}</p>
+          {suite && <p>{suite}</p>}
+          <p>{city}, {state} {zip}</p>
+        </div>
+      </div>
+
+      {/* Credentials */}
+      {(licenseNumber || certifications.length > 0 || education) && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Credentials</h2>
+          <div className="space-y-4">
+            {licenseNumber && (
+              <div>
+                <label className="text-sm text-gray-500">License Number</label>
+                <p className="font-medium">{licenseNumber} ({licenseState})</p>
+              </div>
+            )}
+            {yearsExperience && (
+              <div>
+                <label className="text-sm text-gray-500">Years of Experience</label>
+                <p className="font-medium">{yearsExperience} years</p>
+              </div>
+            )}
+            {education && (
+              <div>
+                <label className="text-sm text-gray-500">Education</label>
+                <p className="font-medium">{education}</p>
+              </div>
+            )}
+            {certifications.length > 0 && (
+              <div>
+                <label className="text-sm text-gray-500">Certifications</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {certifications.map((cert, i) => (
+                    <span key={i} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                      {cert}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Insurance & Languages */}
+      {(insuranceAccepted.length > 0 || languagesSpoken.length > 0) && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Additional Information</h2>
+          <div className="space-y-4">
+            {insuranceAccepted.length > 0 && (
+              <div>
+                <label className="text-sm text-gray-500">Insurance Accepted ({insuranceAccepted.length})</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {insuranceAccepted.slice(0, 10).map((ins, i) => (
+                    <span key={i} className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                      {ins}
+                    </span>
+                  ))}
+                  {insuranceAccepted.length > 10 && (
+                    <span className="px-3 py-1 text-gray-500 text-sm">
+                      +{insuranceAccepted.length - 10} more
                     </span>
                   )}
                 </div>
-                
-                <p className="text-sm text-gray-600 mt-2 mb-4 line-clamp-2">
-                  {service.description}
-                </p>
-                
-                <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                  <span className="text-xl font-bold text-teal-600">
-                    {formatPrice(service.price_cents)}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {service.duration_minutes} min
-                  </span>
+              </div>
+            )}
+            {languagesSpoken.length > 0 && (
+              <div>
+                <label className="text-sm text-gray-500">Languages Spoken</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {languagesSpoken.map((lang, i) => (
+                    <span key={i} className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                      {lang}
+                    </span>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
+        </div>
+      )}
+
+      {/* Services */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">
+          Services ({services.length})
+        </h2>
+        
+        {services.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {services.map((service, idx) => (
+                  <tr key={service._id || idx} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-gray-900">{service.name}</div>
+                      {service.description && (
+                        <div className="text-sm text-gray-500">{service.description}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{service.category}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{service.duration} min</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">${service.price}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500">No services listed</p>
         )}
       </div>
     </div>

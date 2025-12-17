@@ -1,0 +1,12 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Findr Health Icon - Turquoise Cross -->
+  <circle cx="24" cy="24" r="22" fill="#17DDC0" opacity="0.1"/>
+  <path d="M24 10C24 8.89543 24.8954 8 26 8H28C29.1046 8 30 8.89543 30 10V18H38C39.1046 18 40 18.8954 40 20V22C40 23.1046 39.1046 24 38 24H30V32C30 36.4183 26.4183 40 22 40H20C18.8954 40 18 39.1046 18 38V24H10C8.89543 24 8 23.1046 8 22V20C8 18.8954 8.89543 18 10 18H18V10C18 8.89543 18.8954 8 20 8H22C23.1046 8 24 8.89543 24 10Z" fill="#17DDC0"/>
+  <path d="M24 10C24 8.89543 24.8954 8 26 8H28C29.1046 8 30 8.89543 30 10V18H38C39.1046 18 40 18.8954 40 20V22C40 23.1046 39.1046 24 38 24H30V32C30 36.4183 26.4183 40 22 40H20C18.8954 40 18 39.1046 18 38V24H10C8.89543 24 8 23.1046 8 22V20C8 18.8954 8.89543 18 10 18H18V10C18 8.89543 18.8954 8 20 8H22C23.1046 8 24 8.89543 24 10Z" fill="url(#gradient)" opacity="0.6"/>
+  <defs>
+    <linearGradient id="gradient" x1="24" y1="8" x2="24" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17DDC0"/>
+      <stop offset="1" stop-color="#12B19A"/>
+    </linearGradient>
+  </defs>
+</svg>

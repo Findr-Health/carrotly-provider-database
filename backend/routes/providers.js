@@ -183,3 +183,79 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+
+// Provider login - find by email and send verification code
+router.post('/login', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Find provider by email
+    const provider = await Provider.findOne({ 
+      $or: [
+        { 'contactInfo.email': email.toLowerCase() },
+        { email: email.toLowerCase() }
+      ]
+    });
+
+    if (!provider) {
+      return res.status(404).json({ error: 'No provider found with this email. Please complete onboarding first.' });
+    }
+
+    // For now, just return the provider ID (in production, you'd send a verification code)
+    res.json({ 
+      success: true, 
+      providerId: provider._id,
+      message: 'Verification code sent (demo mode - use any 6-digit code)'
+    });
+
+  } catch (error) {
+    console.error('Provider login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Verify login code
+router.post('/verify-login', async (req, res) => {
+  try {
+    const { providerId, code } = req.body;
+
+    if (!providerId || !code) {
+      return res.status(400).json({ error: 'Provider ID and code are required' });
+    }
+
+    // Find provider
+    const provider = await Provider.findById(providerId);
+
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    // For demo, accept any 6-digit code
+    if (code.length !== 6) {
+      return res.status(400).json({ error: 'Invalid code format' });
+    }
+
+    // Return provider data (in production, you'd generate a JWT token)
+    res.json({
+      success: true,
+      token: 'demo-token-' + providerId,
+      providerId: provider._id,
+      provider: {
+        _id: provider._id,
+        practiceName: provider.practiceName,
+        providerTypes: provider.providerTypes,
+        contactInfo: provider.contactInfo,
+        address: provider.address,
+        status: provider.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Verify login error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});

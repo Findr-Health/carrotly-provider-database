@@ -6,7 +6,7 @@ const Provider = require('../models/Provider');
 const JWT_SECRET = process.env.JWT_SECRET || 'carrotly-admin-secret-2024';
 
 const ADMIN_USERS = [
-  { id: '1', email: 'admin@carrotly.com', password: 'admin123', name: 'Admin User', role: 'super_admin' }
+  { id: '1', email: 'admin@findrhealth.com', password: 'admin123', name: 'Admin User', role: 'super_admin' }
 ];
 
 // Auth middleware
@@ -233,30 +233,28 @@ router.post('/providers/:id/services', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-module.exports = router;
-
-// PUT /api/admin/providers/:id - Update provider (AUTH ENABLED)
+// FULL provider update - supports all fields
 router.put('/providers/:id', verifyToken, async (req, res) => {
   try {
-    const updateData = {
-      practiceName: req.body.practiceName,
-      providerTypes: req.body.providerTypes,
-      contactInfo: req.body.contactInfo,
-      address: req.body.address,
-      services: req.body.services,
-      credentials: req.body.credentials,
-      insuranceAccepted: req.body.insuranceAccepted,
-      languagesSpoken: req.body.languagesSpoken,
-      photos: req.body.photos,
-      updatedAt: new Date()
-    };
-    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
-    const provider = await Provider.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
-    if (!provider) return res.status(404).json({ error: 'Provider not found' });
+    const updateData = { ...req.body };
+    delete updateData._id;
+    updateData.updatedAt = new Date();
+    
+    const provider = await Provider.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
     res.json(provider);
-  } catch (err) {
-    console.error('Update provider error:', err);
-    res.status(400).json({ error: err.message });
+  } catch (error) {
+    console.error('Update provider error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
+
+module.exports = router;

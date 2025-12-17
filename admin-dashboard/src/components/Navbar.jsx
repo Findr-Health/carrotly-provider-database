@@ -11,14 +11,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-8">
-            <Link to="/dashboard" className="flex items-center space-x-2">
-              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg">
-                <span className="text-white text-xl font-bold">F</span>
-              </div>
-              <div>
-                <span className="text-xl font-bold text-gray-900">findr</span>
-                <span className="text-xs text-gray-500 ml-1">Health</span>
-              </div>
+            <Link to="/dashboard" className="flex items-center">
+              <img 
+                src="/findr-logo.svg" 
+                alt="Findr Health" 
+                className="h-20 w-auto"
+              />
             </Link>
             <Link to="/dashboard" className="text-gray-600 hover:text-teal-600 px-3 py-2 rounded-lg text-sm font-medium transition">
               Dashboard

@@ -25,12 +25,13 @@ export default function Login() {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl mb-4 shadow-lg">
-              <span className="text-white text-3xl font-bold">F</span>
+            <div className="flex justify-center mb-4">
+              <img 
+                src="/findr-logo.svg" 
+                alt="Findr Health" 
+                className="h-30 w-auto"
+              />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              findr <span className="text-teal-600">Health</span>
-            </h1>
             <p className="text-gray-600 mt-2">Admin Portal</p>
           </div>
           {error && <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">{error}</div>}
@@ -66,7 +67,7 @@ export default function Login() {
             </button>
           </form>
           <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Default: admin@carrotly.com / admin123</p>
+            <p>Default: admin@findrhealth.com / admin123</p>
           </div>
         </div>
       </div>

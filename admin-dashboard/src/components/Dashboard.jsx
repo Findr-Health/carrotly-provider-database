@@ -1,102 +1,185 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { providersAPI } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ total: 0, byType: {}, byStatus: {}, recent: [] });
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    byType: {}
+  });
+  const [recentProviders, setRecentProviders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadStats();
+    loadDashboardData();
   }, []);
 
-  const loadStats = async () => {
+  const loadDashboardData = async () => {
     try {
-      const { data } = await providersAPI.getAll({ limit: 100 });
-      const providers = data.providers;
-      const byType = {}, byStatus = {};
-      providers.forEach(p => {
-        p.provider_types.forEach(type => byType[type] = (byType[type] || 0) + 1);
-        byStatus[p.status] = (byStatus[p.status] || 0) + 1;
+      // GET ALL PROVIDERS (limit: 1000)
+      const { data } = await providersAPI.getAll({ limit: 1000 });
+      const providers = data.providers || [];
+      
+      console.log('Dashboard loaded providers:', providers.length);
+      
+      // Calculate stats
+      const stats = {
+        total: providers.length,
+        pending: providers.filter(p => p.status === 'pending').length,
+        approved: providers.filter(p => p.status === 'approved').length,
+        rejected: providers.filter(p => p.status === 'rejected').length,
+        byType: {}
+      };
+
+      // Normalize providers for display
+      const normalizedProviders = providers.map(p => ({
+        _id: p._id,
+        practice_name: p.practiceName || p.practice_name || 'Unnamed',
+        city: p.address?.city || p.city || 'N/A',
+        state: p.address?.state || p.state || 'N/A',
+        provider_types: p.providerTypes || p.provider_types || [],
+        status: p.status || 'pending'
+      }));
+      
+      // Count by type
+      normalizedProviders.forEach(p => {
+        (p.provider_types || []).forEach(type => {
+          const normalized = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+          stats.byType[normalized] = (stats.byType[normalized] || 0) + 1;
+        });
       });
-      setStats({ total: providers.length, byType, byStatus, recent: providers.slice(0, 5) });
+
+      setStats(stats);
+      // Show last 5 providers
+      setRecentProviders(normalizedProviders.slice(0, 5));
       setLoading(false);
     } catch (error) {
-      console.error('Failed to load stats:', error);
-      setLoading(false);
+      console.error('Failed to load dashboard:', error);
+      
+      // If 401, token expired - logout
+      if (error.response?.status === 401) {
+        logout();
+        navigate('/');
+      } else {
+        setError(error.response?.data?.error || error.message);
+        setLoading(false);
+      }
     }
   };
 
-  const typeIcons = { 'Medical': '🏥', 'Dental': '🦷', 'Cosmetic': '✨', 'Fitness': '💪', 'Massage': '💆', 'Mental Health': '🧠', 'Skincare': '🧴' };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
+      </div>
+    );
+  }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div></div>;
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h3 className="text-red-800 font-semibold mb-2">Error Loading Dashboard</h3>
+        <p className="text-red-600">{error}</p>
+        <button 
+          onClick={loadDashboardData}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Provider management overview</p>
-      </div>
+      <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          { label: 'Total Providers', value: stats.total, icon: '👥', bgColor: 'bg-teal-50', textColor: 'text-teal-600' },
-          { label: 'Approved', value: stats.byStatus.approved || 0, icon: '✅', bgColor: 'bg-green-50', textColor: 'text-green-600' },
-          { label: 'Pending', value: stats.byStatus.pending || 0, icon: '⏳', bgColor: 'bg-amber-50', textColor: 'text-amber-600' },
-          { label: 'Draft', value: stats.byStatus.draft || 0, icon: '📝', bgColor: 'bg-gray-50', textColor: 'text-gray-600' }
-        ].map(stat => (
-          <div key={stat.label} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-                <p className={`text-3xl font-bold ${stat.textColor} mt-2`}>{stat.value}</p>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm font-medium text-gray-500">Total Providers</div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">{stats.total}</div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm font-medium text-gray-500">Pending Review</div>
+          <div className="mt-2 text-3xl font-bold text-yellow-600">{stats.pending}</div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm font-medium text-gray-500">Approved</div>
+          <div className="mt-2 text-3xl font-bold text-green-600">{stats.approved}</div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm font-medium text-gray-500">Rejected</div>
+          <div className="mt-2 text-3xl font-bold text-red-600">{stats.rejected}</div>
+        </div>
+      </div>
+
+      {/* Provider Types */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Providers by Type</h2>
+        {Object.keys(stats.byType).length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(stats.byType).map(([type, count]) => (
+              <div key={type} className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-teal-600">{count}</div>
+                <div className="text-sm text-gray-600">{type}</div>
               </div>
-              <div className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}>
-                <span className="text-2xl">{stat.icon}</span>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <p className="text-gray-500">No providers yet</p>
+        )}
       </div>
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Providers by Type</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.entries(stats.byType).map(([type, count]) => (
-            <div key={type} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl hover:bg-teal-50 transition">
-              <span className="text-2xl">{typeIcons[type] || '📋'}</span>
-              <div>
-                <p className="text-sm font-medium text-gray-900">{type}</p>
-                <p className="text-lg font-bold text-teal-600">{count}</p>
-              </div>
-            </div>
-          ))}
+
+      {/* Recent Providers */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Recent Providers</h2>
+          <button
+            onClick={() => navigate('/providers')}
+            className="text-teal-600 hover:text-teal-700 font-medium"
+          >
+            View All →
+          </button>
         </div>
-      </div>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Providers</h2>
-        </div>
-        <div className="divide-y divide-gray-100">
-          {stats.recent.map(provider => (
-            <Link key={provider.id} to={`/providers/${provider.id}`} className="block px-6 py-4 hover:bg-teal-50 transition">
-              <div className="flex items-center justify-between">
+        
+        {recentProviders.length > 0 ? (
+          <div className="space-y-3">
+            {recentProviders.map(provider => (
+              <div
+                key={provider._id}
+                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                onClick={() => navigate(`/providers/${provider._id}`)}
+              >
                 <div>
-                  <h3 className="font-medium text-gray-900">{provider.practice_name}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{provider.city}, {provider.state} • {provider.provider_types.join(', ')}</p>
+                  <div className="font-medium text-gray-900">{provider.practice_name}</div>
+                  <div className="text-sm text-gray-500">
+                    {provider.city}, {provider.state} • {(provider.provider_types || []).join(', ')}
+                  </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
                   provider.status === 'approved' ? 'bg-green-100 text-green-800' :
-                  provider.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                  'bg-gray-100 text-gray-800'
+                  provider.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
                 }`}>
                   {provider.status}
                 </span>
               </div>
-            </Link>
-          ))}
-        </div>
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-          <Link to="/providers" className="text-sm font-medium text-teal-600 hover:text-teal-700">View all providers →</Link>
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500">No providers yet</p>
+        )}
       </div>
     </div>
   );

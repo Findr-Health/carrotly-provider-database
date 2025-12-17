@@ -6,6 +6,7 @@ export default function ProviderList() {
   const navigate = useNavigate();
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
@@ -18,34 +19,74 @@ export default function ProviderList() {
   const loadProviders = async () => {
     try {
       const { data } = await providersAPI.getAll({ limit: 100 });
-      setProviders(data.providers);
+      console.log('Raw API Response:', data);
+      
+      // CORRECT FIELD MAPPING - backend uses camelCase!
+      const normalized = data.providers.map(p => ({
+        _id: p._id,
+        // Try camelCase FIRST (backend format), then snake_case (frontend format)
+        practice_name: p.practiceName || p.practice_name || p.contactInfo?.practiceName || 'Unnamed',
+        phone: p.contactInfo?.phone || p.phone || 'No phone',
+        email: p.contactInfo?.email || p.email || 'No email',
+        city: p.address?.city || p.city || 'N/A',
+        state: p.address?.state || p.state || 'N/A',
+        provider_types: p.providerTypes || p.provider_types || [],
+        status: p.status || 'pending',
+        raw: p
+      }));
+      
+      console.log('Normalized first provider:', normalized[0]);
+      setProviders(normalized);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load providers:', error);
+      setError(error.response?.data?.error || error.message);
       setLoading(false);
     }
   };
 
-  // Get unique cities and types for filters (FIXED: normalize case)
-  const cities = [...new Set(providers.map(p => p.city))].sort();
+  const cities = [...new Set(
+    providers.map(p => p.city).filter(Boolean)
+  )].sort();
+  
   const types = [...new Set(
-    providers.flatMap(p => 
-      p.provider_types.map(t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
-    )
+    providers
+      .flatMap(p => p.provider_types)
+      .filter(Boolean)
+      .map(t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
   )].sort();
 
   const filtered = providers.filter(p => {
-    const matchesSearch = p.practice_name.toLowerCase().includes(search.toLowerCase()) ||
-                          p.phone.includes(search) ||
-                          p.email.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
-    const matchesLocation = locationFilter === 'all' || p.city === locationFilter;
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase();
+      const matchesSearch = 
+        p.practice_name.toLowerCase().includes(searchLower) ||
+        p.phone.includes(search) ||
+        p.email.toLowerCase().includes(searchLower);
+      
+      if (!matchesSearch) return false;
+    }
     
-    // FIXED: Case-insensitive type matching
-    const matchesType = typeFilter === 'all' || 
-      p.provider_types.some(t => t.toLowerCase() === typeFilter.toLowerCase());
+    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+    if (locationFilter !== 'all' && p.city !== locationFilter) return false;
     
-    return matchesSearch && matchesStatus && matchesLocation && matchesType;
+    if (typeFilter !== 'all') {
+      const hasType = p.provider_types.some(t => 
+        t.toLowerCase() === typeFilter.toLowerCase()
+      );
+      if (!hasType) return false;
+    }
+    
+    return true;
+  });
+
+  console.log('Filter stats:', {
+    total: providers.length,
+    filtered: filtered.length,
+    search,
+    statusFilter,
+    locationFilter,
+    typeFilter
   });
 
   if (loading) {
@@ -56,141 +97,133 @@ export default function ProviderList() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h3 className="text-red-800 font-semibold mb-2">Error Loading Providers</h3>
+        <p className="text-red-600">{error}</p>
+        <button 
+          onClick={loadProviders}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Providers</h1>
-          <p className="text-gray-600 mt-1">{filtered.length} providers found</p>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Providers ({providers.length})
+          {filtered.length !== providers.length && (
+            <span className="text-lg text-gray-500 ml-2">({filtered.length} shown)</span>
+          )}
+        </h1>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <input
             type="text"
-            placeholder="Search by name, phone, or email..."
+            placeholder="Search providers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
           />
+          
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
-            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
           >
-            <option value="all">All Locations</option>
+            <option value="all">All Cities ({cities.length})</option>
             {cities.map(city => (
               <option key={city} value={city}>{city}</option>
             ))}
           </select>
+
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
           >
-            <option value="all">All Types</option>
+            <option value="all">All Types ({types.length})</option>
             {types.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-          >
-            <option value="all">All Status</option>
-            <option value="approved">Approved</option>
-            <option value="pending">Pending</option>
-            <option value="draft">Draft</option>
-          </select>
         </div>
-
-        {(search || statusFilter !== 'all' || locationFilter !== 'all' || typeFilter !== 'all') && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {search && (
-              <span className="px-3 py-1 bg-teal-100 text-teal-800 text-sm rounded-full flex items-center gap-1">
-                Search: "{search}"
-                <button onClick={() => setSearch('')} className="hover:text-teal-900">×</button>
-              </span>
-            )}
-            {locationFilter !== 'all' && (
-              <span className="px-3 py-1 bg-teal-100 text-teal-800 text-sm rounded-full flex items-center gap-1">
-                Location: {locationFilter}
-                <button onClick={() => setLocationFilter('all')} className="hover:text-teal-900">×</button>
-              </span>
-            )}
-            {typeFilter !== 'all' && (
-              <span className="px-3 py-1 bg-teal-100 text-teal-800 text-sm rounded-full flex items-center gap-1">
-                Type: {typeFilter}
-                <button onClick={() => setTypeFilter('all')} className="hover:text-teal-900">×</button>
-              </span>
-            )}
-            {statusFilter !== 'all' && (
-              <span className="px-3 py-1 bg-teal-100 text-teal-800 text-sm rounded-full flex items-center gap-1">
-                Status: {statusFilter}
-                <button onClick={() => setStatusFilter('all')} className="hover:text-teal-900">×</button>
-              </span>
-            )}
-            <button
-              onClick={() => {
-                setSearch('');
-                setStatusFilter('all');
-                setLocationFilter('all');
-                setTypeFilter('all');
-              }}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900"
-            >
-              Clear all
-            </button>
-          </div>
-        )}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-100">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-200">
             {filtered.map(provider => (
-              <tr
-                key={provider.id}
-                onClick={() => navigate(`/providers/${provider.id}`)}
-                className="hover:bg-teal-50 transition cursor-pointer"
+              <tr 
+                key={provider._id} 
+                className="hover:bg-gray-50 cursor-pointer" 
+                onClick={() => navigate(`/providers/${provider._id}`)}
               >
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4">
                   <div className="font-medium text-gray-900">{provider.practice_name}</div>
                   <div className="text-sm text-gray-500">{provider.phone}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {provider.city}, {provider.state}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                <td className="px-6 py-4 text-sm text-gray-500">
                   {provider.provider_types.join(', ')}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {provider.city}, {provider.state}
+                </td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                     provider.status === 'approved' ? 'bg-green-100 text-green-800' :
-                    provider.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                    'bg-gray-100 text-gray-800'
+                    provider.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
                   }`}>
                     {provider.status}
                   </span>
+                </td>
+                <td className="px-6 py-4 text-sm">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/providers/${provider._id}`);
+                    }}
+                    className="text-teal-600 hover:text-teal-900 font-medium"
+                  >
+                    View Details →
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-
-        {filtered.length === 0 && (
+        
+        {filtered.length === 0 && providers.length > 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No providers found matching your filters.</p>
+            <p className="text-gray-500 mb-4">No providers found</p>
             <button
               onClick={() => {
                 setSearch('');
@@ -198,9 +231,9 @@ export default function ProviderList() {
                 setLocationFilter('all');
                 setTypeFilter('all');
               }}
-              className="mt-4 text-teal-600 hover:text-teal-700 font-medium"
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
             >
-              Clear all filters
+              Clear Filters
             </button>
           </div>
         )}
