@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Standard provider types
 const PROVIDER_TYPES = [
@@ -15,6 +16,14 @@ const PROVIDER_TYPES = [
 ];
 
 const providerSchema = new mongoose.Schema({
+  // Authentication
+  password: {
+    type: String,
+    required: false  // Optional during migration, will become required
+  },
+  passwordResetToken: String,
+  passwordResetExpires: Date,
+
   // Basic Information
   placeId: String,
   practiceName: {
@@ -123,11 +132,32 @@ const providerSchema = new mongoose.Schema({
   adminNotes: String
 });
 
-// Update timestamp on save
-providerSchema.pre('save', function(next) {
+// Hash password before saving
+providerSchema.pre('save', async function(next) {
   this.updatedAt = new Date();
+  
+  // Only hash password if it's modified and exists
+  if (this.isModified('password') && this.password) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
   next();
 });
+
+// Method to compare passwords
+providerSchema.methods.comparePassword = async function(candidatePassword) {
+  if (!this.password) return false;
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Don't return password in JSON
+providerSchema.methods.toJSON = function() {
+  const obj = this.toObject();
+  delete obj.password;
+  delete obj.passwordResetToken;
+  delete obj.passwordResetExpires;
+  return obj;
+};
 
 // Export the types for use in other files
 providerSchema.statics.PROVIDER_TYPES = PROVIDER_TYPES;

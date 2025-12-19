@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const Provider = require('../models/Provider');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'findr-health-secret-key-change-in-production';
 
 // Get all providers (for admin)
 router.get('/', async (req, res) => {
@@ -42,7 +45,8 @@ router.post('/', async (req, res) => {
       services,
       optionalInfo,
       teamMembers,
-      agreement
+      agreement,
+      password  // NEW: password field
     } = req.body;
 
     // Validation
@@ -54,8 +58,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'At least one provider type required' });
     }
 
-    if (!services || services.length < 2) {
-      return res.status(400).json({ error: 'At least 2 services required' });
+    if (!services || services.length < 1) {
+      return res.status(400).json({ error: 'At least 1 service required' });
     }
 
     if (!agreement || !agreement.signature) {
@@ -64,7 +68,7 @@ router.post('/', async (req, res) => {
 
     // Check if provider already exists
     const existingProvider = await Provider.findOne({ 
-      $or: [{ 'contactInfo.email': email }, { placeId }]
+      $or: [{ 'contactInfo.email': email.toLowerCase() }, { placeId }]
     });
 
     if (existingProvider) {
@@ -79,9 +83,10 @@ router.post('/', async (req, res) => {
       placeId,
       practiceName,
       providerTypes,
+      password,  // Will be hashed by pre-save hook
       contactInfo: {
         phone,
-        email,
+        email: email.toLowerCase(),
         website
       },
       address: {
@@ -91,16 +96,17 @@ router.post('/', async (req, res) => {
         state: address.state,
         zip: address.zip
       },
-      photos: photos.map((photo, index) => ({
+      photos: photos ? photos.map((photo, index) => ({
         url: photo,
         isPrimary: index === 0
-      })),
+      })) : [],
       services: services.map(service => ({
         serviceId: service.id || service.serviceId,
         name: service.name,
         category: service.category,
         duration: service.duration,
-        price: service.price
+        price: service.price,
+        description: service.description
       })),
       credentials: optionalInfo ? {
         licenseNumber: optionalInfo.licenseNumber,
@@ -133,10 +139,18 @@ router.post('/', async (req, res) => {
 
     console.log('✅ Provider created:', provider._id);
 
+    // Generate token for immediate login after registration
+    const token = jwt.sign(
+      { providerId: provider._id, email: provider.contactInfo.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.status(201).json({
       success: true,
       message: 'Provider profile submitted successfully',
       providerId: provider._id,
+      token,
       status: 'pending'
     });
 
@@ -149,9 +163,13 @@ router.post('/', async (req, res) => {
 // Update provider
 router.put('/:id', async (req, res) => {
   try {
+    // Don't allow password updates through this route
+    const updateData = { ...req.body };
+    delete updateData.password;
+
     const provider = await Provider.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
+      { $set: updateData },
       { new: true, runValidators: true }
     );
 
@@ -182,12 +200,10 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
-
-// Provider login - find by email and send verification code
+// Provider login with password
 router.post('/login', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
     
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
@@ -199,17 +215,58 @@ router.post('/login', async (req, res) => {
         { 'contactInfo.email': email.toLowerCase() },
         { email: email.toLowerCase() }
       ]
-    });
+    }).select('+password');
 
     if (!provider) {
       return res.status(404).json({ error: 'No provider found with this email. Please complete onboarding first.' });
     }
 
-    // For now, just return the provider ID (in production, you'd send a verification code)
+    // If password provided, verify it
+    if (password) {
+      // Check if provider has a password set
+      if (!provider.password) {
+        return res.status(400).json({ 
+          error: 'Password not set. Please use the legacy login or reset your password.',
+          legacyLogin: true,
+          providerId: provider._id
+        });
+      }
+
+      const isMatch = await provider.comparePassword(password);
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Invalid password' });
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { providerId: provider._id, email: provider.contactInfo?.email || email },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return res.json({
+        success: true,
+        token,
+        providerId: provider._id,
+        provider: {
+          _id: provider._id,
+          practiceName: provider.practiceName,
+          providerTypes: provider.providerTypes,
+          contactInfo: provider.contactInfo,
+          address: provider.address,
+          status: provider.status
+        }
+      });
+    }
+
+    // Legacy flow: no password provided, send verification code
     res.json({ 
       success: true, 
       providerId: provider._id,
-      message: 'Verification code sent (demo mode - use any 6-digit code)'
+      hasPassword: !!provider.password,
+      message: provider.password 
+        ? 'Password required for this account' 
+        : 'Verification code sent (demo mode - use any 6-digit code)'
     });
 
   } catch (error) {
@@ -218,7 +275,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Verify login code
+// Verify login code (legacy - for providers without passwords)
 router.post('/verify-login', async (req, res) => {
   try {
     const { providerId, code } = req.body;
@@ -239,10 +296,16 @@ router.post('/verify-login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid code format' });
     }
 
-    // Return provider data (in production, you'd generate a JWT token)
+    // Generate JWT token
+    const token = jwt.sign(
+      { providerId: provider._id, email: provider.contactInfo?.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.json({
       success: true,
-      token: 'demo-token-' + providerId,
+      token,
       providerId: provider._id,
       provider: {
         _id: provider._id,
@@ -259,3 +322,95 @@ router.post('/verify-login', async (req, res) => {
     res.status(500).json({ error: 'Verification failed' });
   }
 });
+
+// Set password for existing provider (migration or first-time setup)
+router.post('/set-password', async (req, res) => {
+  try {
+    const { providerId, email, password, currentPassword } = req.body;
+
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    let provider;
+
+    if (providerId) {
+      provider = await Provider.findById(providerId).select('+password');
+    } else if (email) {
+      provider = await Provider.findOne({
+        $or: [
+          { 'contactInfo.email': email.toLowerCase() },
+          { email: email.toLowerCase() }
+        ]
+      }).select('+password');
+    }
+
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    // If provider already has password, require current password
+    if (provider.password && currentPassword) {
+      const isMatch = await provider.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+    }
+
+    // Set new password
+    provider.password = password;
+    await provider.save();
+
+    // Generate new token
+    const token = jwt.sign(
+      { providerId: provider._id, email: provider.contactInfo?.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Password set successfully',
+      token,
+      providerId: provider._id
+    });
+
+  } catch (error) {
+    console.error('Set password error:', error);
+    res.status(500).json({ error: 'Failed to set password' });
+  }
+});
+
+// Check if provider has password (for login UI)
+router.post('/check-auth', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const provider = await Provider.findOne({
+      $or: [
+        { 'contactInfo.email': email.toLowerCase() },
+        { email: email.toLowerCase() }
+      ]
+    }).select('password practiceName');
+
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    res.json({
+      exists: true,
+      hasPassword: !!provider.password,
+      practiceName: provider.practiceName
+    });
+
+  } catch (error) {
+    console.error('Check auth error:', error);
+    res.status(500).json({ error: 'Failed to check authentication' });
+  }
+});
+
+module.exports = router;
