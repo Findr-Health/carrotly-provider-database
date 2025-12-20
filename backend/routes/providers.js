@@ -67,9 +67,11 @@ router.post('/', async (req, res) => {
     }
 
     // Check if provider already exists
-    const existingProvider = await Provider.findOne({ 
-      $or: [{ 'contactInfo.email': email.toLowerCase() }, { placeId }]
-    });
+    const queryConditions = [{ 'contactInfo.email': email.toLowerCase() }];
+    if (placeId) {
+      queryConditions.push({ placeId });
+    }
+    const existingProvider = await Provider.findOne({ $or: queryConditions });
 
     if (existingProvider) {
       return res.status(400).json({ 
