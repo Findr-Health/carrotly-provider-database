@@ -7,6 +7,14 @@ export default function UserDetail({ user, onBack, onUpdate }) {
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({ ...user });
   const [saving, setSaving] = useState(false);
+  
+  // Password reset state
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
@@ -52,6 +60,49 @@ export default function UserDetail({ user, onBack, onUpdate }) {
     }
   };
 
+  const handleResetPassword = async () => {
+    setResetError('');
+    setResetSuccess('');
+
+    if (!newPassword || newPassword.length < 8) {
+      setResetError('Password must be at least 8 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setResetError('Passwords do not match');
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      const response = await fetch(`${API_URL}/users/${user._id}/admin-reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password');
+      }
+
+      setResetSuccess('Password reset successfully!');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setShowResetPassword(false);
+        setResetSuccess('');
+      }, 2000);
+
+    } catch (error) {
+      setResetError(error.message);
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString('en-US', {
@@ -89,6 +140,7 @@ export default function UserDetail({ user, onBack, onUpdate }) {
     { id: 'overview', label: 'Overview' },
     { id: 'insurance', label: 'Insurance' },
     { id: 'payment', label: 'Payment' },
+    { id: 'security', label: 'Security' },
     { id: 'activity', label: 'Activity' }
   ];
 
@@ -413,11 +465,134 @@ export default function UserDetail({ user, onBack, onUpdate }) {
         </div>
       )}
 
+      {activeTab === 'security' && (
+        <div className="space-y-6">
+          {/* Password Reset */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4">Password Management</h3>
+            
+            {!showResetPassword ? (
+              <div>
+                <p className="text-gray-600 mb-4">Reset this user's password. They will need to use the new password to log in.</p>
+                <button
+                  onClick={() => setShowResetPassword(true)}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                >
+                  Reset Password
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-md">
+                {resetError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    {resetError}
+                  </div>
+                )}
+                
+                {resetSuccess && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                    {resetSuccess}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                    placeholder="Minimum 8 characters"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                    placeholder="Re-enter password"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleResetPassword}
+                    disabled={resettingPassword}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+                  >
+                    {resettingPassword ? 'Resetting...' : 'Confirm Reset'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowResetPassword(false);
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setResetError('');
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Account Security Info */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4">Security Information</h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Last Password Change</label>
+                <p className="font-medium">{formatDate(user.lastPasswordChange) || 'Unknown'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Email Verified</label>
+                <p className="font-medium">{user.emailVerified ? '✅ Yes' : '❌ No'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Failed Login Attempts</label>
+                <p className="font-medium">{user.failedLoginAttempts || 0}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Account Locked</label>
+                <p className="font-medium">{user.lockUntil && new Date(user.lockUntil) > new Date() ? '🔒 Yes' : '🔓 No'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Agreement Info */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4">Agreement Status</h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Agreement Signed</label>
+                <p className="font-medium">{user.agreement?.signed ? '✅ Yes' : '❌ No'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Agreement Version</label>
+                <p className="font-medium">{user.agreement?.version || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Signed At</label>
+                <p className="font-medium">{formatDate(user.agreement?.signedAt)}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">IP Address</label>
+                <p className="font-medium">{user.agreement?.ipAddress || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'activity' && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-          <p className="text-gray-500">Activity log coming soon...</p>
-          <div className="mt-4 space-y-4">
+          <div className="space-y-4">
             <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <div>
@@ -425,12 +600,30 @@ export default function UserDetail({ user, onBack, onUpdate }) {
                 <p className="text-xs text-gray-500">{formatDate(user.createdAt)}</p>
               </div>
             </div>
+            {user.agreement?.signedAt && (
+              <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium">Agreement signed (v{user.agreement.version})</p>
+                  <p className="text-xs text-gray-500">{formatDate(user.agreement.signedAt)}</p>
+                </div>
+              </div>
+            )}
             {user.lastLogin && (
               <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <div>
                   <p className="text-sm font-medium">Last login</p>
                   <p className="text-xs text-gray-500">{formatDate(user.lastLogin)}</p>
+                </div>
+              </div>
+            )}
+            {user.lastPasswordChange && (
+              <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium">Password changed</p>
+                  <p className="text-xs text-gray-500">{formatDate(user.lastPasswordChange)}</p>
                 </div>
               </div>
             )}

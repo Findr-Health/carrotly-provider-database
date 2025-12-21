@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const emailService = require('../services/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'findr-health-secret-key-change-in-production';
 
@@ -309,14 +310,19 @@ router.post('/forgot-password', async (req, res) => {
 
     // TODO: Send email with reset link
     // For now, log the token (in production, send via email)
-    console.log(`Password reset token for ${email}: ${resetToken}`);
+    // Send email
+    try {
+      await emailService.sendPasswordResetEmail(user.email, resetToken, user.firstName);
+    } catch (emailError) {
+      console.error("Failed to send email:", emailError);
+    }
     console.log(`Reset link: https://findrhealth.com/reset-password?token=${resetToken}`);
 
     res.json({ 
       success: true, 
       message: 'If an account exists, a reset link has been sent',
       // Remove this in production - only for testing
-      _devToken: resetToken 
+      // _devToken removed for production 
     });
 
   } catch (error) {
