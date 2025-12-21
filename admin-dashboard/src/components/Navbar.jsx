@@ -24,6 +24,9 @@ export default function Navbar() {
             <Link to="/providers" className="text-gray-600 hover:text-teal-600 px-3 py-2 rounded-lg text-sm font-medium transition">
               Providers
             </Link>
+            <Link to="/users" className="text-gray-600 hover:text-teal-600 px-3 py-2 rounded-lg text-sm font-medium transition">
+              Users
+            </Link>
           </div>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">{user?.email}</span>

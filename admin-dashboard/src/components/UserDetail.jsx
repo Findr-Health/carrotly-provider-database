@@ -1,0 +1,442 @@
+import React, { useState } from 'react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://fearless-achievement-production.up.railway.app/api';
+
+export default function UserDetail({ user, onBack, onUpdate }) {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [editing, setEditing] = useState(false);
+  const [formData, setFormData] = useState({ ...user });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch(`${API_URL}/users/${user._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      
+      if (response.ok) {
+        const updated = await response.json();
+        onUpdate(updated);
+        setEditing(false);
+        alert('User updated successfully');
+      } else {
+        throw new Error('Failed to update');
+      }
+    } catch (error) {
+      alert('Error updating user: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    if (!confirm(`Change user status to ${newStatus}?`)) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/users/${user._id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        const updated = await response.json();
+        onUpdate(updated);
+        alert('Status updated');
+      }
+    } catch (error) {
+      alert('Error updating status');
+    }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const calculateAge = (dob) => {
+    if (!dob) return 'N/A';
+    const today = new Date();
+    const birthDate = new Date(dob);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const getStatusBadge = (status) => {
+    const styles = {
+      active: 'bg-green-100 text-green-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      suspended: 'bg-red-100 text-red-800',
+      deleted: 'bg-gray-100 text-gray-800'
+    };
+    return styles[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'insurance', label: 'Insurance' },
+    { id: 'payment', label: 'Payment' },
+    { id: 'activity', label: 'Activity' }
+  ];
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <button
+          onClick={onBack}
+          className="text-gray-600 hover:text-gray-900 mb-4 flex items-center gap-2"
+        >
+          ← Back to Users
+        </button>
+        
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center">
+              <span className="text-teal-600 font-bold text-xl">
+                {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+              </span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {user.firstName} {user.lastName}
+              </h1>
+              <p className="text-gray-600">{user.email}</p>
+              <span className={`inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
+                {user.status}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            {user.status === 'active' && (
+              <button
+                onClick={() => handleStatusChange('suspended')}
+                className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+              >
+                Suspend
+              </button>
+            )}
+            {user.status === 'suspended' && (
+              <button
+                onClick={() => handleStatusChange('active')}
+                className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+              >
+                Reactivate
+              </button>
+            )}
+            <button
+              onClick={() => setEditing(!editing)}
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+            >
+              {editing ? 'Cancel' : 'Edit'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex gap-8">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-4 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? 'border-teal-500 text-teal-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Content */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-2 gap-6">
+          {/* Personal Info */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">First Name</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  ) : (
+                    <p className="font-medium">{user.firstName}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Last Name</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  ) : (
+                    <p className="font-medium">{user.lastName}</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Email</label>
+                <p className="font-medium">{user.email}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Phone</label>
+                {editing ? (
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                ) : (
+                  <p className="font-medium">{user.phone}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Date of Birth</label>
+                  <p className="font-medium">{formatDate(user.dateOfBirth)?.split(',')[0]}</p>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Age</label>
+                  <p className="font-medium">{calculateAge(user.dateOfBirth)} years</p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Gender</label>
+                <p className="font-medium capitalize">{user.gender?.replace('-', ' ')}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4">Address</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Street</label>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={formData.address?.street || ''}
+                    onChange={(e) => setFormData({...formData, address: {...formData.address, street: e.target.value}})}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                ) : (
+                  <p className="font-medium">{user.address?.street || 'N/A'}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">City</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={formData.address?.city || ''}
+                      onChange={(e) => setFormData({...formData, address: {...formData.address, city: e.target.value}})}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  ) : (
+                    <p className="font-medium">{user.address?.city || 'N/A'}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">State</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={formData.address?.state || ''}
+                      onChange={(e) => setFormData({...formData, address: {...formData.address, state: e.target.value}})}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  ) : (
+                    <p className="font-medium">{user.address?.state || 'N/A'}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">ZIP</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={formData.address?.zip || ''}
+                      onChange={(e) => setFormData({...formData, address: {...formData.address, zip: e.target.value}})}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  ) : (
+                    <p className="font-medium">{user.address?.zip || 'N/A'}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Emergency Contact */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4">Emergency Contact</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Name</label>
+                <p className="font-medium">{user.emergencyContact?.name || 'Not provided'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Phone</label>
+                <p className="font-medium">{user.emergencyContact?.phone || 'Not provided'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Relationship</label>
+                <p className="font-medium">{user.emergencyContact?.relationship || 'Not provided'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Account Info */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4">Account Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Account Created</label>
+                <p className="font-medium">{formatDate(user.createdAt)}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Last Login</label>
+                <p className="font-medium">{formatDate(user.lastLogin) || 'Never'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Total Logins</label>
+                <p className="font-medium">{user.loginCount || 0}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Email Verified</label>
+                <p className="font-medium">{user.emailVerified ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+          </div>
+
+          {editing && (
+            <div className="col-span-2">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'insurance' && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold mb-4">Insurance Information</h3>
+          {user.insurance?.hasInsurance ? (
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Provider</label>
+                <p className="font-medium">{user.insurance.provider || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Member ID</label>
+                <p className="font-medium">{user.insurance.memberId || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Group Number</label>
+                <p className="font-medium">{user.insurance.groupNumber || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Insurance Phone</label>
+                <p className="font-medium">{user.insurance.insurancePhone || 'N/A'}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-500">No insurance information on file</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'payment' && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold mb-4">Payment Methods</h3>
+          {user.paymentMethods?.length > 0 ? (
+            <div className="space-y-4">
+              {user.paymentMethods.map((method, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
+                      💳
+                    </div>
+                    <div>
+                      <p className="font-medium capitalize">{method.type} •••• {method.lastFour}</p>
+                      <p className="text-sm text-gray-500">
+                        {method.nickname || `Expires ${method.expiryMonth}/${method.expiryYear}`}
+                      </p>
+                    </div>
+                  </div>
+                  {method.isDefault && (
+                    <span className="px-2 py-1 bg-teal-100 text-teal-800 text-xs rounded-full">
+                      Default
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No payment methods on file</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'activity' && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+          <p className="text-gray-500">Activity log coming soon...</p>
+          <div className="mt-4 space-y-4">
+            <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div>
+                <p className="text-sm font-medium">Account created</p>
+                <p className="text-xs text-gray-500">{formatDate(user.createdAt)}</p>
+              </div>
+            </div>
+            {user.lastLogin && (
+              <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium">Last login</p>
+                  <p className="text-xs text-gray-500">{formatDate(user.lastLogin)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

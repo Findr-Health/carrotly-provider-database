@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 export default function Dashboard() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [userStats, setUserStats] = useState({ total: 0, active: 0, pending: 0, suspended: 0 });
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -23,6 +24,22 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
+      const API_URL = 'https://fearless-achievement-production.up.railway.app/api';
+      // Fetch users
+      let users = [];
+      try {
+        const userResponse = await fetch(`${API_URL}/users`);
+        users = await userResponse.json();
+      } catch (e) { console.log('No users yet'); }
+      
+      // Calculate user stats
+      setUserStats({
+        total: users.length,
+        active: users.filter(u => u.status === 'active').length,
+        pending: users.filter(u => u.status === 'pending').length,
+        suspended: users.filter(u => u.status === 'suspended').length
+      });
+
       // GET ALL PROVIDERS (limit: 1000)
       const { data } = await providersAPI.getAll({ limit: 1000 });
       const providers = data.providers || [];
@@ -121,6 +138,29 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="text-sm font-medium text-gray-500">Rejected</div>
           <div className="mt-2 text-3xl font-bold text-red-600">{stats.rejected}</div>
+        </div>
+      </div>
+
+      {/* User Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md" onClick={() => navigate('/users')}>
+          <div className="text-sm font-medium text-gray-500">Total Users</div>
+          <div className="mt-2 text-3xl font-bold text-purple-600">{userStats.total}</div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm font-medium text-gray-500">Active Users</div>
+          <div className="mt-2 text-3xl font-bold text-green-600">{userStats.active}</div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm font-medium text-gray-500">Pending Users</div>
+          <div className="mt-2 text-3xl font-bold text-yellow-600">{userStats.pending}</div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm font-medium text-gray-500">Suspended Users</div>
+          <div className="mt-2 text-3xl font-bold text-red-600">{userStats.suspended}</div>
         </div>
       </div>
 
