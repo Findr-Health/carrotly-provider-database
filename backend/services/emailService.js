@@ -1,20 +1,28 @@
 const sgMail = require('@sendgrid/mail');
 
-// Initialize SendGrid with API key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Initialize SendGrid - only if API key exists
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@findrhealth.com';
+const getFromEmail = () => process.env.FROM_EMAIL || 'noreply@findrhealth.com';
+const getAppUrl = () => process.env.APP_URL || 'https://findrhealth.com';
 const FROM_NAME = 'Findr Health';
-const APP_URL = process.env.APP_URL || 'https://findrhealth.com';
 
 const emailService = {
   async sendPasswordResetEmail(to, resetToken, firstName) {
-    const resetUrl = `${APP_URL}/reset-password?token=${resetToken}`;
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log('⚠️ SendGrid not configured, skipping email');
+      console.log(`Would send reset email to ${to} with token ${resetToken}`);
+      return { success: true, skipped: true };
+    }
+
+    const resetUrl = `${getAppUrl()}/reset-password?token=${resetToken}`;
     
     const msg = {
       to,
       from: {
-        email: FROM_EMAIL,
+        email: getFromEmail(),
         name: FROM_NAME
       },
       subject: 'Reset Your Findr Health Password',
@@ -54,19 +62,19 @@ const emailService = {
         </html>
       `,
       text: `
-        Reset Your Password
-        
-        Hi ${firstName || 'there'},
-        
-        We received a request to reset your password. Visit the link below to create a new password:
-        
-        ${resetUrl}
-        
-        This link will expire in 1 hour for security reasons.
-        
-        If you didn't request this, you can safely ignore this email.
-        
-        © ${new Date().getFullYear()} Findr Health
+Reset Your Password
+
+Hi ${firstName || 'there'},
+
+We received a request to reset your password. Visit the link below to create a new password:
+
+${resetUrl}
+
+This link will expire in 1 hour for security reasons.
+
+If you didn't request this, you can safely ignore this email.
+
+© ${new Date().getFullYear()} Findr Health
       `
     };
 
@@ -81,19 +89,21 @@ const emailService = {
   },
 
   async sendWelcomeEmail(to, firstName) {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log('⚠️ SendGrid not configured, skipping welcome email');
+      return { success: true, skipped: true };
+    }
+
     const msg = {
       to,
       from: {
-        email: FROM_EMAIL,
+        email: getFromEmail(),
         name: FROM_NAME
       },
       subject: 'Welcome to Findr Health!',
       html: `
         <!DOCTYPE html>
         <html>
-        <head>
-          <meta charset="utf-8">
-        </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #0d9488; margin: 0;">Findr Health</h1>
@@ -104,19 +114,15 @@ const emailService = {
             <p>Thank you for joining Findr Health. We're excited to help you find the best healthcare providers in your area.</p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${APP_URL}" style="background: linear-gradient(to right, #0d9488, #06b6d4); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              <a href="${getAppUrl()}" style="background: linear-gradient(to right, #0d9488, #06b6d4); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
                 Start Exploring
               </a>
             </div>
           </div>
-          
-          <div style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 20px;">
-            <p>© ${new Date().getFullYear()} Findr Health. All rights reserved.</p>
-          </div>
         </body>
         </html>
       `,
-      text: `Welcome to Findr Health, ${firstName}! Visit ${APP_URL} to get started.`
+      text: `Welcome to Findr Health, ${firstName}! Visit ${getAppUrl()} to get started.`
     };
 
     try {
@@ -130,6 +136,11 @@ const emailService = {
   },
 
   async sendProviderApprovalEmail(to, practiceName, approved) {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log('⚠️ SendGrid not configured, skipping provider email');
+      return { success: true, skipped: true };
+    }
+
     const subject = approved 
       ? 'Your Findr Health Provider Account is Approved!' 
       : 'Update on Your Findr Health Provider Application';
@@ -137,7 +148,7 @@ const emailService = {
     const msg = {
       to,
       from: {
-        email: FROM_EMAIL,
+        email: getFromEmail(),
         name: FROM_NAME
       },
       subject,
