@@ -6,9 +6,6 @@ const emailService = require('../services/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'findr-health-secret-key-change-in-production';
 
-// Get all users (admin)
-router.get('/', async (req, res) => {
-
 // Debug endpoint - check email config
 router.get("/debug-email-config", async (req, res) => {
   res.json({
@@ -18,6 +15,9 @@ router.get("/debug-email-config", async (req, res) => {
     appUrl: process.env.APP_URL || "not set"
   });
 });
+
+// Get all users (admin)
+router.get('/', async (req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
     res.json(users);
@@ -25,6 +25,10 @@ router.get("/debug-email-config", async (req, res) => {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
+});
+
+// Get single user
+router.get('/:id', async (req, res) => {
 });
 
 // Get single user
