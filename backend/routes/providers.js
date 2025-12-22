@@ -176,20 +176,32 @@ router.post('/', async (req, res) => {
 // Update provider
 router.put('/:id', async (req, res) => {
   try {
-    // Don't allow password updates through this route
     const updateData = { ...req.body };
     delete updateData.password;
-
+    
+    const currentProvider = await Provider.findById(req.params.id);
+    const oldStatus = currentProvider?.status;
+    
     const provider = await Provider.findByIdAndUpdate(
       req.params.id,
       { $set: updateData },
       { new: true, runValidators: true }
     );
-
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
-
+    
+    if (updateData.status && updateData.status !== oldStatus) {
+      const email = provider.contactInfo?.email || provider.email;
+      if (email && (updateData.status === 'approved' || updateData.status === 'rejected')) {
+        try {
+          await emailService.sendProviderApprovalEmail(email, provider.practiceName, updateData.status === 'approved');
+        } catch (emailError) {
+          console.error('Failed to send provider status email:', emailError);
+        }
+      }
+    }
+    
     res.json(provider);
   } catch (error) {
     console.error('Update provider error:', error);
