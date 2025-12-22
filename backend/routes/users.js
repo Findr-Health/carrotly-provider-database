@@ -402,3 +402,13 @@ router.post('/:id/admin-reset-password', async (req, res) => {
     res.status(500).json({ error: 'Failed to reset password' });
   }
 });
+
+// Debug endpoint - check email config (remove in production)
+router.get('/debug-email-config', async (req, res) => {
+  res.json({
+    sendgridConfigured: !!process.env.SENDGRID_API_KEY,
+    sendgridKeyPrefix: process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.substring(0, 5) : 'not set',
+    fromEmail: process.env.FROM_EMAIL || 'not set',
+    appUrl: process.env.APP_URL || 'not set'
+  });
+});
