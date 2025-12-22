@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Provider = require('../models/Provider');
+const emailService = require('../services/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'carrotly-admin-secret-2024';
 
@@ -172,7 +173,6 @@ router.post('/providers', async (req, res) => {
   }
 });
 
-// PATCH /api/admin/providers/:id/status - Update status (AUTH ENABLED)
 router.patch('/providers/:id/status', verifyToken, async (req, res) => {
   try {
     const { status } = req.body;
@@ -188,6 +188,19 @@ router.patch('/providers/:id/status', verifyToken, async (req, res) => {
     
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Send email for approved or rejected
+    if (status === 'approved' || status === 'rejected') {
+      const email = provider.contactInfo?.email || provider.email;
+      if (email) {
+        try {
+          await emailService.sendProviderApprovalEmail(email, provider.practiceName, status === 'approved');
+          console.log(`✅ Provider ${status} email sent to ${email}`);
+        } catch (emailError) {
+          console.error('Failed to send provider status email:', emailError);
+        }
+      }
     }
     
     res.json(provider);
