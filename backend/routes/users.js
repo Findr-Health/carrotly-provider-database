@@ -406,3 +406,13 @@ router.post('/:id/admin-reset-password', async (req, res) => {
     await user.save();
 
 // Debug endpoint - check email config (remove in production)
+
+    res.json({ success: true, message: 'Password reset successfully' });
+
+  } catch (error) {
+    console.error('Admin reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+module.exports = router;
