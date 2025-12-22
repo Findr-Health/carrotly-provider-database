@@ -39,6 +39,15 @@ export default function ProviderDetail() {
   };
 
   const handleStatusChange = async (newStatus) => {
+    const confirmMessage = newStatus === 'approved' 
+      ? `Are you sure you want to APPROVE this provider? An email will be sent to notify them.`
+      : newStatus === 'rejected'
+      ? `Are you sure you want to REJECT this provider? An email will be sent to notify them.`
+      : `Are you sure you want to change status to ${newStatus}?`;
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
     try {
       await providersAPI.updateStatus(id, newStatus);
       setProvider({ ...provider, status: newStatus });
