@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Provider = require('../models/Provider');
+const emailService = require('../services/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'findr-health-secret-key-change-in-production';
 
@@ -138,6 +139,16 @@ router.post('/', async (req, res) => {
     });
 
     await provider.save();
+
+    // Send welcome email to provider
+    try {
+      await emailService.sendProviderWelcomeEmail(
+        provider.contactInfo.email,
+        provider.practiceName
+      );
+    } catch (emailError) {
+      console.error('Failed to send provider welcome email:', emailError);
+    }
 
     console.log('✅ Provider created:', provider._id);
 

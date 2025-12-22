@@ -187,6 +187,64 @@ If you didn't request this, you can safely ignore this email.
       console.error('❌ Email send error:', error.response?.body || error.message);
       throw error;
     }
+  },
+
+  async sendProviderWelcomeEmail(to, practiceName) {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log('⚠️ SendGrid not configured, skipping provider welcome email');
+      return { success: true, skipped: true };
+    }
+
+    const msg = {
+      to,
+      from: {
+        email: getFromEmail(),
+        name: FROM_NAME
+      },
+      subject: 'Welcome to Findr Health - Your Application is Under Review',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #0d9488; margin: 0;">Findr Health</h1>
+          </div>
+          
+          <div style="background: #f9fafb; border-radius: 8px; padding: 30px;">
+            <h2 style="margin-top: 0; color: #111827;">Welcome, ${practiceName}! 🎉</h2>
+            <p>Thank you for registering with Findr Health. We're excited to have you join our network of healthcare providers.</p>
+            
+            <h3 style="color: #0d9488;">What happens next?</h3>
+            <ol style="color: #4b5563;">
+              <li>Our team will review your application (typically within 24-48 hours)</li>
+              <li>You'll receive an email once your profile is approved</li>
+              <li>Once approved, your practice will be visible to patients in your area</li>
+            </ol>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="https://findrhealth-provider.vercel.app/login" style="background: linear-gradient(to right, #0d9488, #06b6d4); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                Access Your Dashboard
+              </a>
+            </div>
+          </div>
+          
+          <div style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 20px;">
+            <p>© ${new Date().getFullYear()} Findr Health. All rights reserved.</p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Welcome to Findr Health, ${practiceName}! Our team will review your application within 24-48 hours. Access your dashboard at https://findrhealth-provider.vercel.app/login`
+    };
+
+    try {
+      await sgMail.send(msg);
+      console.log(`✅ Provider welcome email sent to ${to}`);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Email send error:', error.response?.body || error.message);
+      throw error;
+    }
   }
 };
 

@@ -101,6 +101,13 @@ router.post('/register', async (req, res) => {
 
     await user.save();
 
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(user.email, user.firstName);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+
     // Generate token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
@@ -164,6 +171,13 @@ router.post('/login', async (req, res) => {
     user.lastLogin = new Date();
     user.loginCount += 1;
     await user.save();
+
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(user.email, user.firstName);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
 
     // Generate token
     const token = jwt.sign(
@@ -246,6 +260,13 @@ router.post('/change-password', async (req, res) => {
     user.password = newPassword;
     await user.save();
 
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(user.email, user.firstName);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+
     res.json({ success: true, message: 'Password changed successfully' });
 
   } catch (error) {
@@ -322,6 +343,13 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = user.generatePasswordResetToken();
     await user.save();
 
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(user.email, user.firstName);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+
     // TODO: Send email with reset link
     // For now, log the token (in production, send via email)
     // Send email
@@ -382,6 +410,13 @@ router.post('/reset-password', async (req, res) => {
     user.lockUntil = undefined;
     await user.save();
 
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(user.email, user.firstName);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+
     res.json({ success: true, message: 'Password has been reset successfully' });
 
   } catch (error) {
@@ -408,6 +443,13 @@ router.post('/:id/admin-reset-password', async (req, res) => {
     user.failedLoginAttempts = 0;
     user.lockUntil = undefined;
     await user.save();
+
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(user.email, user.firstName);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
 
 // Debug endpoint - check email config (remove in production)
 
