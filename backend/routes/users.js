@@ -8,6 +8,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'findr-health-secret-key-change-in-
 
 // Get all users (admin)
 router.get('/', async (req, res) => {
+
+// Debug endpoint - check email config
+router.get("/debug-email-config", async (req, res) => {
+  res.json({
+    sendgridConfigured: !!process.env.SENDGRID_API_KEY,
+    sendgridKeyPrefix: process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.substring(0, 5) : "not set",
+    fromEmail: process.env.FROM_EMAIL || "not set",
+    appUrl: process.env.APP_URL || "not set"
+  });
+});
   try {
     const users = await User.find().sort({ createdAt: -1 });
     res.json(users);
@@ -394,14 +404,6 @@ router.post('/:id/admin-reset-password', async (req, res) => {
     user.failedLoginAttempts = 0;
     user.lockUntil = undefined;
     await user.save();
-
-    res.json({ success: true, message: 'Password reset successfully' });
-
-  } catch (error) {
-    console.error('Admin reset password error:', error);
-    res.status(500).json({ error: 'Failed to reset password' });
-  }
-});
 
 // Debug endpoint - check email config (remove in production)
 router.get('/debug-email-config', async (req, res) => {
