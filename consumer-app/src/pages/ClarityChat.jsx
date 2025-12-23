@@ -128,9 +128,7 @@ function ClarityChat() {
         {messages.length === 0 ? (
           <div className="clarity-welcome">
             <div className="welcome-icon">
-              <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
-                <path d="M16 0L20 8L28 8L22 14L24 22L16 18L8 22L10 14L4 8L12 8L16 0Z" fill="#17DDC0"/>
-              </svg>
+              <img src="/findr-logo.svg" alt="Findr" style={{ height: '48px', width: 'auto' }} />
             </div>
             <h2>Welcome to Clarity</h2>
             <p>Ask me anything about healthcare billing, or upload a document to get started.</p>

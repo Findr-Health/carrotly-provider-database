@@ -19,11 +19,7 @@ function Home() {
       {/* Header with Findr Logo */}
       <header className="home-header">
         <div className="findr-logo">
-          <span className="findr-text">findr</span>
-          <svg className="findr-icon" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 0L20 8L28 8L22 14L24 22L16 18L8 22L10 14L4 8L12 8L16 0Z" fill="#17DDC0"/>
-          </svg>
-          <span className="findr-tm">™</span>
+          <img src="/findr-logo.svg" alt="Findr Health" className="findr-logo-img" />
         </div>
         <p className="tagline">Healthcare, demystified</p>
       </header>
