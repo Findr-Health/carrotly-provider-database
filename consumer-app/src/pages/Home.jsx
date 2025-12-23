@@ -26,8 +26,7 @@ function Home() {
       {/* Clarity Section */}
       <section className="clarity-section">
         <h2 className="clarity-headline">Clarity</h2>
-        <p className="clarity-subhead">Simple, fast, built just for you</p>
-        <p className="clarity-tagline">Take back control of your healthcare!</p>
+        <p className="clarity-subhead">Take back control of your healthcare!</p>
         
         <button
           className="clarity-btn"

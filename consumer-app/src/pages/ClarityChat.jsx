@@ -126,7 +126,7 @@ function ClarityChat() {
         {messages.length === 0 ? (
           <div className="clarity-welcome">
             <h2>Welcome to Clarity</h2>
-            <p>Ask me anything about healthcare billing, or upload a document to get started.</p>
+            <p>Ask me anything about your healthcare journey or upload a document and I'll explain it.</p>
             
             {/* Upload Document Button */}
             <button className="upload-document-btn" onClick={() => setShowUpload(true)}>
@@ -138,6 +138,28 @@ function ClarityChat() {
             
             <div className="quick-prompts">
               <p className="prompts-label">Or ask a question:</p>
+              
+              {/* Empty chat input */}
+              <div className="inline-chat-input">
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your question here..."
+                />
+                <button 
+                  onClick={handleSendMessage}
+                  disabled={!inputText.trim() || isLoading}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
+              </div>
+              
+              <p className="prompts-label-small">Or try one of these:</p>
               <button onClick={() => setInputText("What's a deductible and how does it work?")}>
                 What's a deductible?
               </button>
