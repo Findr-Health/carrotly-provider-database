@@ -1,217 +1,269 @@
 /**
- * Home Page Styles
+ * Home Page Styles - Findr Health Clarity
  */
 
 .home-page {
-  padding: var(--spacing-lg);
-  padding-top: calc(var(--spacing-xl) + var(--safe-area-top));
-  min-height: 100vh;
-  background: linear-gradient(180deg, var(--findr-primary-light) 0%, var(--findr-background) 30%);
+  padding: 1.5rem;
+  padding-bottom: 100px;
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 /* Header */
 .home-header {
   text-align: center;
-  margin-bottom: var(--spacing-xl);
+  padding: 2rem 0;
 }
 
 .findr-logo {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 1rem;
 }
 
 .home-header h1 {
-  font-size: var(--font-size-2xl);
+  font-family: 'Urbanist', sans-serif;
+  font-size: 2rem;
   font-weight: 700;
-  color: var(--findr-text);
-  margin-bottom: var(--spacing-xs);
+  color: #111827;
+  margin-bottom: 0.5rem;
 }
 
 .tagline {
-  font-size: var(--font-size-sm);
-  color: var(--findr-text-secondary);
-  margin: 0;
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1.125rem;
+  color: #6B7280;
+  font-weight: 400;
 }
 
-/* Feature Cards */
-.quick-actions-home {
-  margin-bottom: var(--spacing-xl);
+/* Main Feature - Clarity Card */
+.main-feature {
+  margin-bottom: 1.5rem;
 }
 
-.quick-action-cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.feature-card {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg);
-  background: var(--findr-background);
-  border: 1px solid var(--findr-border);
-  border-radius: var(--radius-lg);
+.clarity-card {
+  width: 100%;
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  border: 2px solid #3B82F6;
+  border-radius: 16px;
+  padding: 1.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
-  width: 100%;
-}
-
-.feature-card:hover {
-  border-color: var(--findr-primary);
-  box-shadow: var(--shadow-md);
-}
-
-.feature-card.highlighted {
-  border-color: var(--findr-primary);
-  background: linear-gradient(135deg, var(--findr-primary-light) 0%, var(--findr-background) 100%);
-}
-
-.feature-icon {
-  font-size: 2rem;
-  flex-shrink: 0;
-}
-
-.feature-content {
-  flex: 1;
-}
-
-.feature-content h3 {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--findr-text);
-  margin: 0 0 var(--spacing-xs) 0;
-}
-
-.feature-content p {
-  font-size: var(--font-size-sm);
-  color: var(--findr-text-secondary);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.feature-arrow {
-  font-size: var(--font-size-xl);
-  color: var(--findr-primary);
-}
-
-/* Promo Banner */
-.promo-banner {
-  background: var(--findr-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
-}
-
-.promo-content {
-  text-align: center;
-  color: white;
-}
-
-.promo-badge {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.2);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--spacing-sm);
-}
-
-.promo-content h3 {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  margin: 0 0 var(--spacing-xs) 0;
-  color: white;
-}
-
-.promo-content p {
-  font-size: var(--font-size-sm);
-  opacity: 0.9;
-  margin: 0 0 var(--spacing-md) 0;
-}
-
-.promo-btn {
-  background: white;
-  color: var(--findr-primary);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border: none;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.promo-btn:hover {
-  transform: scale(1.02);
-}
-
-/* Search Bar */
-.search-container {
-  position: fixed;
-  bottom: calc(var(--bottom-nav-height) + var(--spacing-md) + var(--safe-area-bottom));
-  left: var(--spacing-lg);
-  right: var(--spacing-lg);
-}
-
-.search-bar {
   display: flex;
-  align-items: center;
-  background: var(--findr-background);
-  border: 1px solid var(--findr-border);
-  border-radius: var(--radius-full);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  box-shadow: var(--shadow-md);
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.search-input {
-  flex: 1;
-  border: none;
-  background: none;
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-sm);
-  color: var(--findr-text);
+.clarity-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
 }
 
-.search-input::placeholder {
-  color: var(--findr-text-muted);
-}
-
-.search-input:focus {
-  outline: none;
-}
-
-.voice-btn {
-  width: 40px;
-  height: 40px;
-  background: var(--findr-primary);
-  border: none;
-  border-radius: var(--radius-full);
+.clarity-icon {
+  width: 64px;
+  height: 64px;
+  background: white;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.clarity-content h2 {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1E40AF;
+  margin-bottom: 0.5rem;
+}
+
+.clarity-content p {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1rem;
+  color: #3B82F6;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.clarity-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.action-text {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #2563EB;
+}
+
+.action-arrow {
+  font-size: 1.25rem;
+  color: #2563EB;
+}
+
+/* Feature Pills */
+.clarity-features {
+  margin-bottom: 1.5rem;
+}
+
+.clarity-features h3 {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.feature-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.feature-pill {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  background: #F3F4F6;
+  border-radius: 100px;
+  color: #374151;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.voice-btn:hover {
-  background: var(--findr-primary-dark);
+.feature-pill:hover {
+  background: #E5E7EB;
+  color: #111827;
 }
 
-/* Desktop */
-@media (min-width: 768px) {
+/* Consult Section */
+.consult-section {
+  margin-bottom: 1.5rem;
+}
+
+.consult-card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.consult-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.consult-icon {
+  width: 48px;
+  height: 48px;
+  background: #FFF7ED;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.consult-badge {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  background: #FEF3C7;
+  color: #D97706;
+  border-radius: 100px;
+}
+
+.consult-card h3 {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.consult-card p {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.9375rem;
+  color: #6B7280;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.consult-btn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: #F97316;
+  color: white;
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.consult-btn:hover {
+  background: #EA580C;
+  transform: translateY(-1px);
+}
+
+/* Trust Section */
+.trust-section {
+  text-align: center;
+  padding-top: 1rem;
+}
+
+.trust-badges {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.trust-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6B7280;
+}
+
+.trust-note {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.75rem;
+  color: #9CA3AF;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 380px) {
   .home-page {
-    max-width: 600px;
-    margin: 0 auto;
+    padding: 1rem;
   }
   
-  .search-container {
-    max-width: 536px;
-    left: 50%;
-    transform: translateX(-50%);
+  .clarity-card {
+    padding: 1.25rem;
+  }
+  
+  .clarity-content h2 {
+    font-size: 1.25rem;
+  }
+  
+  .feature-pill {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.75rem;
   }
 }

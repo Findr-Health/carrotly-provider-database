@@ -6,26 +6,32 @@
 /* Design Tokens */
 :root {
   /* Colors - Findr Health Brand */
-  --findr-primary: #00B4A6;
-  --findr-primary-light: #E6F7F5;
-  --findr-primary-dark: #009688;
+  --findr-primary: #3B82F6;
+  --findr-primary-light: #DBEAFE;
+  --findr-primary-dark: #2563EB;
   
-  --findr-secondary: #2D3748;
-  --findr-text: #1A202C;
-  --findr-text-secondary: #718096;
-  --findr-text-muted: #A0AEC0;
+  --findr-secondary: #F97316;
+  --findr-secondary-light: #FED7AA;
+  
+  --findr-text: #111827;
+  --findr-text-secondary: #4B5563;
+  --findr-text-muted: #9CA3AF;
   
   --findr-background: #FFFFFF;
-  --findr-surface: #F7FAFC;
-  --findr-border: #E2E8F0;
+  --findr-surface: #F9FAFB;
+  --findr-border: #E5E7EB;
   
-  --findr-success: #48BB78;
-  --findr-warning: #ECC94B;
-  --findr-error: #F56565;
-  --findr-info: #4299E1;
+  --findr-success: #10B981;
+  --findr-success-light: #D1FAE5;
+  --findr-warning: #F59E0B;
+  --findr-warning-light: #FEF3C7;
+  --findr-error: #EF4444;
+  --findr-error-light: #FEE2E2;
+  --findr-info: #3B82F6;
+  --findr-info-light: #DBEAFE;
 
-  /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  /* Typography - Urbanist */
+  --font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -93,6 +99,7 @@ body {
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family);
   font-weight: 600;
   line-height: 1.25;
   color: var(--findr-text);
