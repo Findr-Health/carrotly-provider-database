@@ -1,0 +1,124 @@
+/**
+ * ChatMessage Component Styles
+ */
+
+.chat-message {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  max-width: 100%;
+}
+
+.chat-message.user {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+
+.avatar-icon {
+  width: 36px;
+  height: 36px;
+  background-color: var(--findr-primary-light);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-content {
+  max-width: 85%;
+}
+
+.chat-message.assistant .message-content {
+  background-color: var(--findr-surface);
+  border-radius: var(--radius-lg);
+  border-top-left-radius: var(--radius-sm);
+  padding: var(--spacing-md);
+}
+
+.chat-message.user .message-content {
+  background-color: var(--findr-primary);
+  color: white;
+  border-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-sm);
+  padding: var(--spacing-md);
+}
+
+.message-text {
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.message-time {
+  font-size: var(--font-size-xs);
+  color: var(--findr-text-muted);
+}
+
+.chat-message.user .message-time {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.message-status {
+  font-size: var(--font-size-xs);
+  color: var(--findr-primary);
+}
+
+.chat-message.user .message-status {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Document Upload Message */
+.message-document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.document-preview {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.document-icon {
+  font-size: 3rem;
+}
+
+.document-name {
+  font-size: var(--font-size-sm);
+  word-break: break-all;
+}
+
+/* Error Message */
+.message-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  background-color: #FEF2F2;
+  border: 1px solid var(--findr-error);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.error-icon {
+  font-size: 1.25rem;
+}
+
+.message-error p {
+  margin: 0;
+  color: var(--findr-error);
+}

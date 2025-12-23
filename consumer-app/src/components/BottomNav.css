@@ -1,0 +1,91 @@
+/**
+ * BottomNav Component Styles
+ * Matches Findr Health app navigation design
+ */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--bottom-nav-height);
+  background-color: var(--findr-background);
+  border-top: 1px solid var(--findr-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: var(--safe-area-bottom);
+  z-index: 1000;
+}
+
+.nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: none;
+  border: none;
+  color: var(--findr-text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease;
+  min-width: 64px;
+}
+
+.nav-btn:hover {
+  color: var(--findr-text-secondary);
+}
+
+.nav-btn.active {
+  color: var(--findr-primary);
+}
+
+.nav-btn span {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.nav-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Center Button - Findr Logo */
+.nav-btn.center-btn {
+  position: relative;
+}
+
+.center-icon {
+  width: 56px;
+  height: 56px;
+  background-color: var(--findr-primary);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 180, 166, 0.4);
+  transition: all 0.2s ease;
+  margin-top: -20px;
+}
+
+.center-btn:hover .center-icon {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 180, 166, 0.5);
+}
+
+.center-btn.active .center-icon {
+  background-color: var(--findr-primary-dark);
+}
+
+/* Desktop Optimization */
+@media (min-width: 768px) {
+  .bottom-nav {
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 1px solid var(--findr-border);
+    border-right: 1px solid var(--findr-border);
+  }
+}

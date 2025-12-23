@@ -1,0 +1,16 @@
+{
+  "name": "Findr Health",
+  "short_name": "Findr",
+  "description": "Your personal health & wellness assistant",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00B4A6",
+  "icons": [
+    {
+      "src": "/findr-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+/**
+ * DocumentUpload Component Styles
+ */
+
+.document-upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.upload-dropzone {
+  border: 2px dashed var(--findr-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--findr-surface);
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.dragging {
+  border-color: var(--findr-primary);
+  background-color: var(--findr-primary-light);
+}
+
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.upload-icon {
+  font-size: 2.5rem;
+}
+
+.upload-text {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--findr-text);
+  margin: 0;
+}
+
+.upload-hint {
+  font-size: var(--font-size-sm);
+  color: var(--findr-text-muted);
+  margin: 0;
+}
+
+.upload-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.upload-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--findr-surface);
+  border: 1px solid var(--findr-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.upload-btn:hover {
+  border-color: var(--findr-primary);
+  background-color: var(--findr-primary-light);
+}
+
+.btn-icon {
+  font-size: 1.25rem;
+}
+
+.upload-privacy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--findr-text-muted);
+  margin: 0;
+}
+
+.lock-icon {
+  font-size: 0.75rem;
+}

@@ -1,0 +1,251 @@
+/**
+ * Findr Health Consumer App - Global Styles
+ * Design System based on Findr Health branding
+ */
+
+/* Design Tokens */
+:root {
+  /* Colors - Findr Health Brand */
+  --findr-primary: #00B4A6;
+  --findr-primary-light: #E6F7F5;
+  --findr-primary-dark: #009688;
+  
+  --findr-secondary: #2D3748;
+  --findr-text: #1A202C;
+  --findr-text-secondary: #718096;
+  --findr-text-muted: #A0AEC0;
+  
+  --findr-background: #FFFFFF;
+  --findr-surface: #F7FAFC;
+  --findr-border: #E2E8F0;
+  
+  --findr-success: #48BB78;
+  --findr-warning: #ECC94B;
+  --findr-error: #F56565;
+  --findr-info: #4299E1;
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  /* Safe Areas */
+  --safe-area-top: env(safe-area-inset-top, 0);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0);
+  --bottom-nav-height: 70px;
+}
+
+/* Reset & Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--findr-text);
+  background-color: var(--findr-background);
+  line-height: 1.5;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+
+/* App Container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--findr-text);
+}
+
+h1 { font-size: var(--font-size-3xl); }
+h2 { font-size: var(--font-size-2xl); }
+h3 { font-size: var(--font-size-xl); }
+h4 { font-size: var(--font-size-lg); }
+h5 { font-size: var(--font-size-base); }
+h6 { font-size: var(--font-size-sm); }
+
+p {
+  margin-bottom: var(--spacing-md);
+}
+
+a {
+  color: var(--findr-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background-color: var(--findr-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--findr-primary-dark);
+}
+
+.btn-secondary {
+  background-color: var(--findr-surface);
+  color: var(--findr-text);
+  border: 1px solid var(--findr-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--findr-border);
+}
+
+/* Form Elements */
+input, textarea, select {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--findr-border);
+  border-radius: var(--radius-md);
+  background-color: var(--findr-background);
+  color: var(--findr-text);
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--findr-primary);
+  box-shadow: 0 0 0 3px var(--findr-primary-light);
+}
+
+/* Cards */
+.card {
+  background: var(--findr-background);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+}
+
+/* Utilities */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-primary { color: var(--findr-primary); }
+.text-secondary { color: var(--findr-text-secondary); }
+.text-muted { color: var(--findr-text-muted); }
+
+.mt-sm { margin-top: var(--spacing-sm); }
+.mt-md { margin-top: var(--spacing-md); }
+.mt-lg { margin-top: var(--spacing-lg); }
+
+.mb-sm { margin-bottom: var(--spacing-sm); }
+.mb-md { margin-bottom: var(--spacing-md); }
+.mb-lg { margin-bottom: var(--spacing-lg); }
+
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--findr-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--findr-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--findr-text-muted);
+}
+
+/* Mobile Safe Areas */
+@supports (padding: max(0px)) {
+  .app-container {
+    padding-bottom: max(calc(var(--bottom-nav-height) + 20px), calc(var(--bottom-nav-height) + env(safe-area-inset-bottom)));
+  }
+}
+
+/* Responsive Breakpoints */
+@media (min-width: 640px) {
+  :root {
+    --font-size-base: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-container {
+    max-width: 768px;
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-container {
+    max-width: 1024px;
+  }
+}

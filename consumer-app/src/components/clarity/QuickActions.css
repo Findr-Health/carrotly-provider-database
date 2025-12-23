@@ -1,0 +1,95 @@
+/**
+ * QuickActions Component Styles
+ */
+
+.quick-actions {
+  padding: var(--spacing-md);
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  background-color: var(--findr-primary-light);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 80px;
+}
+
+.quick-action-btn:hover {
+  border-color: var(--findr-primary);
+  background-color: white;
+}
+
+.quick-action-icon {
+  font-size: 1.5rem;
+}
+
+.quick-action-label {
+  font-size: var(--font-size-sm);
+  color: var(--findr-text);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.custom-question-trigger {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: none;
+  border: none;
+  color: var(--findr-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.custom-question-form {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.custom-question-input {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--findr-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+}
+
+.custom-question-input:focus {
+  outline: none;
+  border-color: var(--findr-primary);
+}
+
+.custom-question-submit {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--findr-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.custom-question-submit:disabled {
+  background-color: var(--findr-border);
+  cursor: not-allowed;
+}
+
+.custom-question-submit:hover:not(:disabled) {
+  background-color: var(--findr-primary-dark);
+}
