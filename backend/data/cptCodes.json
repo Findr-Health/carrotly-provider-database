@@ -1,0 +1,1405 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2025-12-22",
+    "focus": "Outpatient services - primary care, urgent care, specialist visits, labs, imaging",
+    "codeCount": 150
+  },
+  "cptCodes": {
+    
+    "_category_evaluation_management": "EVALUATION & MANAGEMENT - Office/Outpatient Visits",
+    
+    "99202": {
+      "description": "Office/outpatient visit, new patient, straightforward MDM",
+      "plainLanguage": "First-time visit with a doctor for a simple issue. Typically 15-29 minutes of total time.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 200},
+      "commonlyBilledWith": ["36415", "85025", "81003"]
+    },
+    "99203": {
+      "description": "Office/outpatient visit, new patient, low complexity MDM",
+      "plainLanguage": "First-time visit for a minor problem needing some workup. Typically 30-44 minutes.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 275},
+      "commonlyBilledWith": ["36415", "85025", "80053"]
+    },
+    "99204": {
+      "description": "Office/outpatient visit, new patient, moderate complexity MDM",
+      "plainLanguage": "First-time visit for a moderately complex issue. Typically 45-59 minutes.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 150, "high": 375},
+      "commonlyBilledWith": ["36415", "80053", "93000"]
+    },
+    "99205": {
+      "description": "Office/outpatient visit, new patient, high complexity MDM",
+      "plainLanguage": "First-time visit for a complex issue requiring extensive evaluation. Typically 60-74 minutes.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 200, "high": 475},
+      "commonlyBilledWith": ["36415", "80053", "93000", "71046"]
+    },
+    "99211": {
+      "description": "Office/outpatient visit, established patient, may not require physician",
+      "plainLanguage": "Brief follow-up, often with a nurse - like a blood pressure check, suture removal, or injection only.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 20, "high": 65},
+      "commonlyBilledWith": ["96372", "90471"]
+    },
+    "99212": {
+      "description": "Office/outpatient visit, established patient, straightforward MDM",
+      "plainLanguage": "Quick follow-up for a simple issue like medication refill or stable chronic condition. Typically 10-19 minutes.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 50, "high": 125},
+      "commonlyBilledWith": ["36415", "81003"]
+    },
+    "99213": {
+      "description": "Office/outpatient visit, established patient, low complexity MDM",
+      "plainLanguage": "Standard follow-up visit for a minor problem or stable chronic condition. The most common visit code. Typically 20-29 minutes.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 175},
+      "commonlyBilledWith": ["36415", "85025", "80048"]
+    },
+    "99214": {
+      "description": "Office/outpatient visit, established patient, moderate complexity MDM",
+      "plainLanguage": "Follow-up for a moderately complex issue or multiple chronic conditions. Typically 30-39 minutes.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 250},
+      "commonlyBilledWith": ["36415", "80053", "85025", "93000"]
+    },
+    "99215": {
+      "description": "Office/outpatient visit, established patient, high complexity MDM",
+      "plainLanguage": "Complex follow-up requiring significant time and decision-making. Typically 40-54 minutes.",
+      "category": "E&M - Office Visit",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 150, "high": 350},
+      "commonlyBilledWith": ["36415", "80053", "85025", "93000"]
+    },
+
+    "_category_preventive": "PREVENTIVE MEDICINE - Wellness Visits",
+
+    "99381": {
+      "description": "Initial preventive medicine, infant (under 1 year)",
+      "plainLanguage": "First well-baby checkup with a new doctor.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 250}
+    },
+    "99382": {
+      "description": "Initial preventive medicine, early childhood (1-4 years)",
+      "plainLanguage": "First wellness visit for toddler with a new doctor.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 250}
+    },
+    "99383": {
+      "description": "Initial preventive medicine, late childhood (5-11 years)",
+      "plainLanguage": "First wellness visit for school-age child with a new doctor.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 250}
+    },
+    "99384": {
+      "description": "Initial preventive medicine, adolescent (12-17 years)",
+      "plainLanguage": "First wellness visit for teenager with a new doctor.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 275}
+    },
+    "99385": {
+      "description": "Initial preventive medicine, adult (18-39 years)",
+      "plainLanguage": "First annual physical/wellness visit for young adult with a new doctor.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 125, "high": 300}
+    },
+    "99386": {
+      "description": "Initial preventive medicine, adult (40-64 years)",
+      "plainLanguage": "First annual physical/wellness visit for middle-aged adult with a new doctor.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 150, "high": 350}
+    },
+    "99387": {
+      "description": "Initial preventive medicine, adult (65+ years)",
+      "plainLanguage": "First annual physical/wellness visit for senior with a new doctor.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 150, "high": 375}
+    },
+    "99391": {
+      "description": "Periodic preventive medicine, infant (under 1 year)",
+      "plainLanguage": "Routine well-baby checkup.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 200}
+    },
+    "99392": {
+      "description": "Periodic preventive medicine, early childhood (1-4 years)",
+      "plainLanguage": "Routine wellness visit for toddler.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 200}
+    },
+    "99393": {
+      "description": "Periodic preventive medicine, late childhood (5-11 years)",
+      "plainLanguage": "Routine wellness visit for school-age child.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 200}
+    },
+    "99394": {
+      "description": "Periodic preventive medicine, adolescent (12-17 years)",
+      "plainLanguage": "Routine wellness visit for teenager.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 225}
+    },
+    "99395": {
+      "description": "Periodic preventive medicine, adult (18-39 years)",
+      "plainLanguage": "Routine annual physical for young adult.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 250}
+    },
+    "99396": {
+      "description": "Periodic preventive medicine, adult (40-64 years)",
+      "plainLanguage": "Routine annual physical for middle-aged adult.",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 125, "high": 300}
+    },
+    "99397": {
+      "description": "Periodic preventive medicine, adult (65+ years)",
+      "plainLanguage": "Routine annual physical for senior (Medicare Annual Wellness Visit is different).",
+      "category": "Preventive Medicine",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 125, "high": 325}
+    },
+
+    "_category_telehealth": "TELEHEALTH SERVICES",
+
+    "99441": {
+      "description": "Telephone E&M, 5-10 minutes",
+      "plainLanguage": "Brief phone consultation with your doctor (5-10 minutes).",
+      "category": "Telehealth",
+      "setting": "Remote",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "99442": {
+      "description": "Telephone E&M, 11-20 minutes",
+      "plainLanguage": "Phone consultation with your doctor (11-20 minutes).",
+      "category": "Telehealth",
+      "setting": "Remote",
+      "typicalPriceRange": {"low": 50, "high": 100}
+    },
+    "99443": {
+      "description": "Telephone E&M, 21-30 minutes",
+      "plainLanguage": "Extended phone consultation with your doctor (21-30 minutes).",
+      "category": "Telehealth",
+      "setting": "Remote",
+      "typicalPriceRange": {"low": 75, "high": 150}
+    },
+
+    "_category_urgent_care_er": "URGENT CARE & EMERGENCY",
+
+    "99281": {
+      "description": "Emergency department visit, straightforward MDM",
+      "plainLanguage": "ER visit for a minor issue - quick evaluation, minimal testing.",
+      "category": "Emergency",
+      "setting": "Emergency Department",
+      "typicalPriceRange": {"low": 150, "high": 400}
+    },
+    "99282": {
+      "description": "Emergency department visit, low complexity MDM",
+      "plainLanguage": "ER visit for a low-complexity problem with some evaluation needed.",
+      "category": "Emergency",
+      "setting": "Emergency Department",
+      "typicalPriceRange": {"low": 200, "high": 600}
+    },
+    "99283": {
+      "description": "Emergency department visit, moderate complexity MDM",
+      "plainLanguage": "ER visit for a moderately serious issue requiring workup.",
+      "category": "Emergency",
+      "setting": "Emergency Department",
+      "typicalPriceRange": {"low": 300, "high": 900}
+    },
+    "99284": {
+      "description": "Emergency department visit, high complexity MDM",
+      "plainLanguage": "ER visit for an urgent/serious problem requiring significant evaluation.",
+      "category": "Emergency",
+      "setting": "Emergency Department",
+      "typicalPriceRange": {"low": 400, "high": 1200}
+    },
+    "99285": {
+      "description": "Emergency department visit, high complexity MDM with threat to life/function",
+      "plainLanguage": "ER visit for a potentially life-threatening condition requiring immediate, extensive care.",
+      "category": "Emergency",
+      "setting": "Emergency Department",
+      "typicalPriceRange": {"low": 600, "high": 2000}
+    },
+
+    "_category_lab_pathology": "LABORATORY & PATHOLOGY",
+
+    "36415": {
+      "description": "Venipuncture (blood draw)",
+      "plainLanguage": "Drawing blood from a vein, usually in your arm. This is the collection fee - separate from the tests run on the blood.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 30},
+      "notes": "Usually billed once regardless of how many tubes are drawn"
+    },
+    "36416": {
+      "description": "Capillary blood collection (finger stick)",
+      "plainLanguage": "Collecting blood from a finger prick instead of a vein draw.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 3, "high": 15}
+    },
+    "81000": {
+      "description": "Urinalysis with microscopy, non-automated",
+      "plainLanguage": "Urine test examined manually under a microscope.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 35}
+    },
+    "81001": {
+      "description": "Urinalysis with microscopy, automated",
+      "plainLanguage": "Urine test analyzed by machine and microscope. Checks for infections, kidney problems, diabetes.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 40}
+    },
+    "81002": {
+      "description": "Urinalysis without microscopy",
+      "plainLanguage": "Basic urine dipstick test without microscope examination.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 3, "high": 20}
+    },
+    "81003": {
+      "description": "Urinalysis, automated without microscopy",
+      "plainLanguage": "Machine-read urine dipstick test - quick screening for common issues.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 3, "high": 20}
+    },
+    "81025": {
+      "description": "Urine pregnancy test",
+      "plainLanguage": "Pregnancy test using urine sample.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 50}
+    },
+    "82247": {
+      "description": "Bilirubin, total",
+      "plainLanguage": "Blood test measuring bilirubin - helps evaluate liver function and jaundice.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 30}
+    },
+    "82306": {
+      "description": "Vitamin D, 25-hydroxy",
+      "plainLanguage": "Blood test measuring vitamin D levels.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 25, "high": 100}
+    },
+    "82465": {
+      "description": "Cholesterol, total",
+      "plainLanguage": "Blood test measuring total cholesterol level.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 30}
+    },
+    "82550": {
+      "description": "Creatine kinase (CK), total",
+      "plainLanguage": "Blood test for muscle damage marker - often ordered for muscle pain or heart concerns.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 40}
+    },
+    "82565": {
+      "description": "Creatinine",
+      "plainLanguage": "Blood test measuring kidney function.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 25}
+    },
+    "82607": {
+      "description": "Vitamin B12",
+      "plainLanguage": "Blood test measuring vitamin B12 levels.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 60}
+    },
+    "82728": {
+      "description": "Ferritin",
+      "plainLanguage": "Blood test measuring iron stores in your body.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 60}
+    },
+    "82746": {
+      "description": "Folic acid (folate)",
+      "plainLanguage": "Blood test measuring folate/folic acid levels.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 60}
+    },
+    "82947": {
+      "description": "Glucose, quantitative",
+      "plainLanguage": "Blood sugar test - single measurement.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 25}
+    },
+    "82950": {
+      "description": "Glucose tolerance test, 3 specimens",
+      "plainLanguage": "Extended blood sugar test with multiple draws over time - used to diagnose diabetes.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 30, "high": 100}
+    },
+    "83036": {
+      "description": "Hemoglobin A1c",
+      "plainLanguage": "Blood test showing average blood sugar over past 2-3 months. Key test for diabetes management.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "83540": {
+      "description": "Iron",
+      "plainLanguage": "Blood test measuring iron levels.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 40}
+    },
+    "83550": {
+      "description": "Iron binding capacity (TIBC)",
+      "plainLanguage": "Blood test measuring how well your blood can carry iron.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 40}
+    },
+    "84132": {
+      "description": "Potassium",
+      "plainLanguage": "Blood test measuring potassium levels - important for heart and muscle function.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 25}
+    },
+    "84295": {
+      "description": "Sodium",
+      "plainLanguage": "Blood test measuring sodium levels.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 5, "high": 25}
+    },
+    "84436": {
+      "description": "Thyroxine, total (T4)",
+      "plainLanguage": "Blood test measuring thyroid hormone T4.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 50}
+    },
+    "84439": {
+      "description": "Thyroxine, free (free T4)",
+      "plainLanguage": "Blood test measuring active thyroid hormone.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 60}
+    },
+    "84443": {
+      "description": "TSH (thyroid stimulating hormone)",
+      "plainLanguage": "Primary screening test for thyroid function.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "84480": {
+      "description": "Triiodothyronine, total (T3)",
+      "plainLanguage": "Blood test measuring thyroid hormone T3.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 60}
+    },
+    "85007": {
+      "description": "Blood smear with manual differential",
+      "plainLanguage": "Blood examined under microscope to evaluate cell types and shapes.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 40}
+    },
+    "85025": {
+      "description": "Complete blood count (CBC) with automated differential",
+      "plainLanguage": "Common blood test counting red cells, white cells, and platelets, with breakdown of white cell types. Used for infections, anemia, and general health screening.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 50}
+    },
+    "85027": {
+      "description": "Complete blood count (CBC), automated",
+      "plainLanguage": "Blood test counting cells without the detailed white cell breakdown.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 8, "high": 40}
+    },
+    "85610": {
+      "description": "Prothrombin time (PT)",
+      "plainLanguage": "Blood clotting test - often used to monitor blood thinner medications like warfarin.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 8, "high": 35}
+    },
+    "85730": {
+      "description": "Partial thromboplastin time (PTT)",
+      "plainLanguage": "Another blood clotting test.",
+      "category": "Laboratory",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 40}
+    },
+    "80048": {
+      "description": "Basic metabolic panel (BMP)",
+      "plainLanguage": "Blood panel testing 8 substances: glucose, calcium, sodium, potassium, CO2, chloride, BUN, and creatinine. Checks kidney function and basic chemistry.",
+      "category": "Laboratory - Panel",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 75},
+      "includes": ["82947", "82310", "84295", "84132", "82374", "82435", "84520", "82565"]
+    },
+    "80050": {
+      "description": "General health panel",
+      "plainLanguage": "Comprehensive blood panel combining CMP, CBC, and TSH.",
+      "category": "Laboratory - Panel",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "80053": {
+      "description": "Comprehensive metabolic panel (CMP)",
+      "plainLanguage": "Blood panel testing 14 substances including everything in BMP plus liver function tests (ALT, AST, bilirubin, albumin, total protein).",
+      "category": "Laboratory - Panel",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 20, "high": 100}
+    },
+    "80061": {
+      "description": "Lipid panel",
+      "plainLanguage": "Cholesterol panel: total cholesterol, HDL (good), LDL (bad), and triglycerides.",
+      "category": "Laboratory - Panel",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "80069": {
+      "description": "Renal function panel",
+      "plainLanguage": "Blood tests focused on kidney function.",
+      "category": "Laboratory - Panel",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 60}
+    },
+    "80074": {
+      "description": "Acute hepatitis panel",
+      "plainLanguage": "Blood tests to check for hepatitis A, B, and C infections.",
+      "category": "Laboratory - Panel",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 75, "high": 250}
+    },
+    "80076": {
+      "description": "Hepatic (liver) function panel",
+      "plainLanguage": "Blood tests evaluating liver function: ALT, AST, bilirubin, albumin, etc.",
+      "category": "Laboratory - Panel",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "87081": {
+      "description": "Culture, screening only",
+      "plainLanguage": "Basic culture test to check for bacterial growth.",
+      "category": "Laboratory - Microbiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 60}
+    },
+    "87086": {
+      "description": "Urine culture, bacterial",
+      "plainLanguage": "Urine test to identify bacteria causing a urinary tract infection.",
+      "category": "Laboratory - Microbiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "87110": {
+      "description": "Chlamydia culture",
+      "plainLanguage": "Test for chlamydia infection.",
+      "category": "Laboratory - Microbiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 25, "high": 100}
+    },
+    "87491": {
+      "description": "Chlamydia, amplified probe",
+      "plainLanguage": "Highly accurate test for chlamydia using DNA/RNA detection.",
+      "category": "Laboratory - Microbiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 30, "high": 125}
+    },
+    "87591": {
+      "description": "Gonorrhea, amplified probe",
+      "plainLanguage": "Highly accurate test for gonorrhea using DNA/RNA detection.",
+      "category": "Laboratory - Microbiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 30, "high": 125}
+    },
+    "87804": {
+      "description": "Influenza A/B rapid test",
+      "plainLanguage": "Rapid test for flu - results in about 15 minutes.",
+      "category": "Laboratory - Microbiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 20, "high": 75}
+    },
+    "87880": {
+      "description": "Strep A rapid test",
+      "plainLanguage": "Rapid strep throat test - results in minutes.",
+      "category": "Laboratory - Microbiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 50}
+    },
+    "U0003": {
+      "description": "COVID-19 high throughput test",
+      "plainLanguage": "COVID-19 PCR test processed in large batches.",
+      "category": "Laboratory - COVID",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 150}
+    },
+    "87635": {
+      "description": "COVID-19 amplified probe",
+      "plainLanguage": "COVID-19 PCR test - highly accurate, results typically in 1-3 days.",
+      "category": "Laboratory - COVID",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 75, "high": 200}
+    },
+
+    "_category_radiology": "RADIOLOGY & IMAGING",
+
+    "70030": {
+      "description": "X-ray, eye for foreign body",
+      "plainLanguage": "X-ray to look for metal or other foreign object in the eye.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 150}
+    },
+    "70100": {
+      "description": "X-ray, mandible (jaw)",
+      "plainLanguage": "X-ray of the lower jaw.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 150}
+    },
+    "70110": {
+      "description": "X-ray, mandible, complete",
+      "plainLanguage": "Complete x-ray series of the lower jaw.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 175}
+    },
+    "70210": {
+      "description": "X-ray, sinuses, limited",
+      "plainLanguage": "X-ray of sinuses - fewer views.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 150}
+    },
+    "70220": {
+      "description": "X-ray, sinuses, complete",
+      "plainLanguage": "Complete x-ray series of sinuses.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "70250": {
+      "description": "X-ray, skull, limited",
+      "plainLanguage": "Basic skull x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 175}
+    },
+    "70260": {
+      "description": "X-ray, skull, complete",
+      "plainLanguage": "Complete skull x-ray series.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 75, "high": 225}
+    },
+    "70360": {
+      "description": "X-ray, neck, soft tissue",
+      "plainLanguage": "X-ray of neck focusing on soft tissues, not bones.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 150}
+    },
+    "71045": {
+      "description": "Chest X-ray, single view",
+      "plainLanguage": "Single chest x-ray, usually front view only.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 150}
+    },
+    "71046": {
+      "description": "Chest X-ray, 2 views",
+      "plainLanguage": "Standard chest x-ray with front and side views. Most common chest imaging.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "71047": {
+      "description": "Chest X-ray, 3 views",
+      "plainLanguage": "Chest x-ray with three different angles.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 60, "high": 225}
+    },
+    "71048": {
+      "description": "Chest X-ray, 4+ views",
+      "plainLanguage": "Comprehensive chest x-ray series with four or more views.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 75, "high": 275}
+    },
+    "72040": {
+      "description": "X-ray, cervical spine, 2-3 views",
+      "plainLanguage": "X-ray of neck/upper spine.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "72050": {
+      "description": "X-ray, cervical spine, 4-5 views",
+      "plainLanguage": "More comprehensive neck spine x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 75, "high": 250}
+    },
+    "72070": {
+      "description": "X-ray, thoracic spine, 2 views",
+      "plainLanguage": "X-ray of mid-back/thoracic spine.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "72100": {
+      "description": "X-ray, lumbar spine, 2-3 views",
+      "plainLanguage": "X-ray of lower back.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "72110": {
+      "description": "X-ray, lumbar spine, 4+ views",
+      "plainLanguage": "Comprehensive lower back x-ray series.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 75, "high": 275}
+    },
+    "73000": {
+      "description": "X-ray, clavicle (collarbone)",
+      "plainLanguage": "X-ray of the collarbone.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 125}
+    },
+    "73030": {
+      "description": "X-ray, shoulder, 2+ views",
+      "plainLanguage": "Shoulder x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 175}
+    },
+    "73060": {
+      "description": "X-ray, humerus (upper arm)",
+      "plainLanguage": "X-ray of the upper arm bone.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 150}
+    },
+    "73070": {
+      "description": "X-ray, elbow, 2 views",
+      "plainLanguage": "Elbow x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 150}
+    },
+    "73090": {
+      "description": "X-ray, forearm, 2 views",
+      "plainLanguage": "X-ray of forearm (radius and ulna bones).",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 150}
+    },
+    "73100": {
+      "description": "X-ray, wrist, 2 views",
+      "plainLanguage": "Wrist x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 150}
+    },
+    "73110": {
+      "description": "X-ray, wrist, 3+ views",
+      "plainLanguage": "Comprehensive wrist x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 45, "high": 175}
+    },
+    "73120": {
+      "description": "X-ray, hand, 2 views",
+      "plainLanguage": "Hand x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 150}
+    },
+    "73130": {
+      "description": "X-ray, hand, 3+ views",
+      "plainLanguage": "Comprehensive hand x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 45, "high": 175}
+    },
+    "73140": {
+      "description": "X-ray, finger(s)",
+      "plainLanguage": "X-ray of finger(s).",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 30, "high": 125}
+    },
+    "73501": {
+      "description": "X-ray, hip, 1 view",
+      "plainLanguage": "Single view hip x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 150}
+    },
+    "73502": {
+      "description": "X-ray, hip, 2-3 views",
+      "plainLanguage": "Hip x-ray with multiple views.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "73552": {
+      "description": "X-ray, femur (thigh), 2 views",
+      "plainLanguage": "X-ray of thigh bone.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 175}
+    },
+    "73560": {
+      "description": "X-ray, knee, 1-2 views",
+      "plainLanguage": "Basic knee x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 150}
+    },
+    "73562": {
+      "description": "X-ray, knee, 3 views",
+      "plainLanguage": "Standard knee x-ray series.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 45, "high": 175}
+    },
+    "73564": {
+      "description": "X-ray, knee, 4+ views",
+      "plainLanguage": "Comprehensive knee x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 60, "high": 200}
+    },
+    "73590": {
+      "description": "X-ray, tibia/fibula (lower leg), 2 views",
+      "plainLanguage": "X-ray of shin bones.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 150}
+    },
+    "73600": {
+      "description": "X-ray, ankle, 2 views",
+      "plainLanguage": "Ankle x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 150}
+    },
+    "73610": {
+      "description": "X-ray, ankle, 3+ views",
+      "plainLanguage": "Comprehensive ankle x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 45, "high": 175}
+    },
+    "73620": {
+      "description": "X-ray, foot, 2 views",
+      "plainLanguage": "Foot x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 35, "high": 150}
+    },
+    "73630": {
+      "description": "X-ray, foot, 3+ views",
+      "plainLanguage": "Comprehensive foot x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 45, "high": 175}
+    },
+    "73660": {
+      "description": "X-ray, toe(s)",
+      "plainLanguage": "X-ray of toe(s).",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 30, "high": 125}
+    },
+    "74018": {
+      "description": "X-ray, abdomen, 1 view",
+      "plainLanguage": "Single abdominal x-ray.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 40, "high": 150}
+    },
+    "74019": {
+      "description": "X-ray, abdomen, 2 views",
+      "plainLanguage": "Abdominal x-ray with two views.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 175}
+    },
+    "74021": {
+      "description": "X-ray, abdomen, 3+ views",
+      "plainLanguage": "Comprehensive abdominal x-ray series.",
+      "category": "Radiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 65, "high": 225}
+    },
+
+    "_category_advanced_imaging": "ADVANCED IMAGING - CT, MRI, Ultrasound",
+
+    "70450": {
+      "description": "CT head/brain without contrast",
+      "plainLanguage": "CT scan of the head without contrast dye.",
+      "category": "Advanced Imaging - CT",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 200, "high": 1000}
+    },
+    "70460": {
+      "description": "CT head/brain with contrast",
+      "plainLanguage": "CT scan of the head with injected contrast dye.",
+      "category": "Advanced Imaging - CT",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 250, "high": 1200}
+    },
+    "70470": {
+      "description": "CT head/brain without and with contrast",
+      "plainLanguage": "CT scan of head done twice - once plain, once with dye.",
+      "category": "Advanced Imaging - CT",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 300, "high": 1500}
+    },
+    "71250": {
+      "description": "CT chest without contrast",
+      "plainLanguage": "CT scan of chest without contrast dye.",
+      "category": "Advanced Imaging - CT",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 200, "high": 1200}
+    },
+    "71260": {
+      "description": "CT chest with contrast",
+      "plainLanguage": "CT scan of chest with injected contrast dye.",
+      "category": "Advanced Imaging - CT",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 250, "high": 1400}
+    },
+    "74176": {
+      "description": "CT abdomen and pelvis without contrast",
+      "plainLanguage": "CT scan of belly and pelvis without contrast dye.",
+      "category": "Advanced Imaging - CT",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 250, "high": 1500}
+    },
+    "74177": {
+      "description": "CT abdomen and pelvis with contrast",
+      "plainLanguage": "CT scan of belly and pelvis with injected contrast dye.",
+      "category": "Advanced Imaging - CT",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 300, "high": 1800}
+    },
+    "74178": {
+      "description": "CT abdomen and pelvis without and with contrast",
+      "plainLanguage": "CT scan of belly and pelvis done twice - once plain, once with dye.",
+      "category": "Advanced Imaging - CT",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 400, "high": 2200}
+    },
+    "70551": {
+      "description": "MRI brain without contrast",
+      "plainLanguage": "MRI of the brain without contrast dye. Detailed soft tissue imaging.",
+      "category": "Advanced Imaging - MRI",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 400, "high": 2500}
+    },
+    "70552": {
+      "description": "MRI brain with contrast",
+      "plainLanguage": "MRI of the brain with injected contrast dye.",
+      "category": "Advanced Imaging - MRI",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 500, "high": 2800}
+    },
+    "70553": {
+      "description": "MRI brain without and with contrast",
+      "plainLanguage": "MRI of brain done twice - once plain, once with dye. Most comprehensive brain MRI.",
+      "category": "Advanced Imaging - MRI",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 600, "high": 3200}
+    },
+    "72141": {
+      "description": "MRI cervical spine without contrast",
+      "plainLanguage": "MRI of neck/upper spine without contrast.",
+      "category": "Advanced Imaging - MRI",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 400, "high": 2500}
+    },
+    "72148": {
+      "description": "MRI lumbar spine without contrast",
+      "plainLanguage": "MRI of lower back without contrast. Common for disc problems and back pain.",
+      "category": "Advanced Imaging - MRI",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 400, "high": 2500}
+    },
+    "73221": {
+      "description": "MRI upper extremity joint without contrast",
+      "plainLanguage": "MRI of shoulder, elbow, or wrist without contrast.",
+      "category": "Advanced Imaging - MRI",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 400, "high": 2500}
+    },
+    "73721": {
+      "description": "MRI lower extremity joint without contrast",
+      "plainLanguage": "MRI of hip, knee, or ankle without contrast. Common for joint injuries.",
+      "category": "Advanced Imaging - MRI",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 400, "high": 2500}
+    },
+    "76536": {
+      "description": "Ultrasound, soft tissue of head and neck",
+      "plainLanguage": "Ultrasound of neck, often for thyroid evaluation.",
+      "category": "Advanced Imaging - Ultrasound",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 100, "high": 500}
+    },
+    "76700": {
+      "description": "Ultrasound, abdominal, complete",
+      "plainLanguage": "Complete abdominal ultrasound including liver, gallbladder, spleen, and kidneys.",
+      "category": "Advanced Imaging - Ultrasound",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 150, "high": 600}
+    },
+    "76705": {
+      "description": "Ultrasound, abdominal, limited",
+      "plainLanguage": "Focused abdominal ultrasound for specific organ.",
+      "category": "Advanced Imaging - Ultrasound",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 100, "high": 400}
+    },
+    "76770": {
+      "description": "Ultrasound, retroperitoneal, complete",
+      "plainLanguage": "Ultrasound focusing on kidneys and surrounding area.",
+      "category": "Advanced Imaging - Ultrasound",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 150, "high": 500}
+    },
+    "76856": {
+      "description": "Ultrasound, pelvic, complete",
+      "plainLanguage": "Complete pelvic ultrasound for uterus, ovaries (women) or bladder/prostate (men).",
+      "category": "Advanced Imaging - Ultrasound",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 150, "high": 500}
+    },
+    "76857": {
+      "description": "Ultrasound, pelvic, limited",
+      "plainLanguage": "Focused pelvic ultrasound.",
+      "category": "Advanced Imaging - Ultrasound",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 100, "high": 350}
+    },
+    "76881": {
+      "description": "Ultrasound, extremity, complete",
+      "plainLanguage": "Complete ultrasound of arm or leg, often for blood clot evaluation.",
+      "category": "Advanced Imaging - Ultrasound",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 150, "high": 600}
+    },
+    "76882": {
+      "description": "Ultrasound, extremity, limited",
+      "plainLanguage": "Focused ultrasound of arm or leg.",
+      "category": "Advanced Imaging - Ultrasound",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 100, "high": 400}
+    },
+
+    "_category_cardiology": "CARDIOLOGY",
+
+    "93000": {
+      "description": "Electrocardiogram (ECG/EKG), complete",
+      "plainLanguage": "Standard heart rhythm test with tracing, interpretation, and report.",
+      "category": "Cardiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 25, "high": 150}
+    },
+    "93005": {
+      "description": "Electrocardiogram (ECG), tracing only",
+      "plainLanguage": "EKG recording without interpretation (interpretation billed separately).",
+      "category": "Cardiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "93010": {
+      "description": "Electrocardiogram (ECG), interpretation only",
+      "plainLanguage": "Doctor's reading of EKG tracing (tracing done elsewhere).",
+      "category": "Cardiology",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "93306": {
+      "description": "Echocardiogram, complete",
+      "plainLanguage": "Complete heart ultrasound showing heart structure and function. Includes Doppler.",
+      "category": "Cardiology",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 200, "high": 1200}
+    },
+    "93307": {
+      "description": "Echocardiogram, complete without Doppler",
+      "plainLanguage": "Heart ultrasound showing structure without blood flow measurement.",
+      "category": "Cardiology",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 150, "high": 800}
+    },
+    "93308": {
+      "description": "Echocardiogram, limited",
+      "plainLanguage": "Follow-up or focused heart ultrasound.",
+      "category": "Cardiology",
+      "setting": "Outpatient/Hospital",
+      "typicalPriceRange": {"low": 100, "high": 500}
+    },
+
+    "_category_procedures": "PROCEDURES & TREATMENTS",
+
+    "10060": {
+      "description": "Incision and drainage of abscess, simple",
+      "plainLanguage": "Draining a simple skin abscess or boil.",
+      "category": "Procedure - Minor Surgery",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 150, "high": 500}
+    },
+    "10061": {
+      "description": "Incision and drainage of abscess, complicated",
+      "plainLanguage": "Draining a more complex abscess requiring additional work.",
+      "category": "Procedure - Minor Surgery",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 250, "high": 750}
+    },
+    "10120": {
+      "description": "Removal of foreign body, simple",
+      "plainLanguage": "Removing a splinter or other foreign object from skin - simple case.",
+      "category": "Procedure - Minor Surgery",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 350}
+    },
+    "10121": {
+      "description": "Removal of foreign body, complicated",
+      "plainLanguage": "Removing foreign object requiring incision or more complex extraction.",
+      "category": "Procedure - Minor Surgery",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 200, "high": 600}
+    },
+    "11102": {
+      "description": "Skin biopsy, tangential",
+      "plainLanguage": "Shave biopsy - removing a thin layer of skin for testing.",
+      "category": "Procedure - Biopsy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 350}
+    },
+    "11104": {
+      "description": "Skin biopsy, punch",
+      "plainLanguage": "Punch biopsy - removing a small circular piece of skin for testing.",
+      "category": "Procedure - Biopsy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 125, "high": 400}
+    },
+    "11200": {
+      "description": "Removal of skin tags, up to 15",
+      "plainLanguage": "Removing up to 15 skin tags.",
+      "category": "Procedure - Minor Surgery",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 350}
+    },
+    "11300": {
+      "description": "Shaving of lesion, trunk/arms/legs, 0.5cm or less",
+      "plainLanguage": "Shaving off a small skin growth.",
+      "category": "Procedure - Minor Surgery",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 300}
+    },
+    "12001": {
+      "description": "Simple wound repair, 2.5cm or less",
+      "plainLanguage": "Stitching a simple wound up to 1 inch.",
+      "category": "Procedure - Wound Repair",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 150, "high": 450}
+    },
+    "12002": {
+      "description": "Simple wound repair, 2.6-7.5cm",
+      "plainLanguage": "Stitching a simple wound 1-3 inches long.",
+      "category": "Procedure - Wound Repair",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 175, "high": 550}
+    },
+    "17000": {
+      "description": "Destruction of premalignant lesion, first lesion",
+      "plainLanguage": "Freezing or burning off a pre-cancerous skin spot (like actinic keratosis).",
+      "category": "Procedure - Destruction",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 250}
+    },
+    "17003": {
+      "description": "Destruction of premalignant lesions, 2-14 lesions, each",
+      "plainLanguage": "Additional pre-cancerous spots removed (add-on to 17000).",
+      "category": "Procedure - Destruction",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 15, "high": 50}
+    },
+    "17110": {
+      "description": "Destruction of warts, up to 14 lesions",
+      "plainLanguage": "Freezing or removing warts (up to 14).",
+      "category": "Procedure - Destruction",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 350}
+    },
+    "20610": {
+      "description": "Joint injection/aspiration, major joint",
+      "plainLanguage": "Injection into or drainage of a large joint (knee, shoulder, hip).",
+      "category": "Procedure - Injection",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 400}
+    },
+    "20605": {
+      "description": "Joint injection/aspiration, intermediate joint",
+      "plainLanguage": "Injection into a medium-sized joint (wrist, ankle, elbow).",
+      "category": "Procedure - Injection",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 300}
+    },
+    "20600": {
+      "description": "Joint injection/aspiration, small joint",
+      "plainLanguage": "Injection into a small joint (finger, toe).",
+      "category": "Procedure - Injection",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "69210": {
+      "description": "Removal of earwax, one or both ears",
+      "plainLanguage": "Professional ear cleaning/wax removal.",
+      "category": "Procedure - ENT",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 50, "high": 175}
+    },
+    "90471": {
+      "description": "Immunization administration, 1st vaccine",
+      "plainLanguage": "Fee for giving the first vaccine injection (drug cost separate).",
+      "category": "Administration",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 15, "high": 50}
+    },
+    "90472": {
+      "description": "Immunization administration, each additional",
+      "plainLanguage": "Fee for each additional vaccine injection.",
+      "category": "Administration",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 10, "high": 35}
+    },
+    "96372": {
+      "description": "Therapeutic injection, subcutaneous or intramuscular",
+      "plainLanguage": "Giving an injection of medication (separate from the drug cost).",
+      "category": "Administration",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 20, "high": 75}
+    },
+    "96374": {
+      "description": "Therapeutic IV push, single drug",
+      "plainLanguage": "Administering medication by IV push (quick injection into IV).",
+      "category": "Administration",
+      "setting": "Any",
+      "typicalPriceRange": {"low": 50, "high": 175}
+    },
+
+    "_category_mental_health": "MENTAL HEALTH",
+
+    "90791": {
+      "description": "Psychiatric diagnostic evaluation",
+      "plainLanguage": "Initial mental health evaluation - comprehensive assessment with a psychiatrist or psychologist.",
+      "category": "Mental Health",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 150, "high": 400}
+    },
+    "90792": {
+      "description": "Psychiatric diagnostic evaluation with medical services",
+      "plainLanguage": "Initial psychiatric evaluation that includes medical assessment (can prescribe medications).",
+      "category": "Mental Health",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 175, "high": 450}
+    },
+    "90832": {
+      "description": "Psychotherapy, 30 minutes",
+      "plainLanguage": "30-minute therapy session.",
+      "category": "Mental Health",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 175}
+    },
+    "90834": {
+      "description": "Psychotherapy, 45 minutes",
+      "plainLanguage": "45-minute therapy session - most common duration.",
+      "category": "Mental Health",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 225}
+    },
+    "90837": {
+      "description": "Psychotherapy, 60 minutes",
+      "plainLanguage": "60-minute therapy session.",
+      "category": "Mental Health",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 125, "high": 275}
+    },
+    "90847": {
+      "description": "Family psychotherapy, with patient present",
+      "plainLanguage": "Family therapy session.",
+      "category": "Mental Health",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 125, "high": 275}
+    },
+    "90853": {
+      "description": "Group psychotherapy",
+      "plainLanguage": "Group therapy session.",
+      "category": "Mental Health",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 40, "high": 100}
+    },
+
+    "_category_physical_therapy": "PHYSICAL THERAPY & REHABILITATION",
+
+    "97110": {
+      "description": "Therapeutic exercises, each 15 minutes",
+      "plainLanguage": "Physical therapy exercises to improve strength, flexibility, or range of motion. Billed per 15-minute unit.",
+      "category": "Physical Therapy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "97112": {
+      "description": "Neuromuscular reeducation, each 15 minutes",
+      "plainLanguage": "Training to improve balance, coordination, and movement patterns.",
+      "category": "Physical Therapy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "97116": {
+      "description": "Gait training, each 15 minutes",
+      "plainLanguage": "Training to improve walking ability.",
+      "category": "Physical Therapy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "97140": {
+      "description": "Manual therapy, each 15 minutes",
+      "plainLanguage": "Hands-on physical therapy techniques like massage, mobilization, or manipulation.",
+      "category": "Physical Therapy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "97530": {
+      "description": "Therapeutic activities, each 15 minutes",
+      "plainLanguage": "Functional activities to improve real-world abilities.",
+      "category": "Physical Therapy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "97535": {
+      "description": "Self-care/home management training, each 15 minutes",
+      "plainLanguage": "Training for daily living activities and home exercises.",
+      "category": "Physical Therapy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "97542": {
+      "description": "Wheelchair management training, each 15 minutes",
+      "plainLanguage": "Training to use a wheelchair safely and effectively.",
+      "category": "Physical Therapy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "97760": {
+      "description": "Orthotic training, each 15 minutes",
+      "plainLanguage": "Training to use a brace or orthotic device.",
+      "category": "Physical Therapy",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "97010": {
+      "description": "Hot or cold pack application",
+      "plainLanguage": "Application of heat or ice as part of therapy.",
+      "category": "Physical Therapy - Modality",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 10, "high": 30}
+    },
+    "97014": {
+      "description": "Electrical stimulation, unattended",
+      "plainLanguage": "Electrical muscle stimulation (e-stim) therapy without constant supervision.",
+      "category": "Physical Therapy - Modality",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 15, "high": 50}
+    },
+    "97032": {
+      "description": "Electrical stimulation, each 15 minutes",
+      "plainLanguage": "Electrical stimulation therapy with direct supervision.",
+      "category": "Physical Therapy - Modality",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 20, "high": 60}
+    },
+    "97035": {
+      "description": "Ultrasound therapy, each 15 minutes",
+      "plainLanguage": "Therapeutic ultrasound (deep heat) for muscles and soft tissue.",
+      "category": "Physical Therapy - Modality",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 20, "high": 60}
+    },
+    "97161": {
+      "description": "PT evaluation, low complexity",
+      "plainLanguage": "Initial physical therapy evaluation for a straightforward condition.",
+      "category": "Physical Therapy - Evaluation",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 75, "high": 200}
+    },
+    "97162": {
+      "description": "PT evaluation, moderate complexity",
+      "plainLanguage": "Initial physical therapy evaluation for a moderately complex condition.",
+      "category": "Physical Therapy - Evaluation",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 100, "high": 250}
+    },
+    "97163": {
+      "description": "PT evaluation, high complexity",
+      "plainLanguage": "Initial physical therapy evaluation for a complex condition.",
+      "category": "Physical Therapy - Evaluation",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 125, "high": 300}
+    },
+    "97164": {
+      "description": "PT re-evaluation",
+      "plainLanguage": "Follow-up evaluation to assess progress and update treatment plan.",
+      "category": "Physical Therapy - Evaluation",
+      "setting": "Outpatient",
+      "typicalPriceRange": {"low": 50, "high": 150}
+    }
+  }
+}

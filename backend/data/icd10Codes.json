@@ -1,0 +1,823 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2025-12-22",
+    "focus": "Common outpatient diagnoses - primary care, urgent care, specialist visits",
+    "codeCount": 200
+  },
+  "icd10Codes": {
+
+    "_category_infections": "INFECTIOUS DISEASES",
+
+    "J06.9": {
+      "description": "Acute upper respiratory infection, unspecified",
+      "plainLanguage": "Common cold or upper respiratory infection - a viral infection of the nose, throat, and sinuses.",
+      "category": "Infection - Respiratory",
+      "commonness": "Very Common"
+    },
+    "J00": {
+      "description": "Acute nasopharyngitis (common cold)",
+      "plainLanguage": "The common cold - viral infection with runny nose, sneezing, and sore throat.",
+      "category": "Infection - Respiratory",
+      "commonness": "Very Common"
+    },
+    "J01.90": {
+      "description": "Acute sinusitis, unspecified",
+      "plainLanguage": "Sinus infection - inflammation of the sinuses causing facial pain, congestion, and sometimes fever.",
+      "category": "Infection - Respiratory",
+      "commonness": "Very Common"
+    },
+    "J02.9": {
+      "description": "Acute pharyngitis, unspecified",
+      "plainLanguage": "Sore throat - could be viral or bacterial.",
+      "category": "Infection - Respiratory",
+      "commonness": "Very Common"
+    },
+    "J02.0": {
+      "description": "Streptococcal pharyngitis",
+      "plainLanguage": "Strep throat - bacterial infection causing severe sore throat, often with fever.",
+      "category": "Infection - Respiratory",
+      "commonness": "Common"
+    },
+    "J03.90": {
+      "description": "Acute tonsillitis, unspecified",
+      "plainLanguage": "Tonsil infection - inflammation of the tonsils causing sore throat and difficulty swallowing.",
+      "category": "Infection - Respiratory",
+      "commonness": "Common"
+    },
+    "J18.9": {
+      "description": "Pneumonia, unspecified organism",
+      "plainLanguage": "Lung infection/pneumonia - infection in the lungs causing cough, fever, and breathing difficulties.",
+      "category": "Infection - Respiratory",
+      "commonness": "Common"
+    },
+    "J20.9": {
+      "description": "Acute bronchitis, unspecified",
+      "plainLanguage": "Chest cold/bronchitis - inflammation of the airways causing cough, often following a cold.",
+      "category": "Infection - Respiratory",
+      "commonness": "Very Common"
+    },
+    "J40": {
+      "description": "Bronchitis, not specified as acute or chronic",
+      "plainLanguage": "Bronchitis - airway inflammation causing persistent cough.",
+      "category": "Infection - Respiratory",
+      "commonness": "Common"
+    },
+    "J11.1": {
+      "description": "Influenza with other respiratory manifestations",
+      "plainLanguage": "The flu (influenza) - viral infection with fever, body aches, cough, and fatigue.",
+      "category": "Infection - Respiratory",
+      "commonness": "Seasonal"
+    },
+    "U07.1": {
+      "description": "COVID-19",
+      "plainLanguage": "COVID-19 - coronavirus infection that can affect respiratory system and other organs.",
+      "category": "Infection - Respiratory",
+      "commonness": "Variable"
+    },
+    "N39.0": {
+      "description": "Urinary tract infection, site not specified",
+      "plainLanguage": "UTI (urinary tract infection) - bacterial infection causing painful or frequent urination.",
+      "category": "Infection - Urinary",
+      "commonness": "Very Common"
+    },
+    "N30.00": {
+      "description": "Acute cystitis without hematuria",
+      "plainLanguage": "Bladder infection - UTI specifically in the bladder, without blood in urine.",
+      "category": "Infection - Urinary",
+      "commonness": "Common"
+    },
+    "N30.01": {
+      "description": "Acute cystitis with hematuria",
+      "plainLanguage": "Bladder infection with blood in urine.",
+      "category": "Infection - Urinary",
+      "commonness": "Common"
+    },
+    "H66.90": {
+      "description": "Otitis media, unspecified, unspecified ear",
+      "plainLanguage": "Middle ear infection - common in children, causes ear pain and sometimes fever.",
+      "category": "Infection - ENT",
+      "commonness": "Very Common"
+    },
+    "H60.90": {
+      "description": "Otitis externa, unspecified, unspecified ear",
+      "plainLanguage": "Swimmer's ear - infection of the outer ear canal.",
+      "category": "Infection - ENT",
+      "commonness": "Common"
+    },
+    "H10.9": {
+      "description": "Unspecified conjunctivitis",
+      "plainLanguage": "Pink eye - infection or inflammation of the eye's outer membrane.",
+      "category": "Infection - Eye",
+      "commonness": "Common"
+    },
+    "B34.9": {
+      "description": "Viral infection, unspecified",
+      "plainLanguage": "Viral infection not otherwise specified.",
+      "category": "Infection - General",
+      "commonness": "Common"
+    },
+    "A09": {
+      "description": "Infectious gastroenteritis and colitis, unspecified",
+      "plainLanguage": "Stomach flu/gastroenteritis - infection causing nausea, vomiting, diarrhea.",
+      "category": "Infection - GI",
+      "commonness": "Common"
+    },
+    "B00.9": {
+      "description": "Herpesviral infection, unspecified",
+      "plainLanguage": "Herpes infection - can refer to cold sores or other herpes-related conditions.",
+      "category": "Infection - Viral",
+      "commonness": "Common"
+    },
+    "B02.9": {
+      "description": "Zoster without complications",
+      "plainLanguage": "Shingles - painful rash from reactivation of chickenpox virus.",
+      "category": "Infection - Viral",
+      "commonness": "Common in adults"
+    },
+
+    "_category_chronic": "CHRONIC CONDITIONS",
+
+    "E11.9": {
+      "description": "Type 2 diabetes mellitus without complications",
+      "plainLanguage": "Type 2 diabetes - the body doesn't use insulin properly, requiring diet/medication management.",
+      "category": "Chronic - Metabolic",
+      "commonness": "Very Common"
+    },
+    "E11.65": {
+      "description": "Type 2 diabetes mellitus with hyperglycemia",
+      "plainLanguage": "Type 2 diabetes with high blood sugar at this visit.",
+      "category": "Chronic - Metabolic",
+      "commonness": "Common"
+    },
+    "E78.5": {
+      "description": "Hyperlipidemia, unspecified",
+      "plainLanguage": "High cholesterol - elevated fats in the blood.",
+      "category": "Chronic - Metabolic",
+      "commonness": "Very Common"
+    },
+    "E78.00": {
+      "description": "Pure hypercholesterolemia, unspecified",
+      "plainLanguage": "High cholesterol specifically.",
+      "category": "Chronic - Metabolic",
+      "commonness": "Common"
+    },
+    "E78.1": {
+      "description": "Pure hyperglyceridemia",
+      "plainLanguage": "High triglycerides.",
+      "category": "Chronic - Metabolic",
+      "commonness": "Common"
+    },
+    "I10": {
+      "description": "Essential (primary) hypertension",
+      "plainLanguage": "High blood pressure - elevated pressure in arteries, usually without known cause.",
+      "category": "Chronic - Cardiovascular",
+      "commonness": "Very Common"
+    },
+    "E03.9": {
+      "description": "Hypothyroidism, unspecified",
+      "plainLanguage": "Underactive thyroid - thyroid doesn't produce enough hormone, causing fatigue and weight gain.",
+      "category": "Chronic - Endocrine",
+      "commonness": "Common"
+    },
+    "E05.90": {
+      "description": "Thyrotoxicosis, unspecified without thyrotoxic crisis",
+      "plainLanguage": "Overactive thyroid - thyroid produces too much hormone.",
+      "category": "Chronic - Endocrine",
+      "commonness": "Less Common"
+    },
+    "E66.9": {
+      "description": "Obesity, unspecified",
+      "plainLanguage": "Obesity - excess body weight that may affect health.",
+      "category": "Chronic - Metabolic",
+      "commonness": "Very Common"
+    },
+    "E66.01": {
+      "description": "Morbid (severe) obesity due to excess calories",
+      "plainLanguage": "Severe obesity - BMI 40 or higher.",
+      "category": "Chronic - Metabolic",
+      "commonness": "Common"
+    },
+    "J45.909": {
+      "description": "Unspecified asthma, uncomplicated",
+      "plainLanguage": "Asthma - chronic lung condition causing breathing difficulties, wheezing, and coughing.",
+      "category": "Chronic - Respiratory",
+      "commonness": "Common"
+    },
+    "J44.9": {
+      "description": "Chronic obstructive pulmonary disease, unspecified",
+      "plainLanguage": "COPD - chronic lung disease causing airflow problems and breathing difficulties.",
+      "category": "Chronic - Respiratory",
+      "commonness": "Common"
+    },
+    "K21.0": {
+      "description": "Gastro-esophageal reflux disease with esophagitis",
+      "plainLanguage": "GERD/acid reflux with inflammation - stomach acid backing up into esophagus causing irritation.",
+      "category": "Chronic - GI",
+      "commonness": "Common"
+    },
+    "K21.9": {
+      "description": "Gastro-esophageal reflux disease without esophagitis",
+      "plainLanguage": "GERD/acid reflux - stomach acid backing up causing heartburn.",
+      "category": "Chronic - GI",
+      "commonness": "Very Common"
+    },
+
+    "_category_musculoskeletal": "MUSCULOSKELETAL / PAIN",
+
+    "M54.5": {
+      "description": "Low back pain",
+      "plainLanguage": "Lower back pain - one of the most common complaints.",
+      "category": "Musculoskeletal",
+      "commonness": "Very Common"
+    },
+    "M54.50": {
+      "description": "Low back pain, unspecified",
+      "plainLanguage": "Lower back pain without specific identified cause.",
+      "category": "Musculoskeletal",
+      "commonness": "Very Common"
+    },
+    "M54.2": {
+      "description": "Cervicalgia",
+      "plainLanguage": "Neck pain.",
+      "category": "Musculoskeletal",
+      "commonness": "Very Common"
+    },
+    "M54.6": {
+      "description": "Pain in thoracic spine",
+      "plainLanguage": "Mid-back pain - pain in the middle portion of the spine.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M25.50": {
+      "description": "Pain in unspecified joint",
+      "plainLanguage": "Joint pain not otherwise specified.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M25.511": {
+      "description": "Pain in right shoulder",
+      "plainLanguage": "Right shoulder pain.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M25.512": {
+      "description": "Pain in left shoulder",
+      "plainLanguage": "Left shoulder pain.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M25.561": {
+      "description": "Pain in right knee",
+      "plainLanguage": "Right knee pain.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M25.562": {
+      "description": "Pain in left knee",
+      "plainLanguage": "Left knee pain.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M25.571": {
+      "description": "Pain in right ankle and foot",
+      "plainLanguage": "Right ankle/foot pain.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M25.572": {
+      "description": "Pain in left ankle and foot",
+      "plainLanguage": "Left ankle/foot pain.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M79.3": {
+      "description": "Panniculitis, unspecified",
+      "plainLanguage": "Inflammation of fatty tissue under skin.",
+      "category": "Musculoskeletal",
+      "commonness": "Less Common"
+    },
+    "M79.1": {
+      "description": "Myalgia",
+      "plainLanguage": "Muscle pain - general muscle aches.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M62.830": {
+      "description": "Muscle spasm of back",
+      "plainLanguage": "Back muscle spasm - involuntary tightening of back muscles.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M17.11": {
+      "description": "Primary osteoarthritis, right knee",
+      "plainLanguage": "Knee arthritis (wear-and-tear type) in right knee.",
+      "category": "Musculoskeletal - Arthritis",
+      "commonness": "Common"
+    },
+    "M17.12": {
+      "description": "Primary osteoarthritis, left knee",
+      "plainLanguage": "Knee arthritis (wear-and-tear type) in left knee.",
+      "category": "Musculoskeletal - Arthritis",
+      "commonness": "Common"
+    },
+    "M19.90": {
+      "description": "Unspecified osteoarthritis, unspecified site",
+      "plainLanguage": "Arthritis - joint wear and tear causing pain and stiffness.",
+      "category": "Musculoskeletal - Arthritis",
+      "commonness": "Very Common"
+    },
+    "M75.100": {
+      "description": "Unspecified rotator cuff tear, unspecified shoulder",
+      "plainLanguage": "Rotator cuff tear - damage to shoulder tendons.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M77.10": {
+      "description": "Lateral epicondylitis",
+      "plainLanguage": "Tennis elbow - pain on the outer elbow from overuse.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "M72.2": {
+      "description": "Plantar fasciitis",
+      "plainLanguage": "Heel pain from inflammation of the tissue on the bottom of the foot.",
+      "category": "Musculoskeletal",
+      "commonness": "Common"
+    },
+    "G56.00": {
+      "description": "Carpal tunnel syndrome, unspecified upper limb",
+      "plainLanguage": "Carpal tunnel - wrist nerve compression causing numbness and tingling in hand.",
+      "category": "Musculoskeletal - Nerve",
+      "commonness": "Common"
+    },
+
+    "_category_injuries": "INJURIES & TRAUMA",
+
+    "S93.401A": {
+      "description": "Sprain of unspecified ligament of right ankle, initial encounter",
+      "plainLanguage": "Right ankle sprain - stretched or torn ligaments in the ankle.",
+      "category": "Injury",
+      "commonness": "Common"
+    },
+    "S93.402A": {
+      "description": "Sprain of unspecified ligament of left ankle, initial encounter",
+      "plainLanguage": "Left ankle sprain.",
+      "category": "Injury",
+      "commonness": "Common"
+    },
+    "S83.90XA": {
+      "description": "Sprain of unspecified site of unspecified knee, initial encounter",
+      "plainLanguage": "Knee sprain - ligament injury to the knee.",
+      "category": "Injury",
+      "commonness": "Common"
+    },
+    "S13.4XXA": {
+      "description": "Sprain of ligaments of cervical spine, initial encounter",
+      "plainLanguage": "Neck sprain/whiplash - ligament injury in the neck.",
+      "category": "Injury",
+      "commonness": "Common"
+    },
+    "S39.012A": {
+      "description": "Strain of muscle, fascia and tendon of lower back, initial encounter",
+      "plainLanguage": "Lower back strain - pulled muscle in the lower back.",
+      "category": "Injury",
+      "commonness": "Very Common"
+    },
+    "S09.90XA": {
+      "description": "Unspecified injury of head, initial encounter",
+      "plainLanguage": "Head injury - general term for any head trauma.",
+      "category": "Injury",
+      "commonness": "Common"
+    },
+    "S06.0X0A": {
+      "description": "Concussion without loss of consciousness, initial encounter",
+      "plainLanguage": "Concussion - mild traumatic brain injury.",
+      "category": "Injury",
+      "commonness": "Common"
+    },
+    "S62.90XA": {
+      "description": "Unspecified fracture of unspecified wrist and hand, initial encounter",
+      "plainLanguage": "Wrist or hand fracture.",
+      "category": "Injury - Fracture",
+      "commonness": "Common"
+    },
+    "S52.501A": {
+      "description": "Unspecified fracture of the lower end of right radius, initial encounter",
+      "plainLanguage": "Broken wrist (distal radius fracture).",
+      "category": "Injury - Fracture",
+      "commonness": "Common"
+    },
+    "S82.90XA": {
+      "description": "Unspecified fracture of unspecified lower leg, initial encounter",
+      "plainLanguage": "Lower leg fracture.",
+      "category": "Injury - Fracture",
+      "commonness": "Common"
+    },
+    "T14.8": {
+      "description": "Other injury of unspecified body region",
+      "plainLanguage": "Injury not otherwise specified.",
+      "category": "Injury",
+      "commonness": "Common"
+    },
+    "W19.XXXA": {
+      "description": "Unspecified fall, initial encounter",
+      "plainLanguage": "Fall - external cause code indicating the patient fell.",
+      "category": "External Cause",
+      "commonness": "Common"
+    },
+
+    "_category_mental_health": "MENTAL HEALTH",
+
+    "F41.1": {
+      "description": "Generalized anxiety disorder",
+      "plainLanguage": "Generalized anxiety - persistent excessive worry affecting daily life.",
+      "category": "Mental Health",
+      "commonness": "Very Common"
+    },
+    "F41.9": {
+      "description": "Anxiety disorder, unspecified",
+      "plainLanguage": "Anxiety disorder not otherwise specified.",
+      "category": "Mental Health",
+      "commonness": "Common"
+    },
+    "F32.9": {
+      "description": "Major depressive disorder, single episode, unspecified",
+      "plainLanguage": "Depression - first episode or unspecified.",
+      "category": "Mental Health",
+      "commonness": "Common"
+    },
+    "F33.0": {
+      "description": "Major depressive disorder, recurrent, mild",
+      "plainLanguage": "Mild recurrent depression.",
+      "category": "Mental Health",
+      "commonness": "Common"
+    },
+    "F33.1": {
+      "description": "Major depressive disorder, recurrent, moderate",
+      "plainLanguage": "Moderate recurrent depression.",
+      "category": "Mental Health",
+      "commonness": "Common"
+    },
+    "F33.9": {
+      "description": "Major depressive disorder, recurrent, unspecified",
+      "plainLanguage": "Recurrent depression - multiple episodes over time.",
+      "category": "Mental Health",
+      "commonness": "Common"
+    },
+    "F90.9": {
+      "description": "Attention-deficit hyperactivity disorder, unspecified type",
+      "plainLanguage": "ADHD - difficulty with attention, hyperactivity, and/or impulsivity.",
+      "category": "Mental Health",
+      "commonness": "Common"
+    },
+    "F43.10": {
+      "description": "Post-traumatic stress disorder, unspecified",
+      "plainLanguage": "PTSD - mental health condition triggered by traumatic event.",
+      "category": "Mental Health",
+      "commonness": "Common"
+    },
+    "G47.00": {
+      "description": "Insomnia, unspecified",
+      "plainLanguage": "Insomnia - difficulty falling asleep or staying asleep.",
+      "category": "Mental Health - Sleep",
+      "commonness": "Very Common"
+    },
+    "F51.01": {
+      "description": "Primary insomnia",
+      "plainLanguage": "Primary insomnia - sleep problems not caused by another condition.",
+      "category": "Mental Health - Sleep",
+      "commonness": "Common"
+    },
+
+    "_category_neurological": "NEUROLOGICAL",
+
+    "G43.909": {
+      "description": "Migraine, unspecified, not intractable",
+      "plainLanguage": "Migraine headache - severe headache often with nausea and light sensitivity.",
+      "category": "Neurological",
+      "commonness": "Common"
+    },
+    "G43.909": {
+      "description": "Migraine, unspecified, not intractable",
+      "plainLanguage": "Migraine headache.",
+      "category": "Neurological",
+      "commonness": "Common"
+    },
+    "R51.9": {
+      "description": "Headache, unspecified",
+      "plainLanguage": "Headache - general term when type is not specified.",
+      "category": "Neurological",
+      "commonness": "Very Common"
+    },
+    "G44.209": {
+      "description": "Tension-type headache, unspecified",
+      "plainLanguage": "Tension headache - common headache often caused by stress or muscle tension.",
+      "category": "Neurological",
+      "commonness": "Very Common"
+    },
+    "R42": {
+      "description": "Dizziness and giddiness",
+      "plainLanguage": "Dizziness - feeling lightheaded or unsteady.",
+      "category": "Neurological",
+      "commonness": "Common"
+    },
+    "H81.10": {
+      "description": "Benign paroxysmal positional vertigo, unspecified ear",
+      "plainLanguage": "BPPV - brief episodes of spinning sensation triggered by head movement.",
+      "category": "Neurological",
+      "commonness": "Common"
+    },
+    "R55": {
+      "description": "Syncope and collapse",
+      "plainLanguage": "Fainting/passing out - temporary loss of consciousness.",
+      "category": "Neurological",
+      "commonness": "Common"
+    },
+
+    "_category_skin": "SKIN CONDITIONS",
+
+    "L30.9": {
+      "description": "Dermatitis, unspecified",
+      "plainLanguage": "Skin inflammation/rash - general term for skin irritation.",
+      "category": "Skin",
+      "commonness": "Common"
+    },
+    "L20.9": {
+      "description": "Atopic dermatitis, unspecified",
+      "plainLanguage": "Eczema - chronic skin condition causing itchy, red, inflamed skin.",
+      "category": "Skin",
+      "commonness": "Common"
+    },
+    "L23.9": {
+      "description": "Allergic contact dermatitis, unspecified cause",
+      "plainLanguage": "Allergic skin reaction to contact with a substance.",
+      "category": "Skin",
+      "commonness": "Common"
+    },
+    "L70.0": {
+      "description": "Acne vulgaris",
+      "plainLanguage": "Acne - common skin condition with pimples and blemishes.",
+      "category": "Skin",
+      "commonness": "Very Common"
+    },
+    "L03.90": {
+      "description": "Cellulitis, unspecified",
+      "plainLanguage": "Cellulitis - bacterial skin infection causing redness and swelling.",
+      "category": "Skin - Infection",
+      "commonness": "Common"
+    },
+    "L02.91": {
+      "description": "Cutaneous abscess, unspecified",
+      "plainLanguage": "Skin abscess - collection of pus under the skin (boil).",
+      "category": "Skin - Infection",
+      "commonness": "Common"
+    },
+    "B35.1": {
+      "description": "Tinea unguium",
+      "plainLanguage": "Toenail fungus - fungal infection of the nails.",
+      "category": "Skin - Fungal",
+      "commonness": "Common"
+    },
+    "B35.3": {
+      "description": "Tinea pedis",
+      "plainLanguage": "Athlete's foot - fungal infection between toes.",
+      "category": "Skin - Fungal",
+      "commonness": "Common"
+    },
+    "L50.9": {
+      "description": "Urticaria, unspecified",
+      "plainLanguage": "Hives - itchy, raised welts on the skin, often from allergic reaction.",
+      "category": "Skin - Allergic",
+      "commonness": "Common"
+    },
+    "L57.0": {
+      "description": "Actinic keratosis",
+      "plainLanguage": "Precancerous skin lesion - rough, scaly spot from sun damage.",
+      "category": "Skin",
+      "commonness": "Common"
+    },
+
+    "_category_gi": "GASTROINTESTINAL",
+
+    "K30": {
+      "description": "Functional dyspepsia",
+      "plainLanguage": "Indigestion - stomach discomfort, bloating, or nausea.",
+      "category": "GI",
+      "commonness": "Very Common"
+    },
+    "R10.9": {
+      "description": "Unspecified abdominal pain",
+      "plainLanguage": "Stomach/abdominal pain - location not specified.",
+      "category": "GI",
+      "commonness": "Common"
+    },
+    "R10.10": {
+      "description": "Upper abdominal pain, unspecified",
+      "plainLanguage": "Upper stomach pain.",
+      "category": "GI",
+      "commonness": "Common"
+    },
+    "R10.30": {
+      "description": "Lower abdominal pain, unspecified",
+      "plainLanguage": "Lower stomach/belly pain.",
+      "category": "GI",
+      "commonness": "Common"
+    },
+    "K59.00": {
+      "description": "Constipation, unspecified",
+      "plainLanguage": "Constipation - difficulty having bowel movements.",
+      "category": "GI",
+      "commonness": "Very Common"
+    },
+    "R19.7": {
+      "description": "Diarrhea, unspecified",
+      "plainLanguage": "Diarrhea - loose or watery stools.",
+      "category": "GI",
+      "commonness": "Common"
+    },
+    "R11.10": {
+      "description": "Vomiting, unspecified",
+      "plainLanguage": "Vomiting.",
+      "category": "GI",
+      "commonness": "Common"
+    },
+    "R11.0": {
+      "description": "Nausea",
+      "plainLanguage": "Nausea - feeling sick to your stomach.",
+      "category": "GI",
+      "commonness": "Common"
+    },
+    "K57.30": {
+      "description": "Diverticulosis of large intestine without perforation or abscess",
+      "plainLanguage": "Diverticulosis - small pouches in the colon wall (common with age).",
+      "category": "GI",
+      "commonness": "Common"
+    },
+    "K58.9": {
+      "description": "Irritable bowel syndrome without diarrhea",
+      "plainLanguage": "IBS - chronic condition causing abdominal pain and altered bowel habits.",
+      "category": "GI",
+      "commonness": "Common"
+    },
+
+    "_category_symptoms": "SYMPTOMS & SIGNS",
+
+    "R05.9": {
+      "description": "Cough, unspecified",
+      "plainLanguage": "Cough.",
+      "category": "Symptom",
+      "commonness": "Very Common"
+    },
+    "R06.00": {
+      "description": "Dyspnea, unspecified",
+      "plainLanguage": "Shortness of breath.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R07.9": {
+      "description": "Chest pain, unspecified",
+      "plainLanguage": "Chest pain - requires evaluation to determine cause.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R00.0": {
+      "description": "Tachycardia, unspecified",
+      "plainLanguage": "Fast heart rate.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R00.2": {
+      "description": "Palpitations",
+      "plainLanguage": "Awareness of heartbeat - feeling heart racing or fluttering.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R53.83": {
+      "description": "Other fatigue",
+      "plainLanguage": "Fatigue - feeling tired or exhausted.",
+      "category": "Symptom",
+      "commonness": "Very Common"
+    },
+    "R53.1": {
+      "description": "Weakness",
+      "plainLanguage": "General weakness.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R50.9": {
+      "description": "Fever, unspecified",
+      "plainLanguage": "Fever.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R63.4": {
+      "description": "Abnormal weight loss",
+      "plainLanguage": "Unintentional weight loss.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R63.5": {
+      "description": "Abnormal weight gain",
+      "plainLanguage": "Unintentional weight gain.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R21": {
+      "description": "Rash and other nonspecific skin eruption",
+      "plainLanguage": "Skin rash - not otherwise specified.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+    "R22.9": {
+      "description": "Localized swelling, mass and lump, unspecified",
+      "plainLanguage": "Lump or swelling - needs evaluation.",
+      "category": "Symptom",
+      "commonness": "Common"
+    },
+
+    "_category_preventive": "PREVENTIVE / SCREENING",
+
+    "Z00.00": {
+      "description": "Encounter for general adult medical examination without abnormal findings",
+      "plainLanguage": "Routine physical exam - no problems found.",
+      "category": "Preventive",
+      "commonness": "Very Common"
+    },
+    "Z00.01": {
+      "description": "Encounter for general adult medical examination with abnormal findings",
+      "plainLanguage": "Routine physical exam - some findings need attention.",
+      "category": "Preventive",
+      "commonness": "Common"
+    },
+    "Z00.121": {
+      "description": "Encounter for routine child health examination with abnormal findings",
+      "plainLanguage": "Well child visit - some findings need attention.",
+      "category": "Preventive",
+      "commonness": "Common"
+    },
+    "Z00.129": {
+      "description": "Encounter for routine child health examination without abnormal findings",
+      "plainLanguage": "Well child visit - healthy.",
+      "category": "Preventive",
+      "commonness": "Common"
+    },
+    "Z12.31": {
+      "description": "Encounter for screening mammogram for malignant neoplasm of breast",
+      "plainLanguage": "Routine mammogram screening.",
+      "category": "Preventive - Screening",
+      "commonness": "Common"
+    },
+    "Z12.11": {
+      "description": "Encounter for screening for malignant neoplasm of colon",
+      "plainLanguage": "Colon cancer screening.",
+      "category": "Preventive - Screening",
+      "commonness": "Common"
+    },
+    "Z23": {
+      "description": "Encounter for immunization",
+      "plainLanguage": "Vaccination/immunization visit.",
+      "category": "Preventive",
+      "commonness": "Very Common"
+    },
+    "Z01.818": {
+      "description": "Encounter for other preprocedural examination",
+      "plainLanguage": "Pre-procedure clearance exam.",
+      "category": "Preventive",
+      "commonness": "Common"
+    },
+
+    "_category_allergies": "ALLERGIES",
+
+    "J30.1": {
+      "description": "Allergic rhinitis due to pollen",
+      "plainLanguage": "Hay fever - seasonal allergies to pollen.",
+      "category": "Allergy",
+      "commonness": "Very Common"
+    },
+    "J30.9": {
+      "description": "Allergic rhinitis, unspecified",
+      "plainLanguage": "Allergic rhinitis - nasal allergies.",
+      "category": "Allergy",
+      "commonness": "Very Common"
+    },
+    "T78.40XA": {
+      "description": "Allergy, unspecified, initial encounter",
+      "plainLanguage": "Allergic reaction - not otherwise specified.",
+      "category": "Allergy",
+      "commonness": "Common"
+    },
+    "L27.0": {
+      "description": "Generalized skin eruption due to drugs and medicaments",
+      "plainLanguage": "Drug rash - skin reaction to medication.",
+      "category": "Allergy - Drug",
+      "commonness": "Common"
+    },
+    "Z88.9": {
+      "description": "Allergy status to unspecified drugs, medicaments and biological substances",
+      "plainLanguage": "History of drug allergy.",
+      "category": "Allergy - History",
+      "commonness": "Common"
+    }
+  }
+}

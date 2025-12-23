@@ -1,0 +1,418 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2025-12-22",
+    "purpose": "Rules for identifying billing patterns that may warrant patient inquiry",
+    "important": "These rules identify POTENTIAL areas for questions, NOT definitive errors",
+    "disclaimer": "Always recommend patients verify concerns with their provider or insurance"
+  },
+
+  "generalPrinciples": {
+    "approach": "Educational, not accusatory",
+    "language": [
+      "You might want to verify...",
+      "This could be worth asking about...",
+      "There may be valid reasons for this, but you could clarify...",
+      "Consider asking your provider about..."
+    ],
+    "avoidLanguage": [
+      "You were overcharged",
+      "This is wrong/incorrect/fraudulent",
+      "They overbilled you",
+      "This is an error"
+    ]
+  },
+
+  "rules": {
+
+    "DUPLICATE_CHARGE": {
+      "id": "DUPLICATE_CHARGE",
+      "name": "Potential Duplicate Charge",
+      "severity": "MEDIUM",
+      "description": "Same code appears multiple times on the same date of service",
+      "detection": {
+        "condition": "Same CPT/HCPCS code billed 2+ times on same date",
+        "exceptions": [
+          "Physical therapy codes (97XXX) - often billed multiple times per session in 15-min units",
+          "Multiple injection sites (e.g., multiple joint injections)",
+          "Bilateral procedures (modifier -50 or RT/LT modifiers)",
+          "Units > 1 shown",
+          "Radiation therapy codes",
+          "Anesthesia time units"
+        ]
+      },
+      "userMessage": "We noticed the code {code} ({description}) appears {count} times on {date}. This could be intentional if the service was performed multiple times, or it might be worth confirming with the billing department.",
+      "suggestedQuestion": "I see {code} billed {count} times on {date}. Can you help me understand if this was performed multiple times or if this might be a duplicate entry?",
+      "commonValidReasons": [
+        "Service was actually performed multiple times",
+        "Physical therapy billed in 15-minute units",
+        "Multiple sites treated separately",
+        "Bilateral procedure"
+      ]
+    },
+
+    "UNBUNDLING_POSSIBLE": {
+      "id": "UNBUNDLING_POSSIBLE",
+      "name": "Potentially Unbundled Services",
+      "severity": "LOW",
+      "description": "Services billed separately that are sometimes included together",
+      "detection": {
+        "pairs": [
+          {
+            "codes": ["36415", "85025"],
+            "note": "Blood draw + CBC - some facilities include venipuncture in lab panel pricing"
+          },
+          {
+            "codes": ["36415", "80053"],
+            "note": "Blood draw + CMP - venipuncture sometimes bundled"
+          },
+          {
+            "codes": ["99213", "96372"],
+            "note": "Office visit + injection administration - sometimes included in visit, sometimes separate"
+          },
+          {
+            "codes": ["99214", "93000"],
+            "note": "Office visit + EKG - some facilities include EKG in visit for cardiac complaints"
+          },
+          {
+            "codes": ["99283", "71046"],
+            "note": "ER visit + chest X-ray - generally appropriate to bill separately"
+          }
+        ],
+        "exceptions": [
+          "Different dates of service",
+          "Clear clinical indication for separate services",
+          "Modifier indicates distinct service"
+        ]
+      },
+      "userMessage": "We noticed {code1} and {code2} were both billed. These services are sometimes bundled together at some facilities. There may be good reasons for separate billing, but you could ask if combined pricing was available.",
+      "suggestedQuestion": "I see separate charges for {description1} and {description2}. Are these typically billed together at your facility, or is there a bundled price available?",
+      "commonValidReasons": [
+        "Facility billing policy bills these separately",
+        "Different departments performed the services",
+        "Services were truly distinct"
+      ]
+    },
+
+    "HIGH_QUANTITY": {
+      "id": "HIGH_QUANTITY",
+      "name": "High Unit Quantity",
+      "severity": "LOW",
+      "description": "Number of units seems high for the service type",
+      "detection": {
+        "thresholds": {
+          "97110": {"max_typical": 4, "note": "PT exercises - more than 4 units (60 min) in one session is unusual"},
+          "97140": {"max_typical": 3, "note": "Manual therapy - more than 45 min unusual"},
+          "J7030": {"max_typical": 3, "note": "Saline bags - 3+ liters in outpatient unusual"},
+          "36415": {"max_typical": 1, "note": "Venipuncture - usually 1 per visit"}
+        },
+        "exceptions": [
+          "Complex cases requiring extended treatment",
+          "Severe dehydration requiring multiple IV bags",
+          "Extended therapy session documented"
+        ]
+      },
+      "userMessage": "The quantity of {quantity} units for {code} ({description}) is higher than typical. This could be appropriate for your situation, but you might ask for documentation explaining the extended service.",
+      "suggestedQuestion": "I see {quantity} units of {description}. Can you help me understand what required the extended treatment time?",
+      "commonValidReasons": [
+        "Complex condition requiring extended care",
+        "Multiple body areas treated",
+        "Severe presentation requiring intensive treatment"
+      ]
+    },
+
+    "DATE_MISMATCH": {
+      "id": "DATE_MISMATCH",
+      "name": "Date Inconsistency",
+      "severity": "HIGH",
+      "description": "Service date doesn't match expected patterns",
+      "detection": {
+        "patterns": [
+          "Service date is a Sunday for routine outpatient",
+          "Service date is future date",
+          "Service date is before patient's stated appointment date",
+          "Lab results dated before specimen collection"
+        ],
+        "exceptions": [
+          "Urgent care and ER operate on weekends",
+          "Some lab tests processed on different day than collection",
+          "Hospital services available 24/7"
+        ]
+      },
+      "userMessage": "The service date of {date} seems unusual for this type of service. This could be a documentation issue worth verifying.",
+      "suggestedQuestion": "Can you confirm the date of service? I want to make sure the {date} date is correct for when I received care.",
+      "commonValidReasons": [
+        "Weekend/holiday urgent care visit",
+        "Lab processing date vs collection date",
+        "Billing date correction"
+      ]
+    },
+
+    "PRICE_OUTLIER_HIGH": {
+      "id": "PRICE_OUTLIER_HIGH",
+      "name": "Higher Than Typical Price",
+      "severity": "MEDIUM",
+      "description": "Charge is significantly above typical price ranges",
+      "detection": {
+        "threshold": "Charged amount exceeds typical high range by 50% or more",
+        "exceptions": [
+          "Hospital-based facility fees are typically higher than freestanding",
+          "After-hours or emergency services may have premiums",
+          "Specialized equipment or supplies used",
+          "Geographic variation (prices vary significantly by region)"
+        ]
+      },
+      "userMessage": "The charge of ${amount} for {code} ({description}) is on the higher end of typical ranges (${typicalLow}-${typicalHigh}). There may be valid reasons such as facility type, complexity, or location. You might ask for an itemized breakdown.",
+      "suggestedQuestion": "Can you provide an itemized breakdown of the ${amount} charge for {description}? I'd like to understand what's included.",
+      "commonValidReasons": [
+        "Hospital-owned facility (higher overhead)",
+        "Specialized equipment used",
+        "After-hours service",
+        "Complex case requiring extra time/resources",
+        "High cost-of-living area"
+      ]
+    },
+
+    "FACILITY_FEE_UNEXPECTED": {
+      "id": "FACILITY_FEE_UNEXPECTED",
+      "name": "Separate Facility Fee",
+      "severity": "LOW",
+      "description": "Facility fee charged in addition to professional fee",
+      "detection": {
+        "indicators": [
+          "G0463 (hospital clinic visit) paired with 99XXX codes",
+          "Separate facility charge from doctor charge",
+          "Two bills for same date - one from facility, one from provider"
+        ],
+        "commonContexts": [
+          "Hospital-owned physician practices",
+          "Hospital outpatient departments",
+          "Ambulatory surgery centers"
+        ]
+      },
+      "userMessage": "You were charged a facility fee (${facilityAmount}) in addition to the professional/doctor fee. This is common at hospital-owned clinics but may not occur at independent practices. It's legitimate but worth understanding.",
+      "suggestedQuestion": "I see a facility fee separate from the doctor's fee. Is this clinic hospital-owned? Are there independent practices nearby that might have different pricing?",
+      "commonValidReasons": [
+        "Hospital-owned outpatient clinic",
+        "Hospital outpatient department",
+        "Required for Medicare billing in hospital settings"
+      ],
+      "education": "Many hospitals have purchased physician practices. These 'hospital-owned' clinics can charge both a doctor fee AND a facility fee, unlike independent practices. The care may be identical, but the billing is different."
+    },
+
+    "MODIFIER_MISSING_OR_UNUSUAL": {
+      "id": "MODIFIER_MISSING_OR_UNUSUAL",
+      "name": "Modifier Question",
+      "severity": "LOW",
+      "description": "Modifier usage that might warrant inquiry",
+      "detection": {
+        "patterns": [
+          "-25 modifier (significant separate E&M) used with minor procedure - commonly appropriate but sometimes questioned",
+          "-59 modifier (distinct procedure) - indicates services billed separately that are sometimes bundled",
+          "-76 modifier (repeat procedure same physician) - should correspond to truly repeated service"
+        ]
+      },
+      "userMessage": "This charge includes modifier {modifier}, which indicates {modifierMeaning}. This is often appropriate but adds to the total cost.",
+      "education": {
+        "-25": "Modifier -25 means the office visit was significant and separate from a procedure performed the same day. This allows billing for both the visit and procedure. It's commonly used and often appropriate when the doctor spent meaningful time on evaluation beyond the procedure itself.",
+        "-59": "Modifier -59 indicates a distinct procedural service that the billing system might otherwise bundle together. It justifies separate payment for services that are normally included.",
+        "-76": "Modifier -76 means the same procedure was repeated by the same physician. You should see corresponding duplicate services."
+      }
+    },
+
+    "SERVICE_NOT_MATCHING_DIAGNOSIS": {
+      "id": "SERVICE_NOT_MATCHING_DIAGNOSIS",
+      "name": "Service-Diagnosis Relationship",
+      "severity": "LOW",
+      "description": "Service may not clearly relate to listed diagnosis",
+      "detection": {
+        "examples": [
+          "Knee X-ray with ankle sprain diagnosis",
+          "Cardiac testing with respiratory diagnosis only",
+          "Lab panels that don't match complaint"
+        ],
+        "exceptions": [
+          "Rule-out testing is common",
+          "Multiple diagnoses on same visit",
+          "Screening tests may have different diagnosis codes",
+          "Limited context available - clinical judgment required"
+        ]
+      },
+      "userMessage": "We noticed {procedure} was performed with a diagnosis of {diagnosis}. There may be clinical reasons for this we can't see, but you could ask your provider how this test related to your condition.",
+      "suggestedQuestion": "Can you help me understand why {procedure} was ordered for my {diagnosis}? I want to make sure I understand my care.",
+      "commonValidReasons": [
+        "Ruling out other conditions",
+        "Standard protocol for presenting symptoms",
+        "Related but different diagnosis",
+        "Secondary diagnosis not listed"
+      ],
+      "important": "We cannot determine medical necessity - only the treating provider can. This is for understanding, not challenging appropriateness."
+    },
+
+    "SAME_SERVICE_MULTIPLE_PROVIDERS": {
+      "id": "SAME_SERVICE_MULTIPLE_PROVIDERS",
+      "name": "Same Service, Different Providers",
+      "severity": "MEDIUM",
+      "description": "Similar services billed by different providers same day",
+      "detection": {
+        "pattern": "Same or very similar CPT code billed by different NPIs on same date",
+        "commonScenarios": [
+          "Hospital + physician billing for same ER visit (expected)",
+          "Radiologist reading + facility technical fee (expected)",
+          "Two physicians billing for same service (investigate)"
+        ]
+      },
+      "userMessage": "We see similar charges from different providers on {date}. This is sometimes expected (like hospital and doctor fees for ER visits), but you might verify these are for different services.",
+      "suggestedQuestion": "I received bills from {provider1} and {provider2} for similar services on {date}. Can you explain what each charge covers?",
+      "commonValidReasons": [
+        "Hospital facility fee + physician professional fee (ER, surgery)",
+        "Technical component + professional component (radiology)",
+        "Multiple specialists consulted same day"
+      ]
+    },
+
+    "PREVENTIVE_VS_DIAGNOSTIC": {
+      "id": "PREVENTIVE_VS_DIAGNOSTIC",
+      "name": "Preventive vs Diagnostic Coding",
+      "severity": "MEDIUM",
+      "description": "Service that might have been coded as diagnostic instead of preventive",
+      "detection": {
+        "pattern": "Services that could be preventive billed with diagnostic codes",
+        "examples": [
+          "Annual physical coded as 99214 instead of 99395",
+          "Screening mammogram coded as diagnostic",
+          "Routine lab work with symptomatic diagnosis"
+        ],
+        "importance": "Preventive services often have better insurance coverage (often 100% covered), while diagnostic may be subject to deductible"
+      },
+      "userMessage": "This {service} was billed as diagnostic rather than preventive/screening. If this was a routine preventive service, you might ask if the coding is correct, as preventive care may have different (often better) coverage.",
+      "suggestedQuestion": "My insurance covers preventive care at 100%, but this {service} was coded as diagnostic. Was there a specific reason it wasn't considered preventive/routine?",
+      "commonValidReasons": [
+        "Symptoms reported during visit (turns preventive into diagnostic)",
+        "Follow-up on previous finding (not screening)",
+        "Doctor found something that required additional evaluation",
+        "Already had same screening within coverage period"
+      ],
+      "education": "If you mention ANY symptoms during a preventive visit, the visit may be coded as diagnostic. This can change your coverage. Some patients schedule separate appointments for wellness vs. symptom discussions."
+    },
+
+    "ER_LEVEL_HIGH": {
+      "id": "ER_LEVEL_HIGH",
+      "name": "High ER Visit Level",
+      "severity": "LOW",
+      "description": "Emergency department visit coded at high level",
+      "detection": {
+        "pattern": "99284 or 99285 codes for seemingly minor complaints",
+        "context": "ER level is determined by complexity of evaluation, resources used, and risk - not just the final diagnosis"
+      },
+      "userMessage": "Your ER visit was coded at level {level} (99284/99285), which is a higher-complexity level. ER coding is based on the resources and evaluation required during your visit, not just the final diagnosis. If you had testing done or required significant evaluation, this may be appropriate.",
+      "suggestedQuestion": "My ER visit was coded as high complexity. Can you help me understand what criteria determined this level?",
+      "commonValidReasons": [
+        "Multiple tests or imaging performed",
+        "IV medications administered",
+        "Extended monitoring required",
+        "Initial presentation was concerning even if diagnosis was minor",
+        "Time spent on evaluation was significant"
+      ],
+      "education": "ER visits are coded based on what was required to evaluate you, not what turned out to be wrong. Chest pain that turns out to be heartburn still requires cardiac workup - and that workup drives the level."
+    },
+
+    "NON_COVERED_SERVICE": {
+      "id": "NON_COVERED_SERVICE",
+      "name": "Non-Covered Service",
+      "severity": "HIGH",
+      "description": "Service marked as not covered by insurance",
+      "detection": {
+        "pattern": "A9270 code or denial reason indicating non-covered service"
+      },
+      "userMessage": "One or more services are marked as not covered by your insurance. You may want to understand why - sometimes this is correct (cosmetic, experimental) and sometimes it can be appealed.",
+      "suggestedQuestion": "Can you tell me why {service} was not covered? Is there an appeal process or alternative coding that might be covered?",
+      "commonValidReasons": [
+        "Service is explicitly excluded from plan",
+        "Cosmetic procedure",
+        "Experimental treatment",
+        "Out-of-network provider",
+        "Pre-authorization not obtained"
+      ],
+      "actions": [
+        "Review your insurance benefits to confirm exclusion",
+        "Ask if service can be coded differently (if appropriate)",
+        "Request pre-authorization for future similar services",
+        "Appeal if you believe it should be covered"
+      ]
+    }
+  },
+
+  "compositePatterns": {
+    "EMERGENCY_VISIT_BUNDLE": {
+      "description": "Common ER visit pattern",
+      "expectedCodes": ["99281-99285", "possibly 71046", "possibly labs", "J-codes for medications"],
+      "expectedSeparateBills": ["Hospital/facility bill", "Physician professional fee", "Possibly radiologist", "Possibly lab"],
+      "userMessage": "ER visits typically generate multiple bills: the hospital facility fee, the emergency physician fee, and possibly separate bills from radiologists, labs, or specialists who were consulted. This is normal for ER visits."
+    },
+
+    "ANNUAL_PHYSICAL_BUNDLE": {
+      "description": "Common annual physical pattern",
+      "expectedCodes": ["99385-99397", "36415", "80053 or 80048", "possibly 81003", "possibly 85025"],
+      "note": "If symptomatic diagnosis code present, visit may be split into preventive + diagnostic",
+      "userMessage": "Annual physicals typically include the exam, blood draw, and basic lab panel. If additional testing was done or symptoms were discussed, you may see extra charges."
+    },
+
+    "OFFICE_VISIT_WITH_PROCEDURE": {
+      "description": "Office visit plus minor procedure same day",
+      "expectedCodes": ["99XXX with modifier -25", "procedure code", "possibly J-code for injected medication"],
+      "note": "Modifier -25 allows billing visit + procedure",
+      "userMessage": "When a procedure is done during an office visit, you may see charges for both the visit (with modifier -25) and the procedure. This is appropriate when the doctor spent significant time on evaluation beyond just the procedure."
+    }
+  },
+
+  "redFlagPriority": {
+    "HIGH": [
+      "DATE_MISMATCH",
+      "NON_COVERED_SERVICE"
+    ],
+    "MEDIUM": [
+      "DUPLICATE_CHARGE",
+      "PRICE_OUTLIER_HIGH",
+      "SAME_SERVICE_MULTIPLE_PROVIDERS",
+      "PREVENTIVE_VS_DIAGNOSTIC"
+    ],
+    "LOW": [
+      "UNBUNDLING_POSSIBLE",
+      "HIGH_QUANTITY",
+      "FACILITY_FEE_UNEXPECTED",
+      "MODIFIER_MISSING_OR_UNUSUAL",
+      "SERVICE_NOT_MATCHING_DIAGNOSIS",
+      "ER_LEVEL_HIGH"
+    ]
+  },
+
+  "questionTemplates": {
+    "general": {
+      "itemizedBill": "Can I get an itemized bill showing each charge separately?",
+      "priceList": "Do you have a price list or chargemaster I can review?",
+      "financialAssistance": "Do you offer financial assistance or payment plans?",
+      "cashPrice": "What would the cash/self-pay price be for these services?",
+      "coding": "Can you explain what code {code} represents and why it was used?"
+    },
+    "insurance": {
+      "denial": "My insurance denied this claim. Can you help me understand why and whether it can be appealed?",
+      "preAuth": "Was pre-authorization obtained for {service}? Can I see documentation?",
+      "inNetwork": "Can you confirm whether the provider was in-network with my insurance?",
+      "preventive": "Was this service coded as preventive or diagnostic? Can you explain why?"
+    },
+    "specific": {
+      "facility_fee": "I see both a facility fee and a doctor fee. Can you explain what each covers?",
+      "multiple_bills": "I received multiple bills for my {date} visit. Can you help me understand each one?",
+      "level_of_service": "My visit was coded as level {level}. Can you explain what determines this?"
+    }
+  },
+
+  "patientRights": {
+    "itemizedBill": "You have the right to request an itemized bill showing each service and charge",
+    "priceEstimate": "Under the No Surprises Act, you can request a Good Faith Estimate for scheduled services",
+    "appeal": "You have the right to appeal insurance denials through your insurance company",
+    "financialAssistance": "Non-profit hospitals are required to have financial assistance policies",
+    "pricingTransparency": "Hospitals are required to post pricing information publicly"
+  }
+}

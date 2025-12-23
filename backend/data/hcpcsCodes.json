@@ -1,0 +1,438 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2025-12-22",
+    "focus": "Common HCPCS codes for outpatient - drugs, supplies, DME",
+    "codeCount": 100,
+    "notes": "HCPCS Level II codes supplement CPT codes for drugs, supplies, and equipment"
+  },
+  "hcpcsCodes": {
+
+    "_category_drugs_injections": "INJECTABLE DRUGS (J-CODES)",
+
+    "J0696": {
+      "description": "Ceftriaxone sodium injection, per 250mg",
+      "plainLanguage": "Ceftriaxone (Rocephin) - antibiotic injection commonly used for bacterial infections.",
+      "category": "Drug - Antibiotic",
+      "typicalPriceRange": {"low": 10, "high": 50},
+      "notes": "Often given for UTIs, respiratory infections, or ER visits"
+    },
+    "J0702": {
+      "description": "Betamethasone acetate and betamethasone sodium phosphate injection",
+      "plainLanguage": "Betamethasone - steroid injection for inflammation.",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "J1020": {
+      "description": "Methylprednisolone injection, 20mg",
+      "plainLanguage": "Depo-Medrol 20mg - steroid injection for inflammation, allergies, or joint pain.",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 5, "high": 25}
+    },
+    "J1030": {
+      "description": "Methylprednisolone injection, 40mg",
+      "plainLanguage": "Depo-Medrol 40mg - steroid injection.",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 8, "high": 35}
+    },
+    "J1040": {
+      "description": "Methylprednisolone injection, 80mg",
+      "plainLanguage": "Depo-Medrol 80mg - steroid injection.",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 12, "high": 50}
+    },
+    "J1094": {
+      "description": "Dexamethasone acetate injection, 1mg",
+      "plainLanguage": "Dexamethasone - steroid injection.",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 3, "high": 15}
+    },
+    "J1100": {
+      "description": "Dexamethasone sodium phosphate injection, 1mg",
+      "plainLanguage": "Dexamethasone - steroid injection (common in ER).",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 2, "high": 12}
+    },
+    "J1200": {
+      "description": "Diphenhydramine HCL injection, up to 50mg",
+      "plainLanguage": "Benadryl injection - for allergic reactions.",
+      "category": "Drug - Antihistamine",
+      "typicalPriceRange": {"low": 5, "high": 25}
+    },
+    "J1885": {
+      "description": "Ketorolac tromethamine injection, per 15mg",
+      "plainLanguage": "Toradol - strong anti-inflammatory pain medication (NSAID).",
+      "category": "Drug - Pain/Anti-inflammatory",
+      "typicalPriceRange": {"low": 5, "high": 30}
+    },
+    "J2001": {
+      "description": "Lidocaine HCl for IV infusion, 10mg",
+      "plainLanguage": "Lidocaine IV - local anesthetic for procedures or heart rhythm issues.",
+      "category": "Drug - Anesthetic",
+      "typicalPriceRange": {"low": 2, "high": 15}
+    },
+    "J2175": {
+      "description": "Meperidine HCl injection, per 100mg",
+      "plainLanguage": "Demerol - narcotic pain medication.",
+      "category": "Drug - Pain (Opioid)",
+      "typicalPriceRange": {"low": 10, "high": 50}
+    },
+    "J2250": {
+      "description": "Midazolam HCl injection, per 1mg",
+      "plainLanguage": "Versed - sedative used for procedures.",
+      "category": "Drug - Sedative",
+      "typicalPriceRange": {"low": 3, "high": 20}
+    },
+    "J2270": {
+      "description": "Morphine sulfate injection, up to 10mg",
+      "plainLanguage": "Morphine - narcotic pain medication.",
+      "category": "Drug - Pain (Opioid)",
+      "typicalPriceRange": {"low": 5, "high": 30}
+    },
+    "J2310": {
+      "description": "Naloxone HCl injection, per 1mg",
+      "plainLanguage": "Narcan - reverses opioid overdose effects.",
+      "category": "Drug - Reversal Agent",
+      "typicalPriceRange": {"low": 20, "high": 75}
+    },
+    "J2405": {
+      "description": "Ondansetron HCl injection, 1mg",
+      "plainLanguage": "Zofran - anti-nausea medication.",
+      "category": "Drug - Anti-nausea",
+      "typicalPriceRange": {"low": 3, "high": 20}
+    },
+    "J2550": {
+      "description": "Promethazine HCl injection, up to 50mg",
+      "plainLanguage": "Phenergan - anti-nausea and sedative medication.",
+      "category": "Drug - Anti-nausea",
+      "typicalPriceRange": {"low": 5, "high": 25}
+    },
+    "J2765": {
+      "description": "Metoclopramide HCl injection, up to 10mg",
+      "plainLanguage": "Reglan - anti-nausea medication that speeds stomach emptying.",
+      "category": "Drug - Anti-nausea",
+      "typicalPriceRange": {"low": 3, "high": 18}
+    },
+    "J2930": {
+      "description": "Methylprednisolone sodium succinate injection, up to 40mg",
+      "plainLanguage": "Solu-Medrol 40mg - IV steroid for severe inflammation/allergies.",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 8, "high": 40}
+    },
+    "J2920": {
+      "description": "Methylprednisolone sodium succinate injection, up to 125mg",
+      "plainLanguage": "Solu-Medrol 125mg - IV steroid.",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 15, "high": 60}
+    },
+    "J3010": {
+      "description": "Fentanyl citrate injection, 0.1mg",
+      "plainLanguage": "Fentanyl - strong narcotic pain medication for severe pain or procedures.",
+      "category": "Drug - Pain (Opioid)",
+      "typicalPriceRange": {"low": 5, "high": 30}
+    },
+    "J3301": {
+      "description": "Triamcinolone acetonide injection, per 10mg",
+      "plainLanguage": "Kenalog - steroid injection often used for joint injections.",
+      "category": "Drug - Steroid",
+      "typicalPriceRange": {"low": 5, "high": 30}
+    },
+    "J3410": {
+      "description": "Hydroxyzine HCl injection, up to 25mg",
+      "plainLanguage": "Vistaril injection - for anxiety/nausea/allergies.",
+      "category": "Drug - Antihistamine/Anxiolytic",
+      "typicalPriceRange": {"low": 5, "high": 25}
+    },
+    "J3420": {
+      "description": "Vitamin B12 injection, up to 1000mcg",
+      "plainLanguage": "B12 shot - for vitamin B12 deficiency.",
+      "category": "Drug - Vitamin",
+      "typicalPriceRange": {"low": 10, "high": 40}
+    },
+    "J3490": {
+      "description": "Unclassified drugs",
+      "plainLanguage": "Drug not otherwise classified - generic code for miscellaneous drugs.",
+      "category": "Drug - Miscellaneous",
+      "typicalPriceRange": {"low": 5, "high": 500},
+      "notes": "Price varies widely - ask for specific drug name"
+    },
+    "J7030": {
+      "description": "Normal saline solution infusion, 1000ml",
+      "plainLanguage": "IV fluids (saline) - hydration therapy.",
+      "category": "Drug - IV Fluids",
+      "typicalPriceRange": {"low": 5, "high": 50}
+    },
+    "J7040": {
+      "description": "Normal saline solution infusion, sterile 500ml",
+      "plainLanguage": "IV fluids (saline) - 500ml.",
+      "category": "Drug - IV Fluids",
+      "typicalPriceRange": {"low": 3, "high": 30}
+    },
+    "J7050": {
+      "description": "Normal saline solution infusion, 250ml",
+      "plainLanguage": "IV fluids (saline) - 250ml.",
+      "category": "Drug - IV Fluids",
+      "typicalPriceRange": {"low": 2, "high": 20}
+    },
+    "J7120": {
+      "description": "Ringers lactate infusion, up to 1000ml",
+      "plainLanguage": "Lactated Ringer's IV fluid - hydration with electrolytes.",
+      "category": "Drug - IV Fluids",
+      "typicalPriceRange": {"low": 5, "high": 50}
+    },
+
+    "_category_vaccines": "VACCINES",
+
+    "90471": {
+      "description": "Immunization administration, first vaccine (CPT code)",
+      "plainLanguage": "Fee for administering the first vaccination.",
+      "category": "Administration",
+      "typicalPriceRange": {"low": 15, "high": 50},
+      "notes": "This is the administration fee - vaccine cost is separate"
+    },
+    "90658": {
+      "description": "Influenza virus vaccine, trivalent, injectable",
+      "plainLanguage": "Flu shot (standard injectable).",
+      "category": "Vaccine",
+      "typicalPriceRange": {"low": 15, "high": 50}
+    },
+    "90686": {
+      "description": "Influenza virus vaccine, quadrivalent, injectable",
+      "plainLanguage": "Flu shot (quadrivalent - covers 4 strains).",
+      "category": "Vaccine",
+      "typicalPriceRange": {"low": 20, "high": 60}
+    },
+    "90732": {
+      "description": "Pneumococcal polysaccharide vaccine, 23-valent",
+      "plainLanguage": "Pneumonia vaccine (PPSV23).",
+      "category": "Vaccine",
+      "typicalPriceRange": {"low": 80, "high": 200}
+    },
+    "90715": {
+      "description": "Tetanus, diphtheria toxoids and acellular pertussis vaccine (Tdap)",
+      "plainLanguage": "Tdap vaccine - tetanus, diphtheria, whooping cough booster.",
+      "category": "Vaccine",
+      "typicalPriceRange": {"low": 40, "high": 100}
+    },
+    "90714": {
+      "description": "Tetanus and diphtheria toxoids (Td)",
+      "plainLanguage": "Td vaccine - tetanus and diphtheria booster.",
+      "category": "Vaccine",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "90750": {
+      "description": "Zoster (shingles) vaccine, recombinant",
+      "plainLanguage": "Shingrix - shingles vaccine (newer, more effective).",
+      "category": "Vaccine",
+      "typicalPriceRange": {"low": 150, "high": 300}
+    },
+    "90460": {
+      "description": "Immunization administration through 18 years of age",
+      "plainLanguage": "Vaccine administration for patients 18 and under.",
+      "category": "Administration",
+      "typicalPriceRange": {"low": 15, "high": 50}
+    },
+
+    "_category_supplies": "MEDICAL SUPPLIES",
+
+    "A4550": {
+      "description": "Surgical trays",
+      "plainLanguage": "Sterile supply tray used for minor procedures.",
+      "category": "Supply",
+      "typicalPriceRange": {"low": 20, "high": 100}
+    },
+    "A4206": {
+      "description": "Syringe with needle, 1cc",
+      "plainLanguage": "Small syringe with needle.",
+      "category": "Supply",
+      "typicalPriceRange": {"low": 1, "high": 10}
+    },
+    "A4217": {
+      "description": "Sterile saline or water, 500ml",
+      "plainLanguage": "Sterile saline for irrigation or wound care.",
+      "category": "Supply",
+      "typicalPriceRange": {"low": 3, "high": 20}
+    },
+    "A6021": {
+      "description": "Collagen wound dressing, sterile",
+      "plainLanguage": "Advanced wound dressing with collagen.",
+      "category": "Supply - Wound Care",
+      "typicalPriceRange": {"low": 25, "high": 150}
+    },
+    "A6402": {
+      "description": "Gauze, non-impregnated, sterile",
+      "plainLanguage": "Sterile gauze for wound care.",
+      "category": "Supply - Wound Care",
+      "typicalPriceRange": {"low": 2, "high": 15}
+    },
+    "A6413": {
+      "description": "Adhesive bandage, first-aid type",
+      "plainLanguage": "Bandages/Band-Aids.",
+      "category": "Supply - Wound Care",
+      "typicalPriceRange": {"low": 1, "high": 10}
+    },
+    "A4649": {
+      "description": "Surgical supply; miscellaneous",
+      "plainLanguage": "Miscellaneous surgical supplies.",
+      "category": "Supply",
+      "typicalPriceRange": {"low": 5, "high": 100}
+    },
+
+    "_category_dme": "DURABLE MEDICAL EQUIPMENT (DME)",
+
+    "A9270": {
+      "description": "Non-covered item or service",
+      "plainLanguage": "Item or service not covered by insurance - patient responsibility.",
+      "category": "Administrative",
+      "typicalPriceRange": {"low": 0, "high": 0},
+      "notes": "Flag - verify what this charge is for"
+    },
+    "E0110": {
+      "description": "Crutches, forearm, each",
+      "plainLanguage": "Forearm crutches (each).",
+      "category": "DME",
+      "typicalPriceRange": {"low": 25, "high": 75}
+    },
+    "E0114": {
+      "description": "Crutches, underarm, pair",
+      "plainLanguage": "Standard crutches (pair).",
+      "category": "DME",
+      "typicalPriceRange": {"low": 30, "high": 100}
+    },
+    "E0143": {
+      "description": "Walker, folding, wheeled",
+      "plainLanguage": "Folding walker with wheels.",
+      "category": "DME",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "L3650": {
+      "description": "Shoulder orthosis",
+      "plainLanguage": "Shoulder brace/sling.",
+      "category": "DME - Orthotic",
+      "typicalPriceRange": {"low": 25, "high": 150}
+    },
+    "L1830": {
+      "description": "Knee orthosis, immobilizer",
+      "plainLanguage": "Knee immobilizer/brace.",
+      "category": "DME - Orthotic",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "L1850": {
+      "description": "Knee orthosis, swedish type",
+      "plainLanguage": "Knee brace (Swedish type).",
+      "category": "DME - Orthotic",
+      "typicalPriceRange": {"low": 75, "high": 250}
+    },
+    "L3908": {
+      "description": "Wrist/hand orthosis",
+      "plainLanguage": "Wrist brace/splint.",
+      "category": "DME - Orthotic",
+      "typicalPriceRange": {"low": 25, "high": 100}
+    },
+    "L4350": {
+      "description": "Ankle-foot orthosis (AFO), molded",
+      "plainLanguage": "Ankle-foot brace.",
+      "category": "DME - Orthotic",
+      "typicalPriceRange": {"low": 100, "high": 500}
+    },
+    "L3984": {
+      "description": "Upper extremity orthosis, shoulder/arm/hand",
+      "plainLanguage": "Arm sling.",
+      "category": "DME - Orthotic",
+      "typicalPriceRange": {"low": 15, "high": 75}
+    },
+    "A4570": {
+      "description": "Splint",
+      "plainLanguage": "Splint for immobilization.",
+      "category": "DME - Orthotic",
+      "typicalPriceRange": {"low": 20, "high": 100}
+    },
+    "A6531": {
+      "description": "Compression stocking, knee-high",
+      "plainLanguage": "Compression stockings (knee-high).",
+      "category": "DME",
+      "typicalPriceRange": {"low": 20, "high": 75}
+    },
+    "E0601": {
+      "description": "Continuous positive airway pressure (CPAP) device",
+      "plainLanguage": "CPAP machine for sleep apnea.",
+      "category": "DME - Respiratory",
+      "typicalPriceRange": {"low": 300, "high": 1500}
+    },
+    "E0570": {
+      "description": "Nebulizer, with compressor",
+      "plainLanguage": "Nebulizer machine for breathing treatments.",
+      "category": "DME - Respiratory",
+      "typicalPriceRange": {"low": 50, "high": 200}
+    },
+    "E0431": {
+      "description": "Portable oxygen concentrator",
+      "plainLanguage": "Portable oxygen machine.",
+      "category": "DME - Respiratory",
+      "typicalPriceRange": {"low": 500, "high": 3000}
+    },
+    "E0260": {
+      "description": "Hospital bed, semi-electric",
+      "plainLanguage": "Hospital bed rental (semi-electric).",
+      "category": "DME",
+      "typicalPriceRange": {"low": 100, "high": 500},
+      "notes": "Usually monthly rental"
+    },
+    "K0001": {
+      "description": "Standard wheelchair",
+      "plainLanguage": "Basic manual wheelchair.",
+      "category": "DME - Mobility",
+      "typicalPriceRange": {"low": 100, "high": 500}
+    },
+    "E1390": {
+      "description": "Oxygen concentrator, single delivery port",
+      "plainLanguage": "Home oxygen concentrator.",
+      "category": "DME - Respiratory",
+      "typicalPriceRange": {"low": 200, "high": 1000},
+      "notes": "Usually monthly rental"
+    },
+
+    "_category_facility": "FACILITY & TECHNICAL FEES",
+
+    "Q3014": {
+      "description": "Telehealth originating site facility fee",
+      "plainLanguage": "Fee for the location where you received telehealth services.",
+      "category": "Facility",
+      "typicalPriceRange": {"low": 15, "high": 50}
+    },
+    "G0463": {
+      "description": "Hospital outpatient clinic visit for assessment and management",
+      "plainLanguage": "Hospital clinic facility fee - separate from the doctor's professional fee.",
+      "category": "Facility",
+      "typicalPriceRange": {"low": 50, "high": 300},
+      "notes": "Common in hospital-owned clinics - you may see both this and an E&M code"
+    },
+    "G0378": {
+      "description": "Hospital observation per hour",
+      "plainLanguage": "Hospital observation - hourly charge for monitoring.",
+      "category": "Facility",
+      "typicalPriceRange": {"low": 100, "high": 400}
+    },
+
+    "_category_lab_misc": "LABORATORY MISCELLANEOUS",
+
+    "G0103": {
+      "description": "Prostate cancer screening; prostate specific antigen test (PSA)",
+      "plainLanguage": "PSA test - prostate cancer screening blood test.",
+      "category": "Laboratory",
+      "typicalPriceRange": {"low": 20, "high": 75}
+    },
+    "G0123": {
+      "description": "Screening cytopathology, cervical or vaginal, automated system",
+      "plainLanguage": "Pap smear screening (automated).",
+      "category": "Laboratory",
+      "typicalPriceRange": {"low": 20, "high": 75}
+    },
+    "G0124": {
+      "description": "Screening cytopathology, cervical or vaginal, physician interpretation",
+      "plainLanguage": "Pap smear reading by pathologist.",
+      "category": "Laboratory",
+      "typicalPriceRange": {"low": 15, "high": 50}
+    }
+  }
+}

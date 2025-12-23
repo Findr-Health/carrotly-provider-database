@@ -1,0 +1,135 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2025-12-22",
+    "service": "Findr Health Clarity Tool"
+  },
+  
+  "presetQuestions": {
+    "what_does_this_mean": {
+      "key": "what_does_this_mean",
+      "label": "What does this document mean?",
+      "icon": "help-circle",
+      "focusAreas": ["document_type", "purpose", "key_information"],
+      "responseStyle": "educational"
+    },
+    "what_do_i_owe": {
+      "key": "what_do_i_owe",
+      "label": "What do I owe?",
+      "icon": "dollar-sign",
+      "focusAreas": ["amount_due", "payment_options", "deadlines"],
+      "responseStyle": "direct"
+    },
+    "is_price_correct": {
+      "key": "is_price_correct",
+      "label": "Does this price look correct?",
+      "icon": "check-circle",
+      "focusAreas": ["price_comparison", "questions_to_ask", "verification_steps"],
+      "responseStyle": "investigative"
+    },
+    "explain_this": {
+      "key": "explain_this",
+      "label": "Explain this to me",
+      "icon": "book-open",
+      "focusAreas": ["full_explanation", "line_by_line", "glossary"],
+      "responseStyle": "comprehensive"
+    }
+  },
+
+  "documentTypes": {
+    "BILL": {
+      "name": "Medical Bill / Statement",
+      "description": "A request for payment from a healthcare provider",
+      "keyIndicators": ["amount due", "statement date", "account number", "charges"],
+      "typicalSenders": ["hospitals", "clinics", "laboratories", "imaging centers"]
+    },
+    "EOB": {
+      "name": "Explanation of Benefits",
+      "description": "A statement from your insurance explaining how a claim was processed - NOT a bill",
+      "keyIndicators": ["this is not a bill", "claim number", "allowed amount", "member ID"],
+      "typicalSenders": ["health insurance companies"]
+    },
+    "CLINICAL": {
+      "name": "Clinical Document",
+      "description": "Medical records, visit summaries, or lab results",
+      "keyIndicators": ["diagnosis", "assessment", "plan", "results"],
+      "typicalSenders": ["doctors", "hospitals", "labs"]
+    },
+    "INSURANCE_CARD": {
+      "name": "Insurance Card",
+      "description": "Your health insurance identification card",
+      "keyIndicators": ["member ID", "group number", "plan name"],
+      "typicalSenders": ["health insurance companies"]
+    }
+  },
+
+  "actionScripts": {
+    "verifyInsuranceSubmission": {
+      "title": "Verify Bill Was Sent to Insurance",
+      "phone": "{provider_billing_phone}",
+      "script": "Hi, I'm calling about account number {account_number}. I received a bill for ${amount} but I have insurance with {insurer_name}. Can you confirm this was submitted to my insurance? If not, can you submit it before I pay anything?",
+      "followUp": "If they say it was submitted, ask for the claim number and date submitted."
+    },
+    "requestItemizedBill": {
+      "title": "Request Itemized Bill",
+      "phone": "{provider_billing_phone}",
+      "script": "Hi, I'm calling about account number {account_number}. I'd like to request a fully itemized bill showing each individual charge with the billing codes. I understand I have a right to this under healthcare pricing transparency rules.",
+      "followUp": "They may mail or email it. Ask for a timeline."
+    },
+    "askAboutPaymentPlan": {
+      "title": "Ask About Payment Plan",
+      "phone": "{provider_billing_phone}",
+      "script": "Hi, I'm calling about account number {account_number}. I received a bill for ${amount} and I'd like to set up a payment plan. What options do you have available? Is there an interest-free option?",
+      "followUp": "Get the terms in writing before agreeing."
+    },
+    "verifyEOBMatchesBill": {
+      "title": "Verify Bill Matches EOB",
+      "phone": "{provider_billing_phone}",
+      "script": "Hi, I'm calling about account number {account_number}. I received my EOB from insurance showing I owe ${eob_patient_responsibility}, but my bill from you shows ${bill_amount}. Can you help me understand why these are different?",
+      "followUp": "The bill should match the EOB patient responsibility amount."
+    },
+    "askAboutFinancialAssistance": {
+      "title": "Ask About Financial Assistance",
+      "phone": "{provider_billing_phone}",
+      "script": "Hi, I'm calling about account number {account_number}. I'm having difficulty paying this bill. Do you have a financial assistance program or charity care I might qualify for? Can you send me an application?",
+      "followUp": "Non-profit hospitals are required to have financial assistance programs."
+    },
+    "questionDenial": {
+      "title": "Question Claim Denial",
+      "phone": "{insurer_phone}",
+      "script": "Hi, I'm calling about claim number {claim_number} which was denied. The denial reason states {denial_reason}. Can you explain why this was denied and what I need to do to appeal? What documentation do you need?",
+      "followUp": "Get the appeal deadline and process in writing."
+    }
+  },
+
+  "reassuranceMessages": {
+    "highBill": "I know this bill might feel overwhelming, but you have options. Many people successfully negotiate medical bills or set up manageable payment plans. Let's look at what you can do.",
+    "confusingDocument": "Healthcare paperwork can be really confusing - you're not alone in feeling that way. Let me break this down into plain English for you.",
+    "insuranceIssue": "Insurance can be complicated, but understanding your EOB is the first step to making sure you're not paying more than you should. Let's figure this out together.",
+    "default": "Understanding your healthcare documents is an important step in taking control of your health and finances. I'm here to help make sense of it all."
+  },
+
+  "commonCodes": {
+    "99213": "Office visit (established patient, low complexity) - A typical doctor's appointment",
+    "99214": "Office visit (established patient, moderate complexity) - A more involved appointment",
+    "99284": "Emergency room visit (Level 4) - A higher-complexity ER evaluation",
+    "85025": "Complete blood count - A common blood test checking your blood cells",
+    "80053": "Comprehensive metabolic panel - Blood tests checking kidney/liver function and more",
+    "71046": "Chest X-ray (2 views) - Standard chest imaging"
+  },
+
+  "warningPatterns": {
+    "insuranceNotSubmitted": {
+      "indicators": ["$0 insurance payment on bill", "no EOB received", "full charge as amount due"],
+      "message": "This bill may not have been submitted to your insurance yet. Before paying, call to verify."
+    },
+    "billEOBMismatch": {
+      "indicators": ["bill amount differs from EOB patient responsibility"],
+      "message": "Your bill doesn't match what your EOB says you owe. This is worth clarifying before paying."
+    },
+    "duplicate": {
+      "indicators": ["same service code multiple times", "same date"],
+      "message": "This code appears more than once. This might be intentional, but it's worth verifying."
+    }
+  }
+}
