@@ -16,15 +16,32 @@
 }
 
 .findr-logo {
-  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
 }
 
-.home-header h1 {
+.findr-text {
   font-family: 'Urbanist', sans-serif;
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.findr-icon {
+  margin-top: -4px;
+}
+
+.findr-tm {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #9CA3AF;
+  vertical-align: super;
+  margin-left: 2px;
 }
 
 .tagline {
@@ -141,7 +158,6 @@
 .feature-pill:hover {
   background: #E5FBF8;
   color: #0D9488;
-  border-color: #17DDC0;
 }
 
 /* Consult Section */
@@ -167,7 +183,7 @@
 .consult-icon {
   width: 48px;
   height: 48px;
-  background: #FFF7ED;
+  background: #E5FBF8;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -179,8 +195,8 @@
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.25rem 0.75rem;
-  background: #FEF3C7;
-  color: #D97706;
+  background: #E5FBF8;
+  color: #0D9488;
   border-radius: 100px;
 }
 
@@ -203,7 +219,7 @@
 .consult-btn {
   width: 100%;
   padding: 0.875rem 1.5rem;
-  background: #F97316;
+  background: #17DDC0;
   color: white;
   font-family: 'Urbanist', sans-serif;
   font-size: 1rem;
@@ -215,7 +231,7 @@
 }
 
 .consult-btn:hover {
-  background: #EA580C;
+  background: #14C5AB;
   transform: translateY(-1px);
 }
 
@@ -253,6 +269,10 @@
 @media (max-width: 380px) {
   .home-page {
     padding: 1rem;
+  }
+  
+  .findr-text {
+    font-size: 2rem;
   }
   
   .clarity-card {

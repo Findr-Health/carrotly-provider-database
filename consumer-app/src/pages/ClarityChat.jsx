@@ -1,242 +1,211 @@
 /**
- * ClarityChat - Healthcare Document Analysis Chat Interface
- * Findr Health Consumer App
+ * ClarityChat - Main Clarity interface
+ * Chat-based UI for healthcare document analysis
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import ChatWelcome from '../components/clarity/ChatWelcome';
-import ChatMessage from '../components/clarity/ChatMessage';
+import { useNavigate } from 'react-router-dom';
 import DocumentUpload from '../components/clarity/DocumentUpload';
-import QuickActions from '../components/clarity/QuickActions';
+import ChatMessage from '../components/clarity/ChatMessage';
 import AnalysisResult from '../components/clarity/AnalysisResult';
 import LoadingIndicator from '../components/clarity/LoadingIndicator';
-import NonHealthcareResult from '../components/clarity/NonHealthcareResult';
-import { analyzeDocument, getPresets } from '../services/clarityApi';
+import { analyzeDocument, analyzeQuestion } from '../services/clarityApi';
 import '../styles/ClarityChat.css';
 
 function ClarityChat() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [presets, setPresets] = useState([]);
-  const [awaitingQuestion, setAwaitingQuestion] = useState(false);
-  const [currentAnalysis, setCurrentAnalysis] = useState(null);
+  const [inputText, setInputText] = useState('');
+  const [showUpload, setShowUpload] = useState(false);
   const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
-
-  // Load preset questions on mount
-  useEffect(() => {
-    loadPresets();
-  }, []);
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const loadPresets = async () => {
-    try {
-      const data = await getPresets();
-      setPresets(data.presets || []);
-    } catch (error) {
-      console.error('Error loading presets:', error);
-      // Default presets if API fails
-      setPresets([
-        { key: 'what_does_this_mean', label: 'What does this document mean?' },
-        { key: 'what_do_i_owe', label: 'What do I owe?' },
-        { key: 'is_price_correct', label: 'Does this price look correct?' },
-        { key: 'explain_this', label: 'Explain this to me' }
-      ]);
-    }
-  };
+  const inputRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleFileSelect = (file) => {
-    if (file) {
-      setSelectedFile(file);
-      
-      // Create preview URL for images
-      if (file.type.startsWith('image/')) {
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
-      } else {
-        setPreviewUrl(null);
-      }
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-      // Add user message showing upload
-      addMessage('user', {
-        type: 'document_upload',
-        fileName: file.name,
-        fileType: file.type,
-        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-      });
+  const handleSendMessage = async () => {
+    if (!inputText.trim()) return;
 
-      // Show preset questions
-      setAwaitingQuestion(true);
-      addMessage('assistant', {
-        type: 'question_prompt',
-        text: "I've received your document. What would you like to know about it?",
-        showPresets: true
-      });
-    }
-  };
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: inputText,
+    };
 
-  const handleQuestionSelect = async (questionKey) => {
-    if (!selectedFile) return;
-
-    setAwaitingQuestion(false);
-    
-    // Show selected question as user message
-    const questionLabel = presets.find(p => p.key === questionKey)?.label || questionKey;
-    addMessage('user', { type: 'text', text: questionLabel });
-
-    // Start analysis
-    await runAnalysis(questionKey);
-  };
-
-  const handleCustomQuestion = async (question) => {
-    if (!selectedFile || !question.trim()) return;
-
-    setAwaitingQuestion(false);
-    addMessage('user', { type: 'text', text: question });
-    await runAnalysis(question);
-  };
-
-  const runAnalysis = async (question) => {
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
     setIsLoading(true);
-    
-    // Add loading message
-    const loadingId = addMessage('assistant', { type: 'loading' });
 
     try {
-      const result = await analyzeDocument(selectedFile, question);
+      const response = await analyzeQuestion(inputText);
       
-      // Remove loading message
-      removeMessage(loadingId);
-
-      if (result.success) {
-        if (result.isHealthcare === false) {
-          // Non-healthcare document
-          addMessage('assistant', {
-            type: 'non_healthcare',
-            data: result
-          });
-        } else {
-          // Healthcare document - show analysis
-          setCurrentAnalysis(result);
-          addMessage('assistant', {
-            type: 'analysis_result',
-            data: result
-          });
-        }
-      } else {
-        // Error
-        addMessage('assistant', {
-          type: 'error',
-          text: result.message || 'I had trouble analyzing your document. Please try again or upload a clearer image.'
-        });
-      }
+      const aiMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: response.data?.summary?.plainLanguageSummary || response.message || "I can help you understand healthcare billing and documents. Try uploading a bill or asking a specific question about medical costs.",
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
-      console.error('Analysis error:', error);
-      removeMessage(loadingId);
-      addMessage('assistant', {
-        type: 'error',
-        text: 'Something went wrong. Please try again.'
-      });
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: "I'm sorry, I couldn't process that. Please try again or upload a document for me to analyze.",
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const addMessage = (role, content) => {
-    const id = Date.now() + Math.random();
-    const message = {
-      id,
-      role,
-      content,
-      timestamp: new Date()
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleDocumentUpload = async (file, question) => {
+    setShowUpload(false);
+    
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: `Uploaded: ${file.name}`,
+      hasDocument: true,
     };
-    setMessages(prev => [...prev, message]);
-    return id;
-  };
 
-  const removeMessage = (id) => {
-    setMessages(prev => prev.filter(m => m.id !== id));
-  };
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
 
-  const handleNewAnalysis = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    setCurrentAnalysis(null);
-    setAwaitingQuestion(false);
-    // Keep the welcome message, clear the rest
-    setMessages([]);
-  };
-
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
+    try {
+      const response = await analyzeDocument(file, question);
+      
+      const aiMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: response.data?.summary?.plainLanguageSummary || "I've analyzed your document.",
+        analysisResult: response.data,
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: "I had trouble analyzing that document. Please make sure it's a clear image of a medical bill or EOB and try again.",
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="clarity-chat">
+    <div className="clarity-chat-page">
       {/* Header */}
       <header className="clarity-header">
-        <h1>Document Helper</h1>
+        <button className="back-btn" onClick={() => navigate('/')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <div className="clarity-title">
+          <h1>Clarity</h1>
+          <span className="clarity-subtitle">by findr</span>
+        </div>
+        <div style={{ width: 40 }}></div>
       </header>
 
       {/* Messages Area */}
       <div className="clarity-messages">
         {messages.length === 0 ? (
-          <ChatWelcome onUploadClick={triggerFileInput} />
+          <div className="clarity-welcome">
+            <div className="welcome-icon">
+              <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
+                <path d="M16 0L20 8L28 8L22 14L24 22L16 18L8 22L10 14L4 8L12 8L16 0Z" fill="#17DDC0"/>
+              </svg>
+            </div>
+            <h2>Welcome to Clarity</h2>
+            <p>Ask me anything about healthcare billing, or upload a document to get started.</p>
+            
+            <div className="quick-prompts">
+              <button onClick={() => setInputText("What's a deductible and how does it work?")}>
+                What's a deductible?
+              </button>
+              <button onClick={() => setInputText("How do I read an Explanation of Benefits?")}>
+                How to read an EOB?
+              </button>
+              <button onClick={() => setInputText("What questions should I ask about my medical bill?")}>
+                Questions to ask about my bill
+              </button>
+            </div>
+          </div>
         ) : (
-          messages.map(message => (
-            <ChatMessage 
-              key={message.id} 
-              message={message}
-              presets={presets}
-              onPresetSelect={handleQuestionSelect}
-              onCustomSubmit={handleCustomQuestion}
-              onNewAnalysis={handleNewAnalysis}
-            />
+          messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
           ))
         )}
         
-        {/* Preset questions shown after document upload */}
-        {awaitingQuestion && !isLoading && (
-          <QuickActions 
-            presets={presets}
-            onSelect={handleQuestionSelect}
-            onCustomSubmit={handleCustomQuestion}
-          />
-        )}
-        
+        {isLoading && <LoadingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Bottom Input Area */}
+      {/* Input Area */}
       <div className="clarity-input-area">
-        {!selectedFile ? (
-          <DocumentUpload 
-            onFileSelect={handleFileSelect}
-            fileInputRef={fileInputRef}
-          />
-        ) : awaitingQuestion ? (
-          <div className="input-hint">
-            Select a question above or type your own
-          </div>
-        ) : (
-          <button 
-            className="new-analysis-btn"
-            onClick={handleNewAnalysis}
-          >
-            Analyze Another Document
-          </button>
-        )}
+        <button 
+          className="upload-btn"
+          onClick={() => setShowUpload(true)}
+          aria-label="Upload document"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
+        
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Ask a question..."
+          className="clarity-input"
+        />
+        
+        <button 
+          className="send-btn"
+          onClick={handleSendMessage}
+          disabled={!inputText.trim() || isLoading}
+          aria-label="Send message"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
       </div>
+
+      {/* Upload Modal */}
+      {showUpload && (
+        <div className="upload-modal-overlay" onClick={() => setShowUpload(false)}>
+          <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="close-modal" onClick={() => setShowUpload(false)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+            <DocumentUpload onUpload={handleDocumentUpload} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

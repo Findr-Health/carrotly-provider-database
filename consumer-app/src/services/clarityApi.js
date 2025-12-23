@@ -309,4 +309,35 @@ export default {
   correlateDocuments,
   requestExpertConsult,
   getExpertInfo
+
+  /**
+ * Analyze a text-only question (no document)
+ * @param {string} question - User's question
+ * @returns {Promise<Object>} Analysis result
+ */
+export async function analyzeQuestion(question) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/clarity/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ question, textOnly: true }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Question API error:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: 'Unable to process question. Please try again.'
+    };
+  }
+}
 };

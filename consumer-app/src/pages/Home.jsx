@@ -16,17 +16,15 @@ function Home() {
 
   return (
     <div className="home-page">
-      {/* Header */}
+      {/* Header with Findr Logo */}
       <header className="home-header">
         <div className="findr-logo">
-          <svg width="56" height="56" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M24 8L32 16L24 24L16 16L24 8Z" fill="#17DDC0"/>
-            <path d="M24 24L32 32L24 40L16 32L24 24Z" fill="#17DDC0"/>
-            <path d="M12 16L20 24L12 32L4 24L12 16Z" fill="#17DDC0" fillOpacity="0.6"/>
-            <path d="M36 16L44 24L36 32L28 24L36 16Z" fill="#17DDC0" fillOpacity="0.6"/>
+          <span className="findr-text">findr</span>
+          <svg className="findr-icon" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 0L20 8L28 8L22 14L24 22L16 18L8 22L10 14L4 8L12 8L16 0Z" fill="#17DDC0"/>
           </svg>
+          <span className="findr-tm">™</span>
         </div>
-        <h1>Findr Health</h1>
         <p className="tagline">Healthcare, demystified</p>
       </header>
 
@@ -39,7 +37,6 @@ function Home() {
           <div className="clarity-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#17DDC0" strokeWidth="1.5">
               <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 11a2 2 0 100-4 2 2 0 000 4z" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
           <div className="clarity-content">
@@ -69,7 +66,7 @@ function Home() {
         <div className="consult-card">
           <div className="consult-header">
             <div className="consult-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.5">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#17DDC0" strokeWidth="1.5">
                 <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round"/>
                 <circle cx="9" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round"/>
