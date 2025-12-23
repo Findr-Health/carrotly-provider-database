@@ -21,32 +21,24 @@ function Home() {
         <div className="findr-logo">
           <img src="/findr-logo.svg" alt="Findr Health" className="findr-logo-img" />
         </div>
-        <p className="tagline">Healthcare, demystified</p>
       </header>
 
-      {/* Main Feature - Clarity */}
-      <section className="main-feature">
+      {/* Clarity Section */}
+      <section className="clarity-section">
+        <h2 className="clarity-headline">Clarity</h2>
+        <p className="clarity-subhead">Simple, fast, built just for you</p>
+        <p className="clarity-tagline">Take back control of your healthcare!</p>
+        
         <button
-          className="clarity-card"
+          className="clarity-btn"
           onClick={() => navigate('/clarity')}
         >
-          <div className="clarity-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#17DDC0" strokeWidth="1.5">
-              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <div className="clarity-content">
-            <h2>Clarity</h2>
-            <p>Understand your medical bills, EOBs, and healthcare documents in seconds</p>
-          </div>
-          <div className="clarity-action">
-            <span className="action-text">Upload or ask a question</span>
-            <span className="action-arrow">→</span>
-          </div>
+          Ask a question or upload a document
+          <span className="btn-arrow">→</span>
         </button>
       </section>
 
-      {/* What Clarity Can Do */}
+      {/* What You Can Do */}
       <section className="clarity-features">
         <h3>What you can do</h3>
         <div className="feature-pills">

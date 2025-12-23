@@ -12,97 +12,74 @@
 /* Header */
 .home-header {
   text-align: center;
-  padding: 2rem 0;
+  padding: 1.5rem 0 1rem;
 }
 
 .findr-logo {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.5rem;
 }
 
 .findr-logo-img {
-  height: 40px;
+  height: 100px;
   width: auto;
 }
 
-.tagline {
+/* Clarity Section */
+.clarity-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.clarity-headline {
   font-family: 'Urbanist', sans-serif;
-  font-size: 1.125rem;
-  color: #6B7280;
-  font-weight: 400;
-}
-
-/* Main Feature - Clarity Card */
-.main-feature {
-  margin-bottom: 1.5rem;
-}
-
-.clarity-card {
-  width: 100%;
-  background: linear-gradient(135deg, #E5FBF8 0%, #D0F7F0 100%);
-  border: 2px solid #17DDC0;
-  border-radius: 16px;
-  padding: 1.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.clarity-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(23, 221, 192, 0.25);
-}
-
-.clarity-icon {
-  width: 64px;
-  height: 64px;
-  background: white;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.clarity-content h2 {
-  font-family: 'Urbanist', sans-serif;
-  font-size: 1.5rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: #0D9488;
   margin-bottom: 0.5rem;
 }
 
-.clarity-content p {
+.clarity-subhead {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.clarity-tagline {
   font-family: 'Urbanist', sans-serif;
   font-size: 1rem;
-  color: #14B8A6;
-  margin: 0;
-  line-height: 1.5;
+  color: #6B7280;
+  margin-bottom: 1.5rem;
 }
 
-.clarity-action {
-  display: flex;
+.clarity-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(23, 221, 192, 0.3);
-}
-
-.action-text {
+  justify-content: center;
+  gap: 0.5rem;
   font-family: 'Urbanist', sans-serif;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #0D9488;
+  padding: 1rem 1.5rem;
+  background: #17DDC0;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.action-arrow {
+.clarity-btn:hover {
+  background: #14C5AB;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(23, 221, 192, 0.3);
+}
+
+.btn-arrow {
   font-size: 1.25rem;
-  color: #0D9488;
 }
 
 /* Feature Pills */
@@ -254,16 +231,12 @@
     padding: 1rem;
   }
   
-  .findr-text {
+  .findr-logo-img {
+    height: 80px;
+  }
+  
+  .clarity-headline {
     font-size: 2rem;
-  }
-  
-  .clarity-card {
-    padding: 1.25rem;
-  }
-  
-  .clarity-content h2 {
-    font-size: 1.25rem;
   }
   
   .feature-pill {

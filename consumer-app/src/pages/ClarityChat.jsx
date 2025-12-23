@@ -7,7 +7,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DocumentUpload from '../components/clarity/DocumentUpload';
 import ChatMessage from '../components/clarity/ChatMessage';
-import AnalysisResult from '../components/clarity/AnalysisResult';
 import LoadingIndicator from '../components/clarity/LoadingIndicator';
 import { analyzeDocument, analyzeQuestion } from '../services/clarityApi';
 import '../styles/ClarityChat.css';
@@ -116,9 +115,8 @@ function ClarityChat() {
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <div className="clarity-title">
-          <h1>Clarity</h1>
-          <span className="clarity-subtitle">by findr</span>
+        <div className="clarity-logo">
+          <img src="/findr-logo.svg" alt="Findr Health" className="clarity-logo-img" />
         </div>
         <div style={{ width: 40 }}></div>
       </header>
@@ -127,13 +125,19 @@ function ClarityChat() {
       <div className="clarity-messages">
         {messages.length === 0 ? (
           <div className="clarity-welcome">
-            <div className="welcome-icon">
-              <img src="/findr-logo.svg" alt="Findr" style={{ height: '48px', width: 'auto' }} />
-            </div>
             <h2>Welcome to Clarity</h2>
             <p>Ask me anything about healthcare billing, or upload a document to get started.</p>
             
+            {/* Upload Document Button */}
+            <button className="upload-document-btn" onClick={() => setShowUpload(true)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+              Upload a Document
+            </button>
+            
             <div className="quick-prompts">
+              <p className="prompts-label">Or ask a question:</p>
               <button onClick={() => setInputText("What's a deductible and how does it work?")}>
                 What's a deductible?
               </button>
