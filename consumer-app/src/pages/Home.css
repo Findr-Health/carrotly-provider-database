@@ -41,8 +41,8 @@
 
 .clarity-card {
   width: 100%;
-  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-  border: 2px solid #3B82F6;
+  background: linear-gradient(135deg, #E5FBF8 0%, #D0F7F0 100%);
+  border: 2px solid #17DDC0;
   border-radius: 16px;
   padding: 1.5rem;
   cursor: pointer;
@@ -55,7 +55,7 @@
 
 .clarity-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 8px 25px rgba(23, 221, 192, 0.25);
 }
 
 .clarity-icon {
@@ -73,14 +73,14 @@
   font-family: 'Urbanist', sans-serif;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1E40AF;
+  color: #0D9488;
   margin-bottom: 0.5rem;
 }
 
 .clarity-content p {
   font-family: 'Urbanist', sans-serif;
   font-size: 1rem;
-  color: #3B82F6;
+  color: #14B8A6;
   margin: 0;
   line-height: 1.5;
 }
@@ -90,19 +90,19 @@
   align-items: center;
   justify-content: space-between;
   padding-top: 0.5rem;
-  border-top: 1px solid rgba(59, 130, 246, 0.2);
+  border-top: 1px solid rgba(23, 221, 192, 0.3);
 }
 
 .action-text {
   font-family: 'Urbanist', sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #2563EB;
+  color: #0D9488;
 }
 
 .action-arrow {
   font-size: 1.25rem;
-  color: #2563EB;
+  color: #0D9488;
 }
 
 /* Feature Pills */
@@ -139,8 +139,9 @@
 }
 
 .feature-pill:hover {
-  background: #E5E7EB;
-  color: #111827;
+  background: #E5FBF8;
+  color: #0D9488;
+  border-color: #17DDC0;
 }
 
 /* Consult Section */

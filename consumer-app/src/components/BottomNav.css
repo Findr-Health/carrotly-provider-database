@@ -42,6 +42,7 @@
 }
 
 .nav-btn span {
+  font-family: 'Urbanist', sans-serif;
   font-size: var(--font-size-xs);
   font-weight: 500;
 }
@@ -59,24 +60,24 @@
 .center-icon {
   width: 56px;
   height: 56px;
-  background-color: var(--findr-primary);
+  background-color: #17DDC0;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  box-shadow: 0 4px 12px rgba(0, 180, 166, 0.4);
+  box-shadow: 0 4px 12px rgba(23, 221, 192, 0.4);
   transition: all 0.2s ease;
   margin-top: -20px;
 }
 
 .center-btn:hover .center-icon {
   transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 180, 166, 0.5);
+  box-shadow: 0 6px 16px rgba(23, 221, 192, 0.5);
 }
 
 .center-btn.active .center-icon {
-  background-color: var(--findr-primary-dark);
+  background-color: #14C5AB;
 }
 
 /* Desktop Optimization */

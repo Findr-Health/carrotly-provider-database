@@ -11,8 +11,6 @@ function Home() {
   const navigate = useNavigate();
 
   const handleScheduleConsult = () => {
-    // For now, show coming soon alert
-    // This will be expanded when scheduling functionality is built
     alert('Scheduling feature coming soon! For now, use Clarity to analyze your documents.');
   };
 
@@ -22,10 +20,10 @@ function Home() {
       <header className="home-header">
         <div className="findr-logo">
           <svg width="56" height="56" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M24 8L32 16L24 24L16 16L24 8Z" fill="#3B82F6"/>
-            <path d="M24 24L32 32L24 40L16 32L24 24Z" fill="#3B82F6"/>
-            <path d="M12 16L20 24L12 32L4 24L12 16Z" fill="#3B82F6" fillOpacity="0.6"/>
-            <path d="M36 16L44 24L36 32L28 24L36 16Z" fill="#3B82F6" fillOpacity="0.6"/>
+            <path d="M24 8L32 16L24 24L16 16L24 8Z" fill="#17DDC0"/>
+            <path d="M24 24L32 32L24 40L16 32L24 24Z" fill="#17DDC0"/>
+            <path d="M12 16L20 24L12 32L4 24L12 16Z" fill="#17DDC0" fillOpacity="0.6"/>
+            <path d="M36 16L44 24L36 32L28 24L36 16Z" fill="#17DDC0" fillOpacity="0.6"/>
           </svg>
         </div>
         <h1>Findr Health</h1>
@@ -39,7 +37,7 @@ function Home() {
           onClick={() => navigate('/clarity')}
         >
           <div className="clarity-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#17DDC0" strokeWidth="1.5">
               <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M12 11a2 2 0 100-4 2 2 0 000 4z" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -97,7 +95,7 @@ function Home() {
             <span>Private & Secure</span>
           </div>
           <div className="trust-badge">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#3B82F6" stroke="none">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#17DDC0" stroke="none">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
             <span>AI-Powered</span>
