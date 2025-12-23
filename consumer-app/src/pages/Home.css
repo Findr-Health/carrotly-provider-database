@@ -12,7 +12,7 @@
 /* Header */
 .home-header {
   text-align: center;
-  padding: 1.5rem 0 1rem;
+  padding: 1.5rem 0 0.5rem;
 }
 
 .findr-logo {
@@ -30,6 +30,14 @@
 .clarity-section {
   text-align: center;
   margin-bottom: 2rem;
+}
+
+.brings-you {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #9CA3AF;
+  margin-bottom: 0.25rem;
 }
 
 .clarity-headline {
@@ -73,44 +81,6 @@
 
 .btn-arrow {
   font-size: 1.25rem;
-}
-
-/* Feature Pills */
-.clarity-features {
-  margin-bottom: 1.5rem;
-}
-
-.clarity-features h3 {
-  font-family: 'Urbanist', sans-serif;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
-}
-
-.feature-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.feature-pill {
-  font-family: 'Urbanist', sans-serif;
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  background: #F3F4F6;
-  border-radius: 100px;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.feature-pill:hover {
-  background: #E5FBF8;
-  color: #0D9488;
 }
 
 /* Consult Section */
@@ -230,10 +200,5 @@
   
   .clarity-headline {
     font-size: 2rem;
-  }
-  
-  .feature-pill {
-    font-size: 0.8125rem;
-    padding: 0.375rem 0.75rem;
   }
 }

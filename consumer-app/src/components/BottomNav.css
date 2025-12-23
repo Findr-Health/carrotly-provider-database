@@ -60,12 +60,9 @@
 .center-icon {
   width: 56px;
   height: 56px;
-  background-color: #17DDC0;
-  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
   box-shadow: 0 4px 12px rgba(23, 221, 192, 0.4);
   transition: all 0.2s ease;
   margin-top: -20px;

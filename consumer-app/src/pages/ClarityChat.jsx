@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import DocumentUpload from '../components/clarity/DocumentUpload';
 import ChatMessage from '../components/clarity/ChatMessage';
 import LoadingIndicator from '../components/clarity/LoadingIndicator';
-import { analyzeDocument, analyzeQuestion } from '../services/clarityApi';
+import { analyzeDocument } from '../services/clarityApi';
 import '../styles/ClarityChat.css';
 
 function ClarityChat() {
@@ -38,29 +38,43 @@ function ClarityChat() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const question = inputText;
     setInputText('');
     setIsLoading(true);
 
-    try {
-      const response = await analyzeQuestion(inputText);
+    // Simulate AI response for text questions (document upload uses real API)
+    setTimeout(() => {
+      let response = "";
+      
+      // Simple keyword matching for common questions
+      const q = question.toLowerCase();
+      if (q.includes('deductible')) {
+        response = "A deductible is the amount you pay for healthcare services before your insurance starts to pay. For example, if your deductible is $1,000, you pay the first $1,000 of covered services yourself. After that, your insurance kicks in and you typically pay a smaller portion (like a copay or coinsurance) while insurance covers the rest.";
+      } else if (q.includes('eob') || q.includes('explanation of benefits')) {
+        response = "An Explanation of Benefits (EOB) is a statement from your insurance company that shows what they paid for a medical service. It's NOT a bill! It shows: the service provided, what the provider charged, what your insurance paid, and what you may owe. Always compare your EOB to any bill you receive.";
+      } else if (q.includes('copay') || q.includes('co-pay')) {
+        response = "A copay is a fixed amount you pay for a covered healthcare service. For example, you might pay $25 for a doctor visit or $10 for a prescription. Copays don't usually count toward your deductible.";
+      } else if (q.includes('coinsurance')) {
+        response = "Coinsurance is your share of costs after you've met your deductible. It's usually a percentage. For example, with 20% coinsurance, you pay 20% of the cost and your insurance pays 80%.";
+      } else if (q.includes('out of pocket') || q.includes('out-of-pocket')) {
+        response = "Your out-of-pocket maximum is the most you'll pay for covered services in a year. Once you reach this limit, your insurance pays 100% of covered services. This includes deductibles, copays, and coinsurance, but not your premium.";
+      } else if (q.includes('premium')) {
+        response = "A premium is the amount you pay for your health insurance every month. You pay this whether or not you use medical services. It's separate from deductibles, copays, and coinsurance.";
+      } else if (q.includes('bill') && q.includes('question')) {
+        response = "Great questions to ask about your medical bill:\n\n1. Can I get an itemized bill?\n2. Are all these charges correct?\n3. Is this covered by my insurance?\n4. Do you offer a payment plan?\n5. Do you offer a discount for paying in full?\n6. Is there financial assistance available?";
+      } else {
+        response = "That's a great question! For the most accurate answer, I recommend uploading your specific document (bill, EOB, or statement) and I can analyze it in detail. Or, feel free to ask about specific terms like deductibles, copays, coinsurance, or EOBs.";
+      }
       
       const aiMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: response.data?.summary?.plainLanguageSummary || response.message || "I can help you understand healthcare billing and documents. Try uploading a bill or asking a specific question about medical costs.",
+        content: response,
       };
       
       setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      const errorMessage = {
-        id: Date.now() + 1,
-        type: 'ai',
-        content: "I'm sorry, I couldn't process that. Please try again or upload a document for me to analyze.",
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
       setIsLoading(false);
-    }
+    }, 1000);
   };
 
   const handleKeyPress = (e) => {

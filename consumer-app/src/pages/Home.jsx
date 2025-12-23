@@ -25,6 +25,7 @@ function Home() {
 
       {/* Clarity Section */}
       <section className="clarity-section">
+        <p className="brings-you">brings you</p>
         <h2 className="clarity-headline">Clarity</h2>
         <p className="clarity-subhead">Take back control of your healthcare!</p>
         
@@ -35,17 +36,6 @@ function Home() {
           Ask a question or upload a document
           <span className="btn-arrow">→</span>
         </button>
-      </section>
-
-      {/* What You Can Do */}
-      <section className="clarity-features">
-        <h3>What you can do</h3>
-        <div className="feature-pills">
-          <span className="feature-pill" onClick={() => navigate('/clarity')}>📄 Upload a bill</span>
-          <span className="feature-pill" onClick={() => navigate('/clarity')}>❓ Ask a question</span>
-          <span className="feature-pill" onClick={() => navigate('/clarity')}>💰 Check pricing</span>
-          <span className="feature-pill" onClick={() => navigate('/clarity')}>📋 Compare EOB vs Bill</span>
-        </div>
       </section>
 
       {/* Schedule a Consult CTA */}
