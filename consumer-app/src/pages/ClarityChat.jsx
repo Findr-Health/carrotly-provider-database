@@ -139,7 +139,7 @@ function ClarityChat() {
       <div className="clarity-messages">
         {messages.length === 0 ? (
           <div className="clarity-welcome">
-            <h2>Welcome to Clarity</h2>
+            <h2>more Clarity</h2>
             <p>Ask me anything about your healthcare journey or upload a document and I'll explain it.</p>
             
             {/* Upload Document Button */}
