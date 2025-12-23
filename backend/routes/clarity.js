@@ -703,5 +703,44 @@ router.use((error, req, res, next) => {
     message: error.message
   });
 });
+// Chat endpoint for text questions
+router.post('/chat', async (req, res) => {
+  try {
+    const { question } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ success: false, message: 'Question is required' });
+    }
 
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic();
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: `You are Clarity, a friendly healthcare billing assistant created by Findr Health. Your job is to help people understand their medical bills, insurance terms, and healthcare costs in plain, simple language.
+
+Be conversational, warm, and helpful. Use bullet points and formatting when it helps clarity. If someone asks about specific prices, give general ranges and suggest ways to find exact prices in their area.
+
+Always encourage users to upload their actual documents for more specific help. Keep responses concise but thorough.`,
+      messages: [
+        { role: 'user', content: question }
+      ]
+    });
+
+    const aiResponse = response.content[0].text;
+    
+    res.json({ 
+      success: true, 
+      response: aiResponse 
+    });
+
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Unable to process question. Please try again.' 
+    });
+  }
+});
 module.exports = router;

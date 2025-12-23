@@ -385,4 +385,31 @@
   margin-bottom: 0.5rem;
   text-align: center;
 }
+
+/* Follow-up suggestions */
+.follow-up-suggestions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.follow-up-suggestions button {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  border-radius: 100px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.follow-up-suggestions button:hover {
+  background: #E5FBF8;
+  border-color: #17DDC0;
+  color: #0D9488;
+}
 }
