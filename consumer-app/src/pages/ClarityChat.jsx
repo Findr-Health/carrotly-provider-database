@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import DocumentUpload from '../components/clarity/DocumentUpload';
 import ChatMessage from '../components/clarity/ChatMessage';
 import LoadingIndicator from '../components/clarity/LoadingIndicator';
@@ -15,19 +15,39 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fearless-achieveme
 
 function ClarityChat() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [inputText, setInputText] = useState('');
   const [showUpload, setShowUpload] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const hasInitialized = useRef(false);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Handle initial state from navigation (preloaded question or open upload)
   useEffect(() => {
-    scrollToBottom();
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const state = location.state;
+    if (state?.initialQuestion) {
+      setInputText(state.initialQuestion);
+      // Focus the input
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+    if (state?.openUpload) {
+      setShowUpload(true);
+    }
+    
+    // Clear the state so refreshing doesn't re-trigger
+    window.history.replaceState({}, document.title);
+  }, [location.state]);
+
+  // Only scroll to bottom when new messages are added, not on initial load
+  useEffect(() => {
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   // Focus input after messages update
@@ -95,39 +115,30 @@ function ClarityChat() {
     if (q.includes('eob') || q.includes('explanation of benefits')) {
       return "An Explanation of Benefits (EOB) is a statement from your insurance company that shows what they paid for a medical service. It's NOT a bill!\n\nIt shows:\n• The service provided\n• What the provider charged\n• What your insurance paid\n• What you may owe\n\nAlways compare your EOB to any bill you receive. If you have an EOB you'd like me to explain, upload it and I'll break it down for you!";
     }
-    if (q.includes('copay') || q.includes('co-pay')) {
-      return "A copay is a fixed amount you pay for a covered healthcare service. For example, you might pay $25 for a doctor visit or $10 for a prescription. Copays don't usually count toward your deductible.\n\nIs there a specific copay on a bill you're wondering about?";
+    if (q.includes('survive without insurance') || q.includes('without coverage') || q.includes('need insurance')) {
+      return "Living without health insurance is a real option for some people. Here's what to consider:\n\n**It might work if you:**\n• Are generally healthy with no chronic conditions\n• Have savings for emergencies ($5K-10K minimum)\n• Can pay cash for routine care\n• Live near affordable cash-pay clinics\n\n**Strategies that help:**\n• Negotiate cash prices directly (often 40-60% less than insurance rates)\n• Use direct primary care ($50-150/month for unlimited visits)\n• Get catastrophic-only coverage for major events\n• Use GoodRx or similar for medications\n\n**Risks to consider:**\n• One major accident or illness can mean $50K+ in debt\n• No ACA penalty currently, but state rules vary\n• Pre-existing conditions could affect future coverage\n\nWant me to help you think through your specific situation?";
     }
-    if (q.includes('coinsurance')) {
-      return "Coinsurance is your share of costs after you've met your deductible. It's usually a percentage. For example, with 20% coinsurance, you pay 20% of the cost and your insurance pays 80%.\n\nThis is different from a copay, which is a fixed dollar amount. Would you like me to explain more?";
+    if (q.includes('high-deductible') || q.includes('hdhp')) {
+      return "A High-Deductible Health Plan (HDHP) can actually save you money in the right situation.\n\n**Good fit if you:**\n• Are generally healthy\n• Don't take expensive medications\n• Have savings to cover the deductible\n• Want to use an HSA (tax-advantaged savings)\n\n**The math:**\n• Lower monthly premiums (often $200-400/month less)\n• Higher deductible ($1,500-$7,000)\n• HSA contributions are tax-deductible\n\n**Example:** If you save $300/month in premiums ($3,600/year) and your deductible is $3,000, you come out ahead if you don't hit that deductible.\n\nWant me to help you compare the numbers for your situation?";
     }
-    if (q.includes('out of pocket') || q.includes('out-of-pocket')) {
-      return "Your out-of-pocket maximum is the most you'll pay for covered services in a year. Once you reach this limit, your insurance pays 100% of covered services.\n\nThis includes:\n• Deductibles\n• Copays\n• Coinsurance\n\nBut NOT your monthly premium. What else would you like to know?";
+    if (q.includes('insurance or pay cash') || q.includes('cash price')) {
+      return "Great question! Paying cash is often cheaper than using insurance. Here's why:\n\n**Cash prices are often lower because:**\n• No insurance company middleman\n• Providers get paid immediately\n• Less administrative overhead\n\n**When to pay cash:**\n• You haven't met your deductible yet\n• The cash price is lower than your copay\n• You're uninsured or underinsured\n\n**How to get cash prices:**\n• Ask: 'What's your self-pay or cash price?'\n• Compare multiple providers\n• Check Surgery Center of Oklahoma, MDsave for procedures\n\n**Pro tip:** Even with insurance, ask for the cash price. Sometimes it's 50% less than the 'insurance rate.'\n\nDo you have a specific procedure or service in mind?";
     }
-    if (q.includes('premium')) {
-      return "A premium is the amount you pay for your health insurance every month. You pay this whether or not you use medical services. It's separate from deductibles, copays, and coinsurance.\n\nThink of it like a membership fee to have insurance coverage. Any other questions?";
+    if (q.includes('fair price') || q.includes('real cost')) {
+      return "Finding the real cost of healthcare is tricky, but here's how:\n\n**Tools to find fair prices:**\n• Healthcare Bluebook (fairhealthconsumer.org)\n• Medicare's price lookup tool\n• Call 3 providers and ask for cash prices\n\n**What you'll usually find:**\n• Hospital prices: 2-5x higher than fair market\n• Surgery centers: Often 50-70% less than hospitals\n• Independent labs: 70-80% less than hospital labs\n\n**Example - MRI:**\n• Hospital: $2,000-4,000\n• Imaging center: $400-800\n• Same machine, same quality\n\nWhat procedure or service are you trying to price?";
     }
-    if (q.includes('cbc') || q.includes('blood test') || q.includes('lab')) {
-      return "Great question about lab pricing! Lab costs can vary significantly.\n\nFor a CBC (Complete Blood Count) in Montana:\n• Hospital lab: $50-150\n• Independent lab (Quest, LabCorp): $20-50\n• Direct-pay clinics: $15-35\n\n💡 Tips to save:\n1. Ask for the cash/self-pay price\n2. Use an independent lab instead of hospital\n3. Check if your insurance has preferred labs\n\nWould you like me to analyze a specific lab bill you've received?";
+    if (q.includes('overcharg') || q.includes('too much')) {
+      return "Medical bills often contain errors or inflated charges. Here's how to check:\n\n**Red flags for overcharging:**\n• Charges for services you didn't receive\n• Duplicate charges for the same thing\n• 'Facility fees' that seem excessive\n• Charges way above Medicare rates\n\n**How to fight back:**\n1. Request an itemized bill (not just a summary)\n2. Compare to Medicare rates (usually 2-3x is reasonable, 5-10x is excessive)\n3. Ask: 'Can you explain this charge?'\n4. Request the cash/self-pay price\n5. Ask for a payment plan while you dispute\n\n**What to say:** 'I'd like to understand these charges before paying. Can you send me an itemized bill and explain the pricing?'\n\nDo you have a bill you'd like me to look at?";
     }
-    if (q.includes('price') || q.includes('cost') || q.includes('how much')) {
-      return "Healthcare pricing can be confusing! Here are some tips:\n\n1. **Always ask for the cash price** - often lower than insurance price\n2. **Get an estimate in advance** - providers must give you a Good Faith Estimate\n3. **Compare prices** - use tools like Healthcare Bluebook or call different providers\n4. **Negotiate** - especially for large bills, providers often offer discounts\n\nIf you have a specific bill, upload it and I can help you understand if the charges seem reasonable!";
+    if (q.includes('afford') || q.includes('can\'t pay') || q.includes('payment plan')) {
+      return "If you can't afford a medical bill, you have options:\n\n**Immediate steps:**\n1. Don't ignore it (but don't pay immediately either)\n2. Request an itemized bill\n3. Ask for the cash/self-pay discount\n4. Apply for financial assistance (most hospitals have programs)\n\n**Negotiation strategies:**\n• Offer to pay 25-50% upfront for a discount\n• Ask for a 0% payment plan\n• Say: 'This amount isn't possible for me. What can we work out?'\n\n**If you qualify as low-income:**\n• Hospital charity care (required by law for nonprofits)\n• State Medicaid programs\n• Community health centers (sliding scale fees)\n\n**Last resorts:**\n• Medical bill negotiation services\n• Medical credit cards (careful with interest)\n• Bankruptcy (medical debt is dischargeable)\n\nWant help figuring out what to say to the billing department?";
     }
-    if (q.includes('bill') && q.includes('question')) {
-      return "Great questions to ask about your medical bill:\n\n1. Can I get an itemized bill?\n2. Are all these charges correct?\n3. Is this covered by my insurance?\n4. Do you offer a payment plan?\n5. Do you offer a discount for paying in full?\n6. Is there financial assistance available?\n\nWould you like me to look at your actual bill? Just upload it!";
-    }
-    if (q.includes('negotiate') || q.includes('lower') || q.includes('reduce')) {
-      return "Yes, you can often negotiate medical bills! Here's how:\n\n1. **Ask for an itemized bill** - look for errors or duplicate charges\n2. **Compare to fair prices** - use Healthcare Bluebook\n3. **Ask for the cash price** - often 20-50% lower\n4. **Request a payment plan** - interest-free is common\n5. **Ask about financial assistance** - most hospitals have programs\n6. **Offer to pay immediately** - for a discount\n\nWant me to analyze a bill you're trying to negotiate?";
-    }
-    if (q.includes('appeal') || q.includes('denied') || q.includes('denial')) {
-      return "If your insurance denied a claim, you have the right to appeal!\n\nSteps to appeal:\n1. **Get the denial in writing** - understand why it was denied\n2. **Review your policy** - confirm the service should be covered\n3. **Gather documentation** - doctor's notes, medical records\n4. **Submit a written appeal** - be specific and include evidence\n5. **Follow up** - insurers have deadlines to respond\n\nMost appeals that are filed actually succeed! Would you like more specific guidance?";
-    }
-    if (q.includes('insurance') && (q.includes('work') || q.includes('how'))) {
-      return "Here's how health insurance works:\n\n1. **Premium** - Your monthly payment to have coverage\n2. **Deductible** - What you pay before insurance kicks in\n3. **Copay** - Fixed amount per visit\n4. **Coinsurance** - Your percentage after deductible\n5. **Out-of-pocket max** - Most you'll pay in a year\n\nWant me to explain any of these in more detail?";
+    if (q.includes('negotiate')) {
+      return "Yes, you can negotiate almost any medical bill. Here's how:\n\n**Before you call:**\n• Get an itemized bill\n• Research fair prices (Healthcare Bluebook)\n• Know your budget\n\n**What to say:**\n• 'What's your best cash price?'\n• 'I can't afford this. What options do we have?'\n• 'I've researched fair prices and this seems high. Can you match $X?'\n• 'Can you reduce this to the Medicare rate?'\n\n**Leverage points:**\n• Offer to pay immediately for a discount\n• Mention financial hardship\n• Ask about charity care programs\n• Be polite but persistent\n\n**Success rates:**\n• 50-80% of people who negotiate get some reduction\n• Average savings: 30-50%\n\nWant me to help you prepare for a specific negotiation?";
     }
     
     // Default helpful response
-    return "I'd love to help with that! For the most specific answer, you can:\n\n1. **Upload a document** - I can analyze bills, EOBs, and statements in detail\n2. **Ask about specific terms** - deductibles, copays, coinsurance, etc.\n3. **Ask about pricing** - I can give general guidance on fair prices\n\nWhat would you like to explore?";
+    return "I'd be happy to help with that! For the most specific answer, you can:\n\n• **Ask about costs** - insurance vs. cash, fair prices, negotiation strategies\n• **Upload a document** - I can analyze bills, EOBs, lab results, and more\n• **Explore options** - whether insurance makes sense for your situation\n\nWhat would you like to dig into?";
   };
 
   const handleKeyPress = (e) => {
@@ -192,8 +203,6 @@ function ClarityChat() {
       <div className="clarity-messages">
         {messages.length === 0 ? (
           <div className="clarity-welcome">
-            <p className="welcome-text">Ask Clarity about your healthcare journey or upload a document and I'll explain it.</p>
-            
             {/* Upload Document Button */}
             <button className="upload-document-btn" onClick={() => setShowUpload(true)}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -205,9 +214,10 @@ function ClarityChat() {
             <div className="quick-prompts">
               <p className="prompts-label">Or ask a question:</p>
               
-              {/* Empty chat input */}
+              {/* Chat input */}
               <div className="inline-chat-input">
                 <input
+                  ref={inputRef}
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
@@ -238,13 +248,9 @@ function ClarityChat() {
             </div>
           </div>
         ) : (
-          <>
-            {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
-            
-           
-          </>
+          messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))
         )}
         
         {isLoading && <LoadingIndicator />}
@@ -265,7 +271,7 @@ function ClarityChat() {
         </button>
         
         <input
-          ref={inputRef}
+          ref={messages.length > 0 ? inputRef : null}
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
