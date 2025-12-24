@@ -1,6 +1,6 @@
 /**
  * Home Page - Main landing for Findr Health Consumer App
- * Clarity - Healthcare Document Understanding Tool
+ * Two tools + One service
  */
 
 import React from 'react';
@@ -10,12 +10,12 @@ import './Home.css';
 function Home() {
   const navigate = useNavigate();
 
-  const handlePresetQuestion = (question) => {
-    navigate('/clarity', { state: { initialQuestion: question } });
+  const handleCostNavigator = (question = '') => {
+    navigate('/clarity', { state: { initialQuestion: question, mode: 'cost' } });
   };
 
-  const handleForensicAnalysis = () => {
-    alert('Forensic Bill Analysis coming soon! For now, upload your bill in Clarity and we\'ll help you understand it.');
+  const handleDocumentUpload = () => {
+    navigate('/clarity', { state: { mode: 'document', openUpload: true } });
   };
 
   return (
@@ -25,77 +25,109 @@ function Home() {
         <div className="findr-logo">
           <img src="/findr-logo.svg" alt="Findr Health" className="findr-logo-img" />
         </div>
+        <p className="tagline">Healthcare, simplified</p>
       </header>
 
-      {/* Clarity Section */}
-      <section className="clarity-section">
-        <p className="brings-you">brings you</p>
-        <h2 className="clarity-headline">Clarity</h2>
-        <p className="clarity-subhead">Take back control of your healthcare!</p>
-        
-        <button
-          className="clarity-btn"
-          onClick={() => navigate('/clarity')}
-        >
-          Ask a question or upload a document
-          <span className="btn-arrow">→</span>
-        </button>
-      </section>
-
-      {/* Reality Check Section */}
-      <section className="reality-section">
-        <div className="reality-card">
-          <h3>Healthcare pricing is broken.</h3>
-          <p className="reality-text">
-            Bills are inflated. "Discounts" are often theater. And insurance? It's not always the best choice—or even necessary—for everyone.
-          </p>
-          <p className="reality-text">
-            We give you the tools to understand what you actually owe and push back when the numbers don't add up.
-          </p>
-          <p className="reality-disclaimer">
-            Every situation is different. We help you figure out what's right for yours.
+      {/* Tool 1: Cost Navigator */}
+      <section className="tool-section">
+        <div className="tool-card cost-navigator">
+          <div className="tool-icon">💰</div>
+          <h2>Cost Navigator</h2>
+          <p className="tool-subtitle">Find your lowest-cost path</p>
+          <p className="tool-body">
+            Insurance isn't always the answer. We help you compare options—whether that's going without coverage, choosing a high-deductible plan, or paying cash. Ask anything about costs, coverage, or strategy.
           </p>
           
-          <div className="preset-questions">
-            <p className="preset-label">Common questions:</p>
-            <button onClick={() => handlePresetQuestion("Do I actually need health insurance? What are the pros and cons for my situation?")}>
-              Do I actually need insurance?
+          <div className="example-pills">
+            <button onClick={() => handleCostNavigator("Should I use insurance or pay cash for my procedure?")}>
+              Should I use insurance or pay cash?
             </button>
-            <button onClick={() => handlePresetQuestion("How do I negotiate a medical bill? What strategies work?")}>
-              How do I negotiate a medical bill?
+            <button onClick={() => handleCostNavigator("What's the real cost of this procedure without insurance?")}>
+              What's the real cost of this procedure?
             </button>
-            <button onClick={() => handlePresetQuestion("How do I find out what a fair price is for a medical procedure?")}>
-              What's a fair price for my procedure?
-            </button>
-            <button onClick={() => handlePresetQuestion("How can I tell if I'm being overcharged on a medical bill?")}>
-              Am I being overcharged?
-            </button>
-            <button onClick={() => handlePresetQuestion("What are my options if I can't afford a medical bill?")}>
-              What if I can't afford this bill?
+            <button onClick={() => handleCostNavigator("Is a high-deductible health plan right for me?")}>
+              Is a high-deductible plan right for me?
             </button>
           </div>
+          
+          <button className="tool-cta" onClick={() => handleCostNavigator()}>
+            Start a conversation
+            <span className="cta-arrow">→</span>
+          </button>
+          
+          <p className="micro-disclaimer">
+            We don't know your specific plan details or financial situation. Use this as a starting point, not a final answer.
+          </p>
         </div>
       </section>
 
-      {/* Forensic Analysis Section */}
-      <section className="forensic-section">
-        <div className="forensic-card">
-          <div className="forensic-badge">Advanced</div>
-          <h3>Big bill? Let's dig in.</h3>
-          <p>
-            Complex bills—especially $10K+—often hide errors, inflated charges, and negotiation opportunities.
+      {/* Tool 2: Document Clarity */}
+      <section className="tool-section">
+        <div className="tool-card document-clarity">
+          <div className="tool-icon">📄</div>
+          <h2>Document Clarity</h2>
+          <p className="tool-subtitle">Upload anything. We'll explain it.</p>
+          <p className="tool-body">
+            Bills, labs, medical records, imaging reports, EOBs—drop it here and we'll tell you what it means in plain English.
           </p>
-          <p className="forensic-stat">
-            We've analyzed bills totaling millions and helped reduce them by <strong>30-50%</strong>.
-          </p>
-          <button className="forensic-btn" onClick={handleForensicAnalysis}>
-            Request Bill Analysis
+          
+          <div className="format-pills">
+            <span className="format-pill">Medical bills</span>
+            <span className="format-pill">Lab results</span>
+            <span className="format-pill">EOBs</span>
+            <span className="format-pill">Imaging reports</span>
+            <span className="format-pill">Medical records</span>
+          </div>
+          
+          <button className="tool-cta" onClick={handleDocumentUpload}>
+            Upload a document
+            <span className="cta-arrow">→</span>
           </button>
         </div>
       </section>
 
-      {/* Trust Badges */}
-      <section className="trust-section">
+      {/* Service: Big Bill Help */}
+      <section className="service-section">
+        <div className="service-card">
+          <h2>Drowning in a big bill? We can help.</h2>
+          <p className="service-body">
+            For complex cases sometimes you need a human. We've helped reduce bills by <strong>30-50%</strong>. Submit your situation and we'll let you know if we can help.
+          </p>
+          
+          <div className="service-steps">
+            <p className="steps-label">What happens next:</p>
+            <div className="step">
+              <span className="step-number">1</span>
+              <span className="step-text">You submit a brief request</span>
+            </div>
+            <div className="step">
+              <span className="step-number">2</span>
+              <span className="step-text">We review and respond within 48 hours</span>
+            </div>
+            <div className="step">
+              <span className="step-number">3</span>
+              <span className="step-text">If we can help, we'll schedule a call and discuss next steps</span>
+            </div>
+          </div>
+          
+          <button className="service-cta" onClick={() => navigate('/consultation')}>
+            Request a consultation
+            <span className="cta-arrow">→</span>
+          </button>
+          
+          <p className="service-note">
+            Initial consultations are free. If we work together, we'll discuss fees after understanding your situation.
+          </p>
+        </div>
+      </section>
+
+      {/* Trust + Disclaimer Section */}
+      <section className="honesty-section">
+        <h3>A note on honesty</h3>
+        <p className="honesty-body">
+          We're not your insurance company, your doctor, or your lawyer. We give you real information and actionable options—but every situation is different. Our suggestions are based on what you tell us, not your complete medical or financial picture. When in doubt, verify with your specific provider or plan.
+        </p>
+        
         <div className="trust-badges">
           <div className="trust-badge">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#10B981" stroke="none">
@@ -109,8 +141,14 @@ function Home() {
             </svg>
             <span>AI-Powered</span>
           </div>
+          <div className="trust-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#6366F1" stroke="none">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span>Human help when you need it</span>
+          </div>
         </div>
-        <p className="trust-note">Your documents are never stored. Analysis happens in real-time.</p>
       </section>
     </div>
   );

@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import Profile from './pages/Profile';
 import BottomNav from './components/BottomNav';
 import './styles/App.css';
+import ConsultationRequest from './pages/ConsultationRequest';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/clarity" element={<ClarityChat />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/consultation" element={<ConsultationRequest />} />
         </Routes>
         <BottomNav />
       </div>
