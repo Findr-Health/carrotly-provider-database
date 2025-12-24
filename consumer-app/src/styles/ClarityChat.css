@@ -73,6 +73,10 @@
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
+  padding-bottom: 80px;
+}
+
+.clarity-messages.chat-active {
   padding-bottom: 150px;
 }
 

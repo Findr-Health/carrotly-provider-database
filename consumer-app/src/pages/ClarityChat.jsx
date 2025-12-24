@@ -184,6 +184,8 @@ function ClarityChat() {
     }
   };
 
+  const isInChatMode = messages.length > 0;
+
   return (
     <div className="clarity-chat-page">
       {/* Header */}
@@ -209,7 +211,7 @@ function ClarityChat() {
 
       {/* Messages Area */}
       <div className="clarity-messages">
-        {messages.length === 0 ? (
+        {!isInChatMode ? (
           <div className="clarity-welcome">
             {/* Upload Document Button */}
             <button className="upload-document-btn" onClick={() => setShowUpload(true)}>
@@ -222,7 +224,7 @@ function ClarityChat() {
             <div className="quick-prompts">
               <p className="prompts-label">Or ask a question:</p>
               
-              {/* Chat input */}
+              {/* Chat input - only shown in welcome state */}
               <div className="inline-chat-input">
                 <input
                   ref={inputRef}
@@ -265,41 +267,43 @@ function ClarityChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - Always visible */}
-      <div className="clarity-input-area">
-        <button 
-          className="upload-btn"
-          onClick={() => setShowUpload(true)}
-          aria-label="Upload document"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
-        
-        <input
-          ref={messages.length > 0 ? inputRef : null}
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Ask a follow-up question..."
-          className="clarity-input"
-        />
-        
-        <button 
-          className="send-btn"
-          onClick={handleSendMessage}
-          disabled={!inputText.trim() || isLoading}
-          aria-label="Send message"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-        </button>
-      </div>
+      {/* Input Area - Only visible in chat mode */}
+      {isInChatMode && (
+        <div className="clarity-input-area">
+          <button 
+            className="upload-btn"
+            onClick={() => setShowUpload(true)}
+            aria-label="Upload document"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+          
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask a follow-up question..."
+            className="clarity-input"
+          />
+          
+          <button 
+            className="send-btn"
+            onClick={handleSendMessage}
+            disabled={!inputText.trim() || isLoading}
+            aria-label="Send message"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showUpload && (
