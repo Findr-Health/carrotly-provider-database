@@ -56,7 +56,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
-  padding-bottom: 100px;
+  padding-bottom: 150px;
 }
 
 /* Welcome State */
@@ -143,9 +143,10 @@
 
 /* Input Area */
 /* Input Area - Always visible */
+/* Input Area - Always visible above bottom nav */
 .clarity-input-area {
   position: fixed;
-  bottom: 0;
+  bottom: 70px;
   left: 0;
   right: 0;
   display: flex;
@@ -154,7 +155,6 @@
   padding: 1rem;
   background: white;
   border-top: 1px solid #E5E7EB;
-  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0));
   z-index: 100;
 }
 
@@ -165,9 +165,9 @@
   align-items: center;
   justify-content: center;
   background: #F3F4F6;
-  border: none;
+  border: 1px solid #E5E7EB;
   border-radius: 12px;
-  color: #6B7280;
+  color: #374151;
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
@@ -175,7 +175,8 @@
 
 .upload-btn:hover {
   background: #E5FBF8;
-  color: #17DDC0;
+  border-color: #17DDC0;
+  color: #0D9488;
 }
 
 .clarity-input {
