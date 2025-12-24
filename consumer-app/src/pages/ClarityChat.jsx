@@ -187,6 +187,12 @@ function ClarityChat() {
     }
   };
 
+  const handleNewChat = () => {
+    setMessages([]);
+    setInputText('');
+    setIsProcessingDocument(false);
+  };
+
   const isInChatMode = messages.length > 0;
 
   return (
@@ -210,11 +216,7 @@ function ClarityChat() {
           <span className="header-health">health</span>
         </div>
         {isInChatMode ? (
-          <button className="new-chat-btn" onClick={() => {
-            setMessages([]);
-            setInputText('');
-            setIsProcessingDocument(false);
-          }}>
+          <button className="new-chat-btn" onClick={handleNewChat}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
@@ -260,18 +262,6 @@ function ClarityChat() {
                   </svg>
                 </button>
               </div>
-            </div>
-              
-              <p className="prompts-label-small">Or try one of these:</p>
-              <button onClick={() => setInputText("What's a deductible and how does it work?")}>
-                What's a deductible?
-              </button>
-              <button onClick={() => setInputText("How do I read an Explanation of Benefits?")}>
-                How to read an EOB?
-              </button>
-              <button onClick={() => setInputText("What questions should I ask about my medical bill?")}>
-                Questions to ask about my bill
-              </button>
             </div>
           </div>
         ) : (
