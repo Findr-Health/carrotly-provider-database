@@ -20,10 +20,12 @@ function Home() {
 
   return (
     <div className="home-page">
-      {/* Header with Findr Logo */}
+      {/* Header with Findr Health Logo */}
       <header className="home-header">
         <div className="findr-logo">
-          <img src="/findr-logo.svg" alt="Findr Health" className="findr-logo-img" />
+          <span className="findr-text">findr</span>
+          <span className="findr-health-text">health</span>
+          <img src="/findr-logo.svg" alt="" className="findr-logo-icon" />
         </div>
         <p className="tagline">Healthcare, simplified</p>
       </header>
@@ -31,7 +33,6 @@ function Home() {
       {/* Tool 1: Cost Navigator */}
       <section className="tool-section">
         <div className="tool-card cost-navigator">
-          <div className="tool-icon">💰</div>
           <h2>Cost Navigator</h2>
           <p className="tool-subtitle">Find your lowest-cost path</p>
           <p className="tool-body">
@@ -64,7 +65,6 @@ function Home() {
       {/* Tool 2: Document Clarity */}
       <section className="tool-section">
         <div className="tool-card document-clarity">
-          <div className="tool-icon">📄</div>
           <h2>Document Clarity</h2>
           <p className="tool-subtitle">Upload anything. We'll explain it.</p>
           <p className="tool-body">
