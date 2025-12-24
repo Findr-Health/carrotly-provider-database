@@ -209,7 +209,20 @@ function ClarityChat() {
           </svg>
           <span className="header-health">health</span>
         </div>
-        <div style={{ width: 40 }}></div>
+        {isInChatMode ? (
+          <button className="new-chat-btn" onClick={() => {
+            setMessages([]);
+            setInputText('');
+            setIsProcessingDocument(false);
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        ) : (
+          <div style={{ width: 40 }}></div>
+        )}
       </header>
 
       {/* Messages Area */}
@@ -247,6 +260,7 @@ function ClarityChat() {
                   </svg>
                 </button>
               </div>
+            </div>
               
               <p className="prompts-label-small">Or try one of these:</p>
               <button onClick={() => setInputText("What's a deductible and how does it work?")}>

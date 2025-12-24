@@ -67,6 +67,24 @@
 .header-icon {
   margin: 0 0.125rem;
 }
+.new-chat-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #E5FBF8;
+  border: 1px solid #17DDC0;
+  border-radius: 8px;
+  color: #0D9488;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.new-chat-btn:hover {
+  background: #17DDC0;
+  color: #000000;
+}
 
 /* Messages Area */
 .clarity-messages {
