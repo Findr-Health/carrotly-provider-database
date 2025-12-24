@@ -91,7 +91,7 @@
   font-weight: 600;
   padding: 1rem 2rem;
   background: #17DDC0;
-  color: white;
+  color: #000000;
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -142,6 +142,7 @@
 }
 
 /* Input Area */
+/* Input Area - Always visible */
 .clarity-input-area {
   position: fixed;
   bottom: 0;
@@ -154,6 +155,7 @@
   background: white;
   border-top: 1px solid #E5E7EB;
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0));
+  z-index: 100;
 }
 
 .upload-btn {

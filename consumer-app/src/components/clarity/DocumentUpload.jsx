@@ -2,12 +2,13 @@
  * DocumentUpload - File upload interface
  * Supports file selection and camera capture
  */
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import './DocumentUpload.css';
 
-function DocumentUpload({ onFileSelect, fileInputRef }) {
+function DocumentUpload({ onUpload }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -50,7 +51,13 @@ function DocumentUpload({ onFileSelect, fileInputRef }) {
       return;
     }
 
-    onFileSelect(file);
+    setSelectedFile(file);
+  };
+
+  const handleUpload = () => {
+    if (selectedFile && onUpload) {
+      onUpload(selectedFile, 'what_do_i_owe');
+    }
   };
 
   const triggerFileInput = () => {
@@ -58,7 +65,6 @@ function DocumentUpload({ onFileSelect, fileInputRef }) {
   };
 
   const triggerCamera = () => {
-    // Create a temporary input with capture attribute
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -83,34 +89,47 @@ function DocumentUpload({ onFileSelect, fileInputRef }) {
 
       {/* Drop zone */}
       <div 
-        className={`upload-dropzone ${isDragging ? 'dragging' : ''}`}
+        className={`upload-dropzone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={triggerFileInput}
       >
         <div className="dropzone-content">
-          <span className="upload-icon">📄</span>
-          <p className="upload-text">
-            Tap to upload or drag & drop
-          </p>
-          <p className="upload-hint">
-            JPEG, PNG, or PDF up to 10MB
-          </p>
+          {selectedFile ? (
+            <>
+              <span className="upload-icon">✅</span>
+              <p className="upload-text">{selectedFile.name}</p>
+              <p className="upload-hint">Tap to change file</p>
+            </>
+          ) : (
+            <>
+              <span className="upload-icon">📄</span>
+              <p className="upload-text">Tap to upload or drag & drop</p>
+              <p className="upload-hint">JPEG, PNG, or PDF up to 10MB</p>
+            </>
+          )}
         </div>
       </div>
 
       {/* Action buttons */}
       <div className="upload-actions">
-        <button className="upload-btn file-btn" onClick={triggerFileInput}>
+        <button className="upload-action-btn file-btn" onClick={triggerFileInput}>
           <span className="btn-icon">📁</span>
           Choose File
         </button>
-        <button className="upload-btn camera-btn" onClick={triggerCamera}>
+        <button className="upload-action-btn camera-btn" onClick={triggerCamera}>
           <span className="btn-icon">📷</span>
           Take Photo
         </button>
       </div>
+
+      {/* Analyze button - shows when file selected */}
+      {selectedFile && (
+        <button className="analyze-btn" onClick={handleUpload}>
+          Analyze Document
+        </button>
+      )}
 
       {/* Privacy note */}
       <p className="upload-privacy">
