@@ -41,10 +41,8 @@
   margin-right: 0.25rem;
 }
 
-.findr-logo-icon {
-  height: 46px;
-  width: auto;
-  margin-top: -4px;
+.findr-icon {
+  margin-left: 0.5rem;
 }
 
 .tagline {
