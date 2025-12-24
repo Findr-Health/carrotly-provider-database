@@ -10,8 +10,12 @@ import './Home.css';
 function Home() {
   const navigate = useNavigate();
 
-  const handleScheduleConsult = () => {
-    alert('Scheduling feature coming soon! For now, use Clarity to analyze your documents.');
+  const handlePresetQuestion = (question) => {
+    navigate('/clarity', { state: { initialQuestion: question } });
+  };
+
+  const handleForensicAnalysis = () => {
+    alert('Forensic Bill Analysis coming soon! For now, upload your bill in Clarity and we\'ll help you understand it.');
   };
 
   return (
@@ -38,23 +42,54 @@ function Home() {
         </button>
       </section>
 
-      {/* Schedule a Consult CTA */}
-      <section className="consult-section">
-        <div className="consult-card">
-          <div className="consult-header">
-            <div className="consult-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#17DDC0" strokeWidth="1.5">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="9" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div className="consult-badge">Live Expert</div>
+      {/* Reality Check Section */}
+      <section className="reality-section">
+        <div className="reality-card">
+          <h3>Healthcare pricing is broken.</h3>
+          <p className="reality-text">
+            Bills are inflated. "Discounts" are often theater. And insurance? It's not always the best choice—or even necessary—for everyone.
+          </p>
+          <p className="reality-text">
+            We give you the tools to understand what you actually owe and push back when the numbers don't add up.
+          </p>
+          <p className="reality-disclaimer">
+            Every situation is different. We help you figure out what's right for yours.
+          </p>
+          
+          <div className="preset-questions">
+            <p className="preset-label">Common questions:</p>
+            <button onClick={() => handlePresetQuestion("Do I actually need health insurance? What are the pros and cons for my situation?")}>
+              Do I actually need insurance?
+            </button>
+            <button onClick={() => handlePresetQuestion("How do I negotiate a medical bill? What strategies work?")}>
+              How do I negotiate a medical bill?
+            </button>
+            <button onClick={() => handlePresetQuestion("How do I find out what a fair price is for a medical procedure?")}>
+              What's a fair price for my procedure?
+            </button>
+            <button onClick={() => handlePresetQuestion("How can I tell if I'm being overcharged on a medical bill?")}>
+              Am I being overcharged?
+            </button>
+            <button onClick={() => handlePresetQuestion("What are my options if I can't afford a medical bill?")}>
+              What if I can't afford this bill?
+            </button>
           </div>
-          <h3>Need human help?</h3>
-          <p>Schedule a 1:1 consultation with a healthcare expert who can advocate for you</p>
-          <button className="consult-btn" onClick={handleScheduleConsult}>
-            Schedule a Consult
+        </div>
+      </section>
+
+      {/* Forensic Analysis Section */}
+      <section className="forensic-section">
+        <div className="forensic-card">
+          <div className="forensic-badge">Advanced</div>
+          <h3>Big bill? Let's dig in.</h3>
+          <p>
+            Complex bills—especially $10K+—often hide errors, inflated charges, and negotiation opportunities.
+          </p>
+          <p className="forensic-stat">
+            We've analyzed bills totaling millions and helped reduce them by <strong>30-50%</strong>.
+          </p>
+          <button className="forensic-btn" onClick={handleForensicAnalysis}>
+            Request Bill Analysis
           </button>
         </div>
       </section>

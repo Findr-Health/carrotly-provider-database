@@ -83,78 +83,148 @@
   font-size: 1.25rem;
 }
 
-/* Consult Section */
-.consult-section {
+/* Reality Check Section */
+.reality-section {
   margin-bottom: 1.5rem;
 }
 
-.consult-card {
-  background: white;
-  border: 1px solid #E5E7EB;
+.reality-card {
+  background: #FFF9F0;
+  border: 1px solid #F59E0B;
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.consult-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.consult-icon {
-  width: 48px;
-  height: 48px;
-  background: #E5FBF8;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.consult-badge {
-  font-family: 'Urbanist', sans-serif;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  background: #E5FBF8;
-  color: #0D9488;
-  border-radius: 100px;
-}
-
-.consult-card h3 {
+.reality-card h3 {
   font-family: 'Urbanist', sans-serif;
   font-size: 1.25rem;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
-.consult-card p {
+.reality-text {
   font-family: 'Urbanist', sans-serif;
   font-size: 0.9375rem;
-  color: #6B7280;
-  margin-bottom: 1rem;
-  line-height: 1.5;
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
 }
 
-.consult-btn {
-  width: 100%;
-  padding: 0.875rem 1.5rem;
+.reality-disclaimer {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: #6B7280;
+  margin-bottom: 1.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #FDE68A;
+}
+
+.preset-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.preset-label {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.preset-questions button {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.preset-questions button:hover {
+  background: #E5FBF8;
+  border-color: #17DDC0;
+  color: #0D9488;
+}
+
+/* Forensic Analysis Section */
+.forensic-section {
+  margin-bottom: 1.5rem;
+}
+
+.forensic-card {
+  background: linear-gradient(135deg, #111827 0%, #1F2937 100%);
+  border-radius: 16px;
+  padding: 1.5rem;
+  position: relative;
+}
+
+.forensic-badge {
+  display: inline-block;
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.25rem 0.75rem;
   background: #17DDC0;
   color: #000000;
+  border-radius: 100px;
+  margin-bottom: 0.75rem;
+}
+
+.forensic-card h3 {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.75rem;
+}
+
+.forensic-card p {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 0.9375rem;
+  color: #D1D5DB;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.forensic-stat {
+  color: #17DDC0 !important;
+}
+
+.forensic-stat strong {
+  color: white;
+  font-weight: 700;
+}
+
+.forensic-btn {
+  width: 100%;
   font-family: 'Urbanist', sans-serif;
   font-size: 1rem;
   font-weight: 600;
+  padding: 0.875rem 1.5rem;
+  background: white;
+  color: #111827;
   border: none;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
+  margin-top: 0.5rem;
 }
 
-.consult-btn:hover {
-  background: #14C5AB;
+.forensic-btn:hover {
+  background: #17DDC0;
   transform: translateY(-1px);
 }
 
