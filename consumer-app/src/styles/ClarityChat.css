@@ -40,15 +40,32 @@
   background: #F3F4F6;
 }
 
-.clarity-logo {
+.header-brand {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.125rem;
 }
 
-.clarity-logo-img {
-  height: 40px;
-  width: auto;
+.header-findr {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.header-health {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+  margin-left: 0.125rem;
+}
+
+.header-icon {
+  margin: 0 0.125rem;
 }
 
 /* Messages Area */
