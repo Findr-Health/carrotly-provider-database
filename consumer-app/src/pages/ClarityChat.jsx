@@ -192,8 +192,7 @@ function ClarityChat() {
       <div className="clarity-messages">
         {messages.length === 0 ? (
           <div className="clarity-welcome">
-            <h2>more Clarity</h2>
-            <p>Ask me anything about your healthcare journey or upload a document and I'll explain it.</p>
+            <p className="welcome-text">Ask Clarity about your healthcare journey or upload a document and I'll explain it.</p>
             
             {/* Upload Document Button */}
             <button className="upload-document-btn" onClick={() => setShowUpload(true)}>
@@ -244,13 +243,7 @@ function ClarityChat() {
               <ChatMessage key={message.id} message={message} />
             ))}
             
-            {/* Suggestion chips after conversation starts */}
-            {!isLoading && (
-              <div className="follow-up-suggestions">
-                <button onClick={() => setInputText("Tell me more")}>Tell me more</button>
-                <button onClick={() => setShowUpload(true)}>Upload a document</button>
-              </div>
-            )}
+           
           </>
         )}
         
@@ -266,7 +259,8 @@ function ClarityChat() {
           aria-label="Upload document"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
         

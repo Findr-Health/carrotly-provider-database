@@ -70,20 +70,14 @@
   min-height: 60vh;
 }
 
-.clarity-welcome h2 {
+.welcome-text {
   font-family: 'Urbanist', sans-serif;
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 500;
   color: #111827;
-  margin-bottom: 0.5rem;
-}
-
-.clarity-welcome p {
-  font-family: 'Urbanist', sans-serif;
-  font-size: 1rem;
-  color: #6B7280;
-  margin-bottom: 1.5rem;
-  max-width: 300px;
+  margin-bottom: 2rem;
+  max-width: 320px;
+  line-height: 1.5;
 }
 
 /* Upload Document Button */
