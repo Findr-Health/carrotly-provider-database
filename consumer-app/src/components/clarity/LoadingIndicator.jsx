@@ -1,14 +1,13 @@
 /**
  * LoadingIndicator - Animated loading state for analysis
  */
-
 import React, { useState, useEffect } from 'react';
 import './LoadingIndicator.css';
 
-function LoadingIndicator() {
+function LoadingIndicator({ isDocument = false }) {
   const [message, setMessage] = useState(0);
   
-  const messages = [
+  const documentMessages = [
     'Reading your document...',
     'Extracting information...',
     'Analyzing charges...',
@@ -16,13 +15,20 @@ function LoadingIndicator() {
     'Almost done...'
   ];
 
+  const chatMessages = [
+    'Thinking...',
+    'Looking into that...',
+    'Preparing response...'
+  ];
+
+  const messages = isDocument ? documentMessages : chatMessages;
+
   useEffect(() => {
     const interval = setInterval(() => {
       setMessage(prev => (prev + 1) % messages.length);
     }, 2000);
-
     return () => clearInterval(interval);
-  }, []);
+  }, [messages.length]);
 
   return (
     <div className="loading-indicator">

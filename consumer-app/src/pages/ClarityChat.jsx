@@ -20,6 +20,7 @@ function ClarityChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [inputText, setInputText] = useState('');
   const [showUpload, setShowUpload] = useState(false);
+  const [isProcessingDocument, setIsProcessingDocument] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const hasInitialized = useRef(false);
@@ -160,6 +161,7 @@ function ClarityChat() {
 
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    setIsProcessingDocument(true);
 
     try {
       const response = await analyzeDocument(file, question);
@@ -181,6 +183,7 @@ function ClarityChat() {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setIsProcessingDocument(false);
     }
   };
 
@@ -263,7 +266,7 @@ function ClarityChat() {
           ))
         )}
         
-        {isLoading && <LoadingIndicator />}
+        {isLoading && <LoadingIndicator isDocument={isProcessingDocument} />}
         <div ref={messagesEndRef} />
       </div>
 
