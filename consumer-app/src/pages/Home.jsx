@@ -24,7 +24,6 @@ function Home() {
       <header className="home-header">
         <div className="findr-logo">
           <span className="findr-text">findr</span>
-          <span className="findr-health-text">health</span>
           <svg className="findr-icon" width="46" height="46" viewBox="0 0 63 63" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="31.5" cy="31.5" r="30" fill="#17DDC0" stroke="#17DDC0" strokeWidth="3"/>
             <path d="M13.2831 30.8584V22.68C18.6881 22.68 23.0842 18.2829 23.0842 12.8789H31.2627C31.2627 22.7927 23.1969 30.8584 13.2831 30.8584Z" fill="white"/>
@@ -32,6 +31,7 @@ function Home() {
             <path d="M40.198 49.6807H32.0196C32.0196 39.7669 40.0853 31.7012 49.9991 31.7012V39.8796C44.5942 39.8796 40.198 44.2767 40.198 49.6807Z" fill="white"/>
             <path d="M31.2627 49.6807H23.0842C23.0842 44.2758 18.6871 39.8796 13.2831 39.8796V31.7012C23.1969 31.7012 31.2627 39.7669 31.2627 49.6807Z" fill="white"/>
           </svg>
+          <span className="findr-health-text">health</span>
         </div>
         <p className="tagline">Healthcare, simplified</p>
       </header>
@@ -49,8 +49,8 @@ function Home() {
             <button onClick={() => handleCostNavigator("Should I use insurance or pay cash for my procedure?")}>
               Should I use insurance or pay cash?
             </button>
-            <button onClick={() => handleCostNavigator("What's the real cost of this procedure without insurance?")}>
-              What's the real cost of this procedure?
+            <button onClick={() => handleCostNavigator("How do I survive without insurance? What are my options?")}>
+              How do I survive without insurance?
             </button>
             <button onClick={() => handleCostNavigator("Is a high-deductible health plan right for me?")}>
               Is a high-deductible plan right for me?
