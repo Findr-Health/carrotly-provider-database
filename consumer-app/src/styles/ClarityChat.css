@@ -299,8 +299,12 @@
 
 .chat-message.ai .message-bubble {
   background: #E5FBF8;
-  color: #111827;
+  color: #000000;
   border-bottom-left-radius: 4px;
+}
+
+.chat-message.ai .message-bubble * {
+  color: #000000;
 }
 
 /* Responsive */
