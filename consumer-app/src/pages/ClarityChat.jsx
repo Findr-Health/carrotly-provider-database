@@ -1,288 +1,334 @@
 /**
- * ClarityChat - Main Clarity interface
- * Chat-based UI for healthcare document analysis
+ * ClarityChat Page
+ * Findr Health - Consumer App
+ * 
+ * Main chat interface for Cost Navigator and Document Analysis
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import DocumentUpload from '../components/clarity/DocumentUpload';
 import ChatMessage from '../components/clarity/ChatMessage';
+import DocumentUpload from '../components/clarity/DocumentUpload';
 import LoadingIndicator from '../components/clarity/LoadingIndicator';
-import { analyzeDocument } from '../services/clarityApi';
+import BottomNav from '../components/BottomNav';
+import { 
+  sendChatMessage, 
+  analyzeDocument, 
+  getUserLocation,
+  setUserLocation,
+  parseLocationInput 
+} from '../services/clarityApi';
 import '../styles/ClarityChat.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fearless-achievement-production.up.railway.app';
+// Maximum messages to keep in history (for memory management)
+const MAX_MESSAGES = 50;
 
 function ClarityChat() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [inputText, setInputText] = useState('');
-  const [showUpload, setShowUpload] = useState(false);
-  const [isProcessingDocument, setIsProcessingDocument] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const hasInitialized = useRef(false);
-
-  // Handle initial state from navigation (preloaded question or open upload)
+  
+  // State
+  const [messages, setMessages] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingType, setLoadingType] = useState('chat'); // 'chat' or 'document'
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [locationPromptShown, setLocationPromptShown] = useState(false);
+  
+  // Check for preset question from navigation
   useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    const state = location.state;
-    if (state?.initialQuestion) {
-      setInputText(state.initialQuestion);
-      // Focus the input
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (location.state?.presetQuestion) {
+      handleSendMessage(location.state.presetQuestion);
+      // Clear the state so it doesn't re-trigger
+      navigate(location.pathname, { replace: true, state: {} });
     }
-    if (state?.openUpload) {
-      setShowUpload(true);
+  }, [location.state]);
+  
+  // Request geolocation on mount (once)
+  useEffect(() => {
+    getUserLocation().then(loc => {
+      if (loc) {
+        console.log('Location obtained:', loc);
+      }
+    });
+  }, []);
+  
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+  
+  // Auto-focus input when not loading
+  useEffect(() => {
+    if (!isLoading && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isLoading]);
+  
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  /**
+   * Get conversation history for API (excludes welcome, system messages)
+   */
+  const getHistoryForAPI = () => {
+    return messages
+      .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+      .map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+  };
+  
+  /**
+   * Handle sending a chat message
+   */
+  const handleSendMessage = async (messageText = null) => {
+    const text = messageText || inputValue.trim();
+    if (!text || isLoading) return;
+    
+    // Check if user is providing location info
+    const locationKeywords = ['i live in', 'i\'m in', 'located in', 'my zip', 'zip code is'];
+    const isLocationResponse = locationKeywords.some(kw => text.toLowerCase().includes(kw));
+    
+    if (isLocationResponse) {
+      const parsed = parseLocationInput(text.replace(/.*(?:i live in|i'm in|located in|my zip|zip code is)\s*/i, ''));
+      if (parsed) {
+        setUserLocation(parsed);
+      }
     }
     
-    // Clear the state so refreshing doesn't re-trigger
-    window.history.replaceState({}, document.title);
-  }, [location.state]);
-
-  // Only scroll to bottom when new messages are added, not on initial load
-  useEffect(() => {
-    if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-
-  // Focus input after messages update
-  useEffect(() => {
-    if (messages.length > 0 && !isLoading) {
-      inputRef.current?.focus();
-    }
-  }, [messages, isLoading]);
-
-  const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
-
+    // Add user message
     const userMessage = {
       id: Date.now(),
-      type: 'user',
-      content: inputText,
+      role: 'user',
+      content: text,
+      timestamp: new Date().toISOString()
     };
-
-    setMessages(prev => [...prev, userMessage]);
-    const question = inputText;
-    setInputText('');
+    
+    setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), userMessage]);
+    setInputValue('');
     setIsLoading(true);
-
+    setLoadingType('chat');
+    
     try {
-      // Call the Anthropic API through our backend
-      const response = await fetch(`${API_BASE_URL}/api/clarity/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ question }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const aiMessage = {
-          id: Date.now() + 1,
-          type: 'ai',
-          content: data.response || data.message || "I'm here to help with your healthcare questions. Could you tell me more about what you'd like to know?",
-        };
-        setMessages(prev => [...prev, aiMessage]);
-      } else {
-        throw new Error('API error');
-      }
-    } catch (error) {
-      // Fallback to helpful response
-      const aiMessage = {
+      const history = getHistoryForAPI();
+      const response = await sendChatMessage(text, history);
+      
+      const assistantMessage = {
         id: Date.now() + 1,
-        type: 'ai',
-        content: getHelpfulResponse(question),
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date().toISOString(),
+        triggers: response.triggers
       };
-      setMessages(prev => [...prev, aiMessage]);
+      
+      setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), assistantMessage]);
+      
+      // Handle triggers (for future UI enhancements)
+      if (response.triggers?.locationNeeded && !locationPromptShown) {
+        setLocationPromptShown(true);
+      }
+      
+    } catch (error) {
+      console.error('Send message error:', error);
+      
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: new Date().toISOString(),
+        isError: true
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Helpful responses for common questions
-  const getHelpfulResponse = (question) => {
-    const q = question.toLowerCase();
+  
+  /**
+   * Handle document upload and analysis
+   */
+  const handleDocumentUpload = async (file) => {
+    setShowUploadModal(false);
+    setIsLoading(true);
+    setLoadingType('document');
     
-    if (q.includes('deductible')) {
-      return "A deductible is the amount you pay for healthcare services before your insurance starts to pay. For example, if your deductible is $1,000, you pay the first $1,000 of covered services yourself. After that, your insurance kicks in and you typically pay a smaller portion (like a copay or coinsurance) while insurance covers the rest.\n\nWould you like to know more about how deductibles work with specific services?";
-    }
-    if (q.includes('eob') || q.includes('explanation of benefits')) {
-      return "An Explanation of Benefits (EOB) is a statement from your insurance company that shows what they paid for a medical service. It's NOT a bill!\n\nIt shows:\n• The service provided\n• What the provider charged\n• What your insurance paid\n• What you may owe\n\nAlways compare your EOB to any bill you receive. Have more questions about what something on your EOB means?";
-    }
-    if (q.includes('survive without insurance') || q.includes('without coverage') || q.includes('need insurance')) {
-      return "Living without health insurance is a real option for some people. Here's what to consider:\n\n**It might work if you:**\n• Are generally healthy with no chronic conditions\n• Have savings for emergencies ($5K-10K minimum)\n• Can pay cash for routine care\n• Live near affordable cash-pay clinics\n\n**Strategies that help:**\n• Negotiate cash prices directly (often 40-60% less than insurance rates)\n• Use direct primary care ($50-150/month for unlimited visits)\n• Get catastrophic-only coverage for major events\n• Use GoodRx or similar for medications\n\n**Risks to consider:**\n• One major accident or illness can mean $50K+ in debt\n• No ACA penalty currently, but state rules vary\n• Pre-existing conditions could affect future coverage\n\nWant me to help you think through your specific situation?";
-    }
-    if (q.includes('high-deductible') || q.includes('hdhp')) {
-      return "A High-Deductible Health Plan (HDHP) can actually save you money in the right situation.\n\n**Good fit if you:**\n• Are generally healthy\n• Don't take expensive medications\n• Have savings to cover the deductible\n• Want to use an HSA (tax-advantaged savings)\n\n**The math:**\n• Lower monthly premiums (often $200-400/month less)\n• Higher deductible ($1,500-$7,000)\n• HSA contributions are tax-deductible\n\n**Example:** If you save $300/month in premiums ($3,600/year) and your deductible is $3,000, you come out ahead if you don't hit that deductible.\n\nWant me to help you compare the numbers for your situation?";
-    }
-    if (q.includes('insurance or pay cash') || q.includes('cash price')) {
-      return "Great question! Paying cash is often cheaper than using insurance. Here's why:\n\n**Cash prices are often lower because:**\n• No insurance company middleman\n• Providers get paid immediately\n• Less administrative overhead\n\n**When to pay cash:**\n• You haven't met your deductible yet\n• The cash price is lower than your copay\n• You're uninsured or underinsured\n\n**How to get cash prices:**\n• Ask: 'What's your self-pay or cash price?'\n• Compare multiple providers\n• Check Surgery Center of Oklahoma, MDsave for procedures\n\n**Pro tip:** Even with insurance, ask for the cash price. Sometimes it's 50% less than the 'insurance rate.'\n\nDo you have a specific procedure or service in mind?";
-    }
-    if (q.includes('fair price') || q.includes('real cost')) {
-      return "Finding the real cost of healthcare is tricky, but here's how:\n\n**Tools to find fair prices:**\n• Healthcare Bluebook (fairhealthconsumer.org)\n• Medicare's price lookup tool\n• Call 3 providers and ask for cash prices\n\n**What you'll usually find:**\n• Hospital prices: 2-5x higher than fair market\n• Surgery centers: Often 50-70% less than hospitals\n• Independent labs: 70-80% less than hospital labs\n\n**Example - MRI:**\n• Hospital: $2,000-4,000\n• Imaging center: $400-800\n• Same machine, same quality\n\nWhat procedure or service are you trying to price?";
-    }
-    if (q.includes('overcharg') || q.includes('too much')) {
-      return "Medical bills often contain errors or inflated charges. Here's how to check:\n\n**Red flags for overcharging:**\n• Charges for services you didn't receive\n• Duplicate charges for the same thing\n• 'Facility fees' that seem excessive\n• Charges way above Medicare rates\n\n**How to fight back:**\n1. Request an itemized bill (not just a summary)\n2. Compare to Medicare rates (usually 2-3x is reasonable, 5-10x is excessive)\n3. Ask: 'Can you explain this charge?'\n4. Request the cash/self-pay price\n5. Ask for a payment plan while you dispute\n\n**What to say:** 'I'd like to understand these charges before paying. Can you send me an itemized bill and explain the pricing?'\n\nWant help preparing what to say to the billing department?";
-    }
-    if (q.includes('afford') || q.includes('can\'t pay') || q.includes('payment plan')) {
-      return "If you can't afford a medical bill, you have options:\n\n**Immediate steps:**\n1. Don't ignore it (but don't pay immediately either)\n2. Request an itemized bill\n3. Ask for the cash/self-pay discount\n4. Apply for financial assistance (most hospitals have programs)\n\n**Negotiation strategies:**\n• Offer to pay 25-50% upfront for a discount\n• Ask for a 0% payment plan\n• Say: 'This amount isn't possible for me. What can we work out?'\n\n**If you qualify as low-income:**\n• Hospital charity care (required by law for nonprofits)\n• State Medicaid programs\n• Community health centers (sliding scale fees)\n\n**Last resorts:**\n• Medical bill negotiation services\n• Medical credit cards (careful with interest)\n• Bankruptcy (medical debt is dischargeable)\n\nWant help figuring out what to say to the billing department?";
-    }
-    if (q.includes('negotiate')) {
-      return "Yes, you can negotiate almost any medical bill. Here's how:\n\n**Before you call:**\n• Get an itemized bill\n• Research fair prices (Healthcare Bluebook)\n• Know your budget\n\n**What to say:**\n• 'What's your best cash price?'\n• 'I can't afford this. What options do we have?'\n• 'I've researched fair prices and this seems high. Can you match $X?'\n• 'Can you reduce this to the Medicare rate?'\n\n**Leverage points:**\n• Offer to pay immediately for a discount\n• Mention financial hardship\n• Ask about charity care programs\n• Be polite but persistent\n\n**Success rates:**\n• 50-80% of people who negotiate get some reduction\n• Average savings: 30-50%\n\nWant me to help you prepare for a specific negotiation?";
-    }
+    // Add user message indicating upload
+    const userMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: `[Uploaded document: ${file.name}]`,
+      timestamp: new Date().toISOString(),
+      isUpload: true,
+      fileName: file.name
+    };
     
-    // Default helpful response for chat
-    return "I'd be happy to help with that! Here are some things I can assist with:\n\n• **Costs & pricing** - fair prices, cash vs. insurance, negotiation tips\n• **Insurance questions** - deductibles, copays, whether coverage makes sense\n• **Bill concerns** - understanding charges, disputing errors, payment options\n\nWhat would you like to know more about?";
+    setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), userMessage]);
+    
+    try {
+      const response = await analyzeDocument(file);
+      
+      const analysisMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: response.analysis,
+        timestamp: new Date().toISOString(),
+        documentType: response.documentType,
+        triggers: response.triggers,
+        isAnalysis: true
+      };
+      
+      setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), analysisMessage]);
+      
+    } catch (error) {
+      console.error('Document analysis error:', error);
+      
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: "I'm sorry, I couldn't analyze that document. Please try uploading a clearer image, or describe what you're seeing and I'll try to help.",
+        timestamp: new Date().toISOString(),
+        isError: true
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
-
+  
+  /**
+   * Handle new chat - clear messages
+   */
+  const handleNewChat = () => {
+    setMessages([]);
+    setInputValue('');
+    setLocationPromptShown(false);
+    inputRef.current?.focus();
+  };
+  
+  /**
+   * Handle input key press
+   */
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
-
-  const handleDocumentUpload = async (file, question) => {
-    setShowUpload(false);
-    
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: `Uploaded: ${file.name}`,
-      hasDocument: true,
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-    setIsProcessingDocument(true);
-
-    try {
-      const response = await analyzeDocument(file, question);
-      
-      const aiMessage = {
-        id: Date.now() + 1,
-        type: 'ai',
-        content: response.data?.summary?.plainLanguageSummary || "I've analyzed your document. Here's what I found.",
-        analysisResult: response.data,
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      const errorMessage = {
-        id: Date.now() + 1,
-        type: 'ai',
-        content: "I had trouble analyzing that document. Please make sure it's a clear image of a medical bill or EOB and try again.",
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      setIsProcessingDocument(false);
-    }
-  };
-
-  const handleNewChat = () => {
-    setMessages([]);
-    setInputText('');
-    setIsProcessingDocument(false);
-  };
-
-  const isInChatMode = messages.length > 0;
-
+  
+  // Determine if we're in welcome state (no messages)
+  const isWelcomeState = messages.length === 0;
+  
   return (
     <div className="clarity-chat-page">
       {/* Header */}
       <header className="clarity-header">
-        <button className="back-btn" onClick={() => navigate('/')}>
+        <button className="back-button" onClick={() => navigate('/')}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <div className="header-brand">
-          <span className="header-findr">findr</span>
-          <svg className="header-icon" width="24" height="24" viewBox="0 0 63 63" fill="none" xmlns="http://www.w3.org/2000/svg">
+        
+        <div className="clarity-logo">
+          <span className="logo-text">findr</span>
+          <svg className="logo-icon" width="24" height="24" viewBox="0 0 63 63" fill="none">
             <circle cx="31.5" cy="31.5" r="30" fill="#17DDC0" stroke="#17DDC0" strokeWidth="3"/>
             <path d="M13.2831 30.8584V22.68C18.6881 22.68 23.0842 18.2829 23.0842 12.8789H31.2627C31.2627 22.7927 23.1969 30.8584 13.2831 30.8584Z" fill="white"/>
             <path d="M50 30.8584C40.0862 30.8584 32.0204 22.7927 32.0204 12.8789H40.1989C40.1989 18.2838 44.596 22.68 50 22.68V30.8584Z" fill="white"/>
             <path d="M40.198 49.6807H32.0196C32.0196 39.7669 40.0853 31.7012 49.9991 31.7012V39.8796C44.5942 39.8796 40.198 44.2767 40.198 49.6807Z" fill="white"/>
             <path d="M31.2627 49.6807H23.0842C23.0842 44.2758 18.6871 39.8796 13.2831 39.8796V31.7012C23.1969 31.7012 31.2627 39.7669 31.2627 49.6807Z" fill="white"/>
           </svg>
-          <span className="header-health">health</span>
+          <span className="logo-text">health</span>
         </div>
-        {isInChatMode ? (
-          <button className="new-chat-btn" onClick={handleNewChat}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
+        
+        {!isWelcomeState && (
+          <button className="new-chat-button" onClick={handleNewChat}>
+            New Chat
           </button>
-        ) : (
-          <div style={{ width: 40 }}></div>
         )}
       </header>
-
-      {/* Messages Area */}
-      <div className="clarity-messages">
-        {!isInChatMode ? (
-          <div className="clarity-welcome">
-            {/* Upload Document Button */}
-            <button className="upload-document-btn" onClick={() => setShowUpload(true)}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-              </svg>
-              Upload a Document
-            </button>
-            
-            <div className="quick-prompts">
-              <p className="prompts-label">Or ask a question:</p>
+      
+      {/* Main Content */}
+      <main className="clarity-main">
+        {isWelcomeState ? (
+          /* Welcome State */
+          <div className="welcome-container">
+            <div className="welcome-content">
+              <h1 className="welcome-title">Hi, I'm Clarity</h1>
+              <p className="welcome-subtitle">
+                I help you understand healthcare costs. Upload a bill or ask me anything about medical pricing, insurance, or negotiation.
+              </p>
               
-              {/* Chat input - only shown in welcome state */}
-              <div className="inline-chat-input">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your question here..."
-                />
+              <button 
+                className="upload-button-large"
+                onClick={() => setShowUploadModal(true)}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="17,8 12,3 7,8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Upload a Document
+              </button>
+              
+              <div className="quick-questions">
+                <p className="quick-questions-label">Or try asking:</p>
                 <button 
-                  onClick={handleSendMessage}
-                  disabled={!inputText.trim() || isLoading}
+                  className="quick-question-chip"
+                  onClick={() => handleSendMessage("How do I negotiate a hospital bill?")}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="22" y1="2" x2="11" y2="13"/>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                  </svg>
+                  How do I negotiate a hospital bill?
+                </button>
+                <button 
+                  className="quick-question-chip"
+                  onClick={() => handleSendMessage("What's a fair price for an MRI?")}
+                >
+                  What's a fair price for an MRI?
+                </button>
+                <button 
+                  className="quick-question-chip"
+                  onClick={() => handleSendMessage("Should I get health insurance or pay cash?")}
+                >
+                  Should I get insurance or pay cash?
                 </button>
               </div>
             </div>
           </div>
         ) : (
-          messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))
+          /* Chat State */
+          <div className="messages-container">
+            {messages.map((msg) => (
+              <ChatMessage 
+                key={msg.id} 
+                message={msg}
+              />
+            ))}
+            
+            {isLoading && (
+              <LoadingIndicator type={loadingType} />
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
         )}
-        
-        {isLoading && <LoadingIndicator isDocument={isProcessingDocument} />}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area - Only visible in chat mode */}
-      {isInChatMode && (
-        <div className="clarity-input-area">
+      </main>
+      
+      {/* Input Bar (only show in chat mode or if loading) */}
+      {(!isWelcomeState || isLoading) && (
+        <div className="input-container">
           <button 
-            className="upload-btn"
-            onClick={() => setShowUpload(true)}
+            className="add-button"
+            onClick={() => setShowUploadModal(true)}
+            disabled={isLoading}
             aria-label="Upload document"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.5">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
@@ -291,41 +337,65 @@ function ClarityChat() {
           <input
             ref={inputRef}
             type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            className="message-input"
+            placeholder="Ask about healthcare costs..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask a follow-up question..."
-            className="clarity-input"
+            disabled={isLoading}
           />
           
           <button 
-            className="send-btn"
-            onClick={handleSendMessage}
-            disabled={!inputText.trim() || isLoading}
+            className="send-button"
+            onClick={() => handleSendMessage()}
+            disabled={!inputValue.trim() || isLoading}
             aria-label="Send message"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              <polygon points="22,2 15,22 11,13 2,9"/>
             </svg>
           </button>
         </div>
       )}
-
-      {/* Upload Modal */}
-      {showUpload && (
-        <div className="upload-modal-overlay" onClick={() => setShowUpload(false)}>
-          <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="close-modal" onClick={() => setShowUpload(false)}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-            <DocumentUpload onUpload={handleDocumentUpload} />
-          </div>
+      
+      {/* Welcome state input */}
+      {isWelcomeState && !isLoading && (
+        <div className="input-container welcome-input">
+          <input
+            ref={inputRef}
+            type="text"
+            className="message-input"
+            placeholder="Ask about healthcare costs..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+          />
+          
+          <button 
+            className="send-button"
+            onClick={() => handleSendMessage()}
+            disabled={!inputValue.trim()}
+            aria-label="Send message"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22,2 15,22 11,13 2,9"/>
+            </svg>
+          </button>
         </div>
       )}
+      
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <DocumentUpload
+          onUpload={handleDocumentUpload}
+          onClose={() => setShowUploadModal(false)}
+        />
+      )}
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 }

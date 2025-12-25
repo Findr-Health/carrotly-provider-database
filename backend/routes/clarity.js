@@ -1,746 +1,441 @@
 /**
- * Healthcare Clarity API Routes
- * Findr Health - Document Analysis Endpoints
+ * Clarity API Routes
+ * Findr Health - Healthcare Cost Transparency Platform
  * 
- * Integrates with existing:
- * - providers collection (for suggestions)
- * - users collection (for tracking/personalization)
+ * Endpoints:
+ * - POST /api/clarity/chat - Chat with Cost Navigator
+ * - POST /api/clarity/analyze - Analyze uploaded document
+ * - GET /api/clarity/health - Health check
  */
 
 const express = require('express');
 const router = express.Router();
+const Anthropic = require('@anthropic-ai/sdk');
 const multer = require('multer');
-const clarityService = require('../services/clarityService');
-const multiDocService = require('../services/multiDocumentService');
-const geoPricingService = require('../services/geoPricingService');
 
-// Optional: Import your existing auth middleware if you want to track logged-in users
-// const { optionalAuth } = require('../middleware/auth');
+// Import system prompts
+const { buildCostNavigatorPrompt, buildDocumentAnalysisPrompt } = require('../prompts');
 
-// Configure multer for memory storage (no disk persistence - privacy first)
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Please upload an image (JPEG, PNG, WebP) or PDF.'));
+      cb(new Error('Invalid file type. Please upload an image (JPEG, PNG, GIF, WebP) or PDF.'));
     }
+  }
+});
+
+// Maximum conversation history to send (last N messages)
+const MAX_HISTORY_MESSAGES = 10;
+
+/**
+ * Format conversation history for Anthropic API
+ * @param {Array} history - Array of {role, content} messages
+ * @returns {Array} Formatted messages for API
+ */
+function formatConversationHistory(history) {
+  if (!history || !Array.isArray(history)) {
+    return [];
+  }
+  
+  // Take only the last MAX_HISTORY_MESSAGES
+  const recentHistory = history.slice(-MAX_HISTORY_MESSAGES);
+  
+  // Format for Anthropic API (ensure alternating user/assistant)
+  return recentHistory.map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'assistant',
+    content: msg.content
+  }));
+}
+
+/**
+ * POST /api/clarity/chat
+ * Chat with Cost Navigator AI
+ * 
+ * Body:
+ * - message: string (required) - User's message
+ * - history: array (optional) - Previous messages [{role, content}]
+ * - location: object (optional) - {city, state, zip, country}
+ */
+router.post('/chat', async (req, res) => {
+  try {
+    const { message, history, location } = req.body;
+    
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ 
+        error: 'Message is required',
+        success: false 
+      });
+    }
+    
+    // Build system prompt with location context
+    const systemPrompt = buildCostNavigatorPrompt(location);
+    
+    // Format conversation history
+    const formattedHistory = formatConversationHistory(history);
+    
+    // Build messages array
+    const messages = [
+      ...formattedHistory,
+      { role: 'user', content: message }
+    ];
+    
+    // Ensure proper message format (must start with user, alternate)
+    const cleanedMessages = ensureValidMessageFormat(messages);
+    
+    // Call Anthropic API
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: cleanedMessages
+    });
+    
+    // Extract response text
+    const assistantMessage = response.content[0]?.text || 
+      "I'm sorry, I couldn't process that request. Please try again.";
+    
+    // Check for special triggers in the response
+    const triggers = detectTriggers(message, assistantMessage);
+    
+    res.json({
+      success: true,
+      message: assistantMessage,
+      triggers, // Frontend can use these to show special UI
+      usage: {
+        input_tokens: response.usage?.input_tokens,
+        output_tokens: response.usage?.output_tokens
+      }
+    });
+    
+  } catch (error) {
+    console.error('Chat error:', error);
+    
+    // Handle specific Anthropic errors
+    if (error.status === 429) {
+      return res.status(429).json({
+        success: false,
+        error: 'Rate limit exceeded. Please wait a moment and try again.',
+        message: getFallbackResponse('rate_limit')
+      });
+    }
+    
+    if (error.status === 401) {
+      return res.status(500).json({
+        success: false,
+        error: 'API configuration error',
+        message: getFallbackResponse('error')
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'An error occurred processing your request',
+      message: getFallbackResponse('error')
+    });
   }
 });
 
 /**
  * POST /api/clarity/analyze
- * Main endpoint for document analysis
+ * Analyze uploaded healthcare document
  * 
- * Body (multipart/form-data):
- * - document: File (image or PDF)
- * - question: String (optional) - user's specific question or preset key
- * 
- * Preset question keys:
- * - what_does_this_mean
- * - what_do_i_owe
- * - is_price_correct
- * - explain_this
+ * Form Data:
+ * - file: file (required) - The document to analyze
+ * - documentType: string (optional) - Type hint (bill, eob, lab, etc.)
+ * - question: string (optional) - Specific question about the document
+ * - location: string (optional) - JSON string of location object
  */
-router.post('/analyze', upload.single('document'), async (req, res) => {
+router.post('/analyze', upload.single('file'), async (req, res) => {
   try {
-    // Validate file upload
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: 'No document uploaded',
-        message: 'Please upload an image or PDF of your healthcare document.'
+        error: 'No file uploaded'
       });
     }
-
-    // Convert file to base64
-    const documentBase64 = req.file.buffer.toString('base64');
-    const mimeType = req.file.mimetype;
-    const userQuestion = req.body.question || null;
-    const userZipCode = req.body.zipCode || null;
-
-    // Log analysis start (no PHI in logs)
-    console.log(`[Clarity] Analysis started - Type: ${mimeType}, Size: ${req.file.size}, Question: ${userQuestion || 'none'}`);
-
-    // Run analysis
-    const result = await clarityService.analyzeDocument(documentBase64, mimeType, userQuestion);
-
-    // Add geographic pricing if ZIP provided
-    if (userZipCode && result.isHealthcare && result.extraction) {
-      result.priceContext = geoPricingService.getRegionalPriceContext(
-        result.extraction,
-        userZipCode
-      );
-    }
-
-    // Log completion (no PHI)
-    console.log(`[Clarity] Analysis complete - Success: ${result.success}, Healthcare: ${result.isHealthcare}, Time: ${result.processingTime}ms`);
-
-    // Track usage for analytics (optional - no PHI stored)
-    const db = req.app.locals.db;
-    if (db) {
+    
+    const { documentType, question } = req.body;
+    let location = null;
+    
+    // Parse location if provided
+    if (req.body.location) {
       try {
-        await db.collection('clarityUsage').insertOne({
-          timestamp: new Date(),
-          documentType: result.documentType || 'unknown',
-          isHealthcare: result.isHealthcare,
-          questionType: userQuestion,
-          processingTime: result.processingTime,
-          confidenceLevel: result.confidence?.level,
-          // If user is logged in (via JWT), track their ID
-          userId: req.user?.id || null,
-          // Anonymous session tracking
-          sessionId: req.body.sessionId || null,
-          // Region for aggregate analytics
-          region: userZipCode ? geoPricingService.getRegionFromZip(userZipCode) : null
-        });
-      } catch (trackingError) {
-        // Don't fail the request if tracking fails
-        console.error('[Clarity] Usage tracking error:', trackingError.message);
+        location = JSON.parse(req.body.location);
+      } catch (e) {
+        // Ignore parse errors
       }
     }
-
-    // Clear document from memory immediately
-    req.file.buffer = null;
-
-    // Return result
-    res.json(result);
-
-  } catch (error) {
-    console.error('[Clarity] Analysis error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Analysis failed',
-      message: 'We encountered an error analyzing your document. Please try again or contact support if the problem persists.'
-    });
-  }
-});
-
-/**
- * POST /api/clarity/classify
- * Quick classification endpoint (is this healthcare?)
- * Useful for client-side validation before full analysis
- */
-router.post('/classify', upload.single('document'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: 'No document uploaded'
-      });
-    }
-
-    const documentBase64 = req.file.buffer.toString('base64');
-    const mimeType = req.file.mimetype;
-
-    const classification = await clarityService.classifyDocument(documentBase64, mimeType);
-
-    // Clear document from memory
-    req.file.buffer = null;
-
-    res.json({
-      success: true,
-      ...classification
-    });
-
-  } catch (error) {
-    console.error('[Clarity] Classification error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Classification failed'
-    });
-  }
-});
-
-/**
- * GET /api/clarity/presets
- * Returns available preset questions for UI
- */
-router.get('/presets', (req, res) => {
-  res.json({
-    success: true,
-    presets: [
-      {
-        key: 'what_does_this_mean',
-        label: 'What does this document mean?',
-        icon: 'help-circle',
-        description: 'Get a plain-language explanation of your document'
-      },
-      {
-        key: 'what_do_i_owe',
-        label: 'What do I owe?',
-        icon: 'dollar-sign',
-        description: 'Find out exactly how much you need to pay'
-      },
-      {
-        key: 'is_price_correct',
-        label: 'Does this price look correct?',
-        icon: 'check-circle',
-        description: 'Review charges and get questions to verify'
-      },
-      {
-        key: 'explain_this',
-        label: 'Explain this to me',
-        icon: 'book-open',
-        description: 'Complete breakdown of everything on your document'
-      }
-    ]
-  });
-});
-
-/**
- * POST /api/clarity/suggest-providers
- * Get provider suggestions based on analysis
- * Integrates with Findr Health's provider database
- */
-router.post('/suggest-providers', async (req, res) => {
-  try {
-    const { analysisContext, category, userLocation, analysisId } = req.body;
     
-    // Get database connection from app
-    const db = req.app.locals.db;
+    // Build system prompt
+    const systemPrompt = buildDocumentAnalysisPrompt(documentType);
     
-    if (!db) {
-      return res.json({
-        success: true,
-        providers: [],
-        message: 'Provider suggestions not available'
-      });
-    }
-
-    // Base query: only approved providers
-    let query = { status: 'approved' };
+    // Prepare the image for Anthropic
+    const base64Image = req.file.buffer.toString('base64');
+    const mediaType = req.file.mimetype;
     
-    // Filter by category based on analysis needs
-    if (category === 'billing_advocate' || analysisContext?.hasBillingIssues) {
-      // Find providers who offer billing advocacy or patient advocacy services
-      query.$or = [
-        { 'services.name': { $regex: /billing|advocacy|patient rights|medical billing/i } },
-        { providerTypes: { $in: ['patient-advocate', 'billing-specialist'] } },
-        { 'services.category': { $regex: /advocacy|billing/i } }
-      ];
-    } else if (category === 'mental_health' || analysisContext?.documentType === 'MENTAL_HEALTH') {
-      query.providerTypes = { $in: ['mental-health', 'Mental Health'] };
-    } else if (category === 'second_opinion') {
-      // For medical second opinions, match provider types to the issue
-      if (analysisContext?.providerTypes) {
-        query.providerTypes = { $in: analysisContext.providerTypes };
-      }
-    }
-
-    // Add location filter if provided
-    if (userLocation?.state) {
-      query['address.state'] = userLocation.state;
-    }
-    if (userLocation?.city) {
-      query['address.city'] = { $regex: new RegExp(userLocation.city, 'i') };
-    }
-
-    const providers = await db.collection('providers')
-      .find(query)
-      .limit(5)
-      .toArray();
-
-    res.json({
-      success: true,
-      providers: providers.map(p => ({
-        id: p._id,
-        name: p.practiceName,
-        providerTypes: p.providerTypes || [],
-        // Location info
-        location: {
-          city: p.address?.city,
-          state: p.address?.state,
-          zip: p.address?.zip
-        },
-        fullAddress: [
-          p.address?.street,
-          p.address?.suite,
-          p.address?.city,
-          p.address?.state,
-          p.address?.zip
-        ].filter(Boolean).join(', '),
-        // Contact info (check both nested and flat fields for backwards compatibility)
-        phone: p.contactInfo?.phone || p.phone,
-        email: p.contactInfo?.email || p.email,
-        website: p.contactInfo?.website || p.website,
-        // Services relevant to the query
-        services: (p.services || [])
-          .filter(s => s.isActive !== false)
-          .slice(0, 3)
-          .map(s => ({
-            name: s.name,
-            price: s.price,
-            duration: s.duration
-          })),
-        // Credentials
-        credentials: {
-          yearsExperience: p.credentials?.yearsExperience,
-          certifications: p.credentials?.certifications || []
-        },
-        // Languages (useful for diverse populations)
-        languagesSpoken: p.languagesSpoken || [],
-        // Insurance (helpful context)
-        insuranceAccepted: p.insuranceAccepted || [],
-        // Photo for display
-        primaryPhoto: p.photos?.find(photo => photo.isPrimary)?.url || p.photos?.[0]?.url || null,
-        // Link to Findr Health profile
-        profileUrl: `https://findrhealth.com/provider/${p._id}`
-      })),
-      // Include search context for transparency
-      searchContext: {
-        category: category,
-        location: userLocation,
-        resultsCount: providers.length
-      }
-    });
-
-  } catch (error) {
-    console.error('[Clarity] Provider suggestion error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Could not fetch provider suggestions'
-    });
-  }
-});
-
-/**
- * POST /api/clarity/analyze-multiple
- * P1 Feature: Analyze and correlate multiple documents
- * 
- * Body (multipart/form-data):
- * - documents: Array of Files (images or PDFs)
- * - zipCode: String (optional) - for geographic pricing context
- */
-router.post('/analyze-multiple', upload.array('documents', 5), async (req, res) => {
-  try {
-    if (!req.files || req.files.length < 1) {
-      return res.status(400).json({
-        success: false,
-        error: 'No documents uploaded',
-        message: 'Please upload at least one document.'
-      });
-    }
-
-    const zipCode = req.body.zipCode || null;
-    console.log(`[Clarity] Multi-document analysis - ${req.files.length} files, ZIP: ${zipCode || 'none'}`);
-
-    // Analyze each document
-    const analyses = await Promise.all(
-      req.files.map(async (file) => {
-        const documentBase64 = file.buffer.toString('base64');
-        const result = await clarityService.analyzeDocument(documentBase64, file.mimetype);
-        
-        // Add geographic pricing if ZIP provided and healthcare doc
-        if (zipCode && result.isHealthcare && result.extraction) {
-          result.priceContext = geoPricingService.getRegionalPriceContext(
-            result.extraction,
-            zipCode
-          );
+    // Build user message with image
+    const userContent = [
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: mediaType,
+          data: base64Image
         }
-        
-        // Clear buffer
-        file.buffer = null;
-        return result;
-      })
-    );
-
-    // Correlate documents if multiple healthcare docs
-    const healthcareAnalyses = analyses.filter(a => a.isHealthcare);
-    let correlation = null;
-    
-    if (healthcareAnalyses.length >= 2) {
-      correlation = multiDocService.correlateDocuments(healthcareAnalyses);
-    }
-
-    res.json({
-      success: true,
-      documentCount: analyses.length,
-      analyses: analyses,
-      correlation: correlation,
-      hasCorrelation: correlation?.correlated || false
-    });
-
-  } catch (error) {
-    console.error('[Clarity] Multi-document error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Analysis failed',
-      message: 'Error analyzing documents. Please try again.'
-    });
-  }
-});
-
-/**
- * POST /api/clarity/price-check
- * P1 Feature: Get geographic price context for an extraction
- * 
- * Body (JSON):
- * - extraction: Object - previously extracted document data
- * - zipCode: String - 5-digit ZIP code
- */
-router.post('/price-check', async (req, res) => {
-  try {
-    const { extraction, zipCode } = req.body;
-
-    if (!extraction || !zipCode) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields',
-        message: 'Please provide both extraction data and ZIP code.'
-      });
-    }
-
-    const priceContext = geoPricingService.getRegionalPriceContext(extraction, zipCode);
-    const questions = geoPricingService.getPriceVerificationQuestions(priceContext);
-
-    res.json({
-      success: true,
-      priceContext: priceContext,
-      verificationQuestions: questions
-    });
-
-  } catch (error) {
-    console.error('[Clarity] Price check error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Price check failed'
-    });
-  }
-});
-
-/**
- * POST /api/clarity/correlate
- * P1 Feature: Correlate previously analyzed documents
- * 
- * Body (JSON):
- * - analyses: Array of analysis results
- */
-router.post('/correlate', async (req, res) => {
-  try {
-    const { analyses } = req.body;
-
-    if (!analyses || !Array.isArray(analyses) || analyses.length < 2) {
-      return res.status(400).json({
-        success: false,
-        error: 'Need at least 2 analyses to correlate'
-      });
-    }
-
-    const correlation = multiDocService.correlateDocuments(analyses);
-
-    res.json({
-      success: true,
-      ...correlation
-    });
-
-  } catch (error) {
-    console.error('[Clarity] Correlation error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Correlation failed'
-    });
-  }
-});
-
-/**
- * POST /api/clarity/expert-consult-request
- * Submit interest in expert consultation
- * Developers will build the full scheduling/payment workflow
- * 
- * Body (JSON):
- * - analysisId: String (optional) - reference to previous analysis
- * - documentType: String - type of document analyzed
- * - primaryConcern: String - what user needs help with
- * - contactEmail: String
- * - contactPhone: String (optional)
- * - preferredTime: String (optional) - morning/afternoon/evening
- */
-router.post('/expert-consult-request', async (req, res) => {
-  try {
-    const { 
-      analysisId, 
-      documentType, 
-      primaryConcern, 
-      contactEmail, 
-      contactPhone,
-      preferredTime 
-    } = req.body;
-
-    if (!contactEmail || !primaryConcern) {
-      return res.status(400).json({
-        success: false,
-        error: 'Email and concern description required'
-      });
-    }
-
-    // Log the request (in production, save to database)
-    console.log(`[Expert Consult] New request - Email: ${contactEmail}, Concern: ${primaryConcern.substring(0, 50)}...`);
-
-    // In production, this would:
-    // 1. Save to database
-    // 2. Send confirmation email
-    // 3. Notify the expert
-    // 4. Return booking link
-
-    res.json({
-      success: true,
-      message: 'Your request has been received. Our healthcare expert will contact you within 24 hours.',
-      requestId: `ECR-${Date.now()}`,
-      nextSteps: [
-        'Check your email for confirmation',
-        'Prepare your documents for the consultation',
-        'Write down your specific questions'
-      ],
-      expertInfo: {
-        title: 'Healthcare Navigation Expert',
-        credentials: 'Board-Certified Surgeon & Healthcare Executive',
-        experience: '20+ years in healthcare administration and patient advocacy',
-        specialties: [
-          'Medical bill review and negotiation',
-          'Insurance claim disputes',
-          'Healthcare system navigation',
-          'Treatment options and second opinions'
-        ]
-      }
-    });
-
-  } catch (error) {
-    console.error('[Expert Consult] Request error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Could not submit request'
-    });
-  }
-});
-
-/**
- * GET /api/clarity/expert-info
- * Get information about expert consultation service
- */
-router.get('/expert-info', (req, res) => {
-  res.json({
-    success: true,
-    service: {
-      name: 'Personal Healthcare Navigator',
-      tagline: 'Get clarity from someone who\'s been on both sides',
-      description: 'Schedule a 1-on-1 video consultation with a board-certified surgeon and healthcare executive who has spent decades navigating the complexities of healthcare from both the provider and payer perspectives.',
-      benefits: [
-        'Personalized review of your specific situation',
-        'Expert interpretation of confusing documents',
-        'Strategic advice on next steps',
-        'Insider knowledge of how the system works',
-        'Advocacy strategies that get results'
-      ],
-      expert: {
-        credentials: 'Board-Certified Surgeon, Healthcare Executive',
-        experience: '20+ years',
-        background: 'Has worked as a surgeon, hospital administrator, and healthcare consultant, giving unique insight into how billing, insurance, and clinical decisions are made.'
       },
-      consultTypes: [
-        {
-          type: 'quick_clarity',
-          name: 'Quick Clarity Session',
-          duration: '15 minutes',
-          description: 'Perfect for a single bill question or quick document review',
-          idealFor: ['One confusing bill', 'EOB interpretation', 'Quick second opinion on charges']
-        },
-        {
-          type: 'deep_dive',
-          name: 'Deep Dive Consultation',
-          duration: '30 minutes',
-          description: 'Comprehensive review of your situation with actionable next steps',
-          idealFor: ['Multiple bills', 'Ongoing disputes', 'Complex medical situations', 'Insurance denials']
-        },
-        {
-          type: 'advocacy_strategy',
-          name: 'Advocacy Strategy Session',
-          duration: '45 minutes',
-          description: 'Develop a complete plan to resolve your healthcare challenge',
-          idealFor: ['Large unexpected bills', 'Prior authorization issues', 'Appeal strategy', 'Negotiation coaching']
-        }
+      {
+        type: 'text',
+        text: question 
+          ? `Please analyze this healthcare document. Specific question: ${question}`
+          : 'Please analyze this healthcare document and explain what it shows. Identify any concerns or action items.'
+      }
+    ];
+    
+    // Add location context if available
+    if (location && (location.city || location.state)) {
+      userContent[1].text += ` The user is located in ${[location.city, location.state].filter(Boolean).join(', ')}.`;
+    }
+    
+    // Call Anthropic API with vision
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096, // Longer for document analysis
+      system: systemPrompt,
+      messages: [
+        { role: 'user', content: userContent }
       ]
+    });
+    
+    const analysisResult = response.content[0]?.text || 
+      "I'm sorry, I couldn't analyze this document. Please try uploading a clearer image.";
+    
+    // Detect triggers in the analysis
+    const triggers = detectDocumentTriggers(analysisResult);
+    
+    res.json({
+      success: true,
+      analysis: analysisResult,
+      documentType: detectDocumentType(analysisResult),
+      triggers,
+      usage: {
+        input_tokens: response.usage?.input_tokens,
+        output_tokens: response.usage?.output_tokens
+      }
+    });
+    
+  } catch (error) {
+    console.error('Document analysis error:', error);
+    
+    if (error.message?.includes('Invalid file type')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
     }
-  });
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to analyze document',
+      analysis: "I'm sorry, I couldn't analyze this document. Please try uploading a clearer image or PDF."
+    });
+  }
 });
 
 /**
  * GET /api/clarity/health
  * Health check endpoint
  */
-router.get('/health', async (req, res) => {
-  const db = req.app.locals.db;
-  let dbConnected = false;
-  
-  if (db) {
-    try {
-      await db.command({ ping: 1 });
-      dbConnected = true;
-    } catch (e) {
-      dbConnected = false;
-    }
-  }
-
+router.get('/health', (req, res) => {
   res.json({
-    success: true,
+    status: 'healthy',
     service: 'clarity',
-    status: 'operational',
-    version: '1.2.0',
+    timestamp: new Date().toISOString(),
     features: {
-      singleDocument: true,
-      multiDocument: true,
-      geoPricing: true,
-      expertConsult: true,
-      providerSuggestions: dbConnected,
-      usageTracking: dbConnected
-    },
-    integrations: {
-      database: dbConnected,
-      anthropic: !!process.env.ANTHROPIC_API_KEY
-    },
-    timestamp: new Date().toISOString()
+      chat: true,
+      documentAnalysis: true,
+      conversationHistory: true,
+      locationAware: true
+    }
   });
 });
 
+// ============ Helper Functions ============
+
 /**
- * GET /api/clarity/analytics
- * Usage analytics for admin dashboard
- * Requires admin auth in production
+ * Ensure messages alternate properly between user and assistant
  */
-router.get('/analytics', async (req, res) => {
-  try {
-    const db = req.app.locals.db;
-    
-    if (!db) {
-      return res.status(503).json({
-        success: false,
-        error: 'Database not available'
-      });
-    }
-
-    // Get usage stats for the last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const [totalAnalyses, byDocType, byDay, avgProcessingTime] = await Promise.all([
-      // Total analyses
-      db.collection('clarityUsage').countDocuments({
-        timestamp: { $gte: thirtyDaysAgo }
-      }),
-      
-      // By document type
-      db.collection('clarityUsage').aggregate([
-        { $match: { timestamp: { $gte: thirtyDaysAgo } } },
-        { $group: { _id: '$documentType', count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]).toArray(),
-      
-      // By day
-      db.collection('clarityUsage').aggregate([
-        { $match: { timestamp: { $gte: thirtyDaysAgo } } },
-        { 
-          $group: { 
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
-            count: { $sum: 1 }
-          } 
-        },
-        { $sort: { _id: 1 } }
-      ]).toArray(),
-      
-      // Average processing time
-      db.collection('clarityUsage').aggregate([
-        { $match: { timestamp: { $gte: thirtyDaysAgo }, processingTime: { $exists: true } } },
-        { $group: { _id: null, avgTime: { $avg: '$processingTime' } } }
-      ]).toArray()
-    ]);
-
-    res.json({
-      success: true,
-      period: 'last_30_days',
-      analytics: {
-        totalAnalyses,
-        byDocumentType: byDocType.reduce((acc, item) => {
-          acc[item._id || 'unknown'] = item.count;
-          return acc;
-        }, {}),
-        dailyUsage: byDay,
-        averageProcessingTime: avgProcessingTime[0]?.avgTime || null
-      }
-    });
-
-  } catch (error) {
-    console.error('[Clarity] Analytics error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Could not fetch analytics'
-    });
+function ensureValidMessageFormat(messages) {
+  if (!messages || messages.length === 0) {
+    return [];
   }
-});
-
-/**
- * Error handling middleware for this router
- */
-router.use((error, req, res, next) => {
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        success: false,
-        error: 'File too large',
-        message: 'Please upload an image under 10MB'
-      });
+  
+  const cleaned = [];
+  let lastRole = null;
+  
+  for (const msg of messages) {
+    // Skip empty messages
+    if (!msg.content) continue;
+    
+    // If same role as last, combine (shouldn't happen often)
+    if (msg.role === lastRole && cleaned.length > 0) {
+      cleaned[cleaned.length - 1].content += '\n\n' + msg.content;
+    } else {
+      cleaned.push({ role: msg.role, content: msg.content });
+      lastRole = msg.role;
     }
   }
   
-  console.error('[Clarity] Route error:', error.message);
-  res.status(500).json({
-    success: false,
-    error: 'An error occurred',
-    message: error.message
-  });
-});
-// Chat endpoint for text questions
-router.post('/chat', async (req, res) => {
-  try {
-    const { question } = req.body;
-    
-    if (!question) {
-      return res.status(400).json({ success: false, message: 'Question is required' });
-    }
-
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic();
-
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: `You are Clarity, a friendly healthcare billing assistant created by Findr Health. Your job is to help people understand their medical bills, insurance terms, and healthcare costs in plain, simple language.
-
-Be conversational, warm, and helpful. Use bullet points and formatting when it helps clarity. If someone asks about specific prices, give general ranges and suggest ways to find exact prices in their area.
-
-Always encourage users to upload their actual documents for more specific help. Keep responses concise but thorough.`,
-      messages: [
-        { role: 'user', content: question }
-      ]
-    });
-
-    const aiResponse = response.content[0].text;
-    
-    res.json({ 
-      success: true, 
-      response: aiResponse 
-    });
-
-  } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Unable to process question. Please try again.' 
-    });
+  // Ensure first message is from user
+  if (cleaned.length > 0 && cleaned[0].role !== 'user') {
+    cleaned.shift();
   }
-});
+  
+  return cleaned;
+}
+
+/**
+ * Detect special triggers in conversation
+ */
+function detectTriggers(userMessage, assistantResponse) {
+  const triggers = {
+    providerOutreach: false,
+    internationalValidation: false,
+    consultationSuggested: false,
+    calculatorFlow: false,
+    locationNeeded: false
+  };
+  
+  const lowerUser = userMessage.toLowerCase();
+  const lowerResponse = assistantResponse.toLowerCase();
+  
+  // Provider outreach trigger
+  if (lowerResponse.includes('would you like us to reach out') ||
+      lowerResponse.includes('reach out to') && lowerResponse.includes('cash prices')) {
+    triggers.providerOutreach = true;
+  }
+  
+  // International validation trigger
+  if (lowerResponse.includes('validate this facility') ||
+      lowerResponse.includes('research') && lowerResponse.includes('email you')) {
+    triggers.internationalValidation = true;
+  }
+  
+  // Consultation suggested
+  if (lowerResponse.includes('free consultation') ||
+      lowerResponse.includes('request a consultation')) {
+    triggers.consultationSuggested = true;
+  }
+  
+  // Insurance calculator flow
+  if (lowerUser.includes('should i get insurance') ||
+      lowerUser.includes('do i need insurance') ||
+      lowerUser.includes('insurance vs cash') ||
+      lowerUser.includes('worth having insurance')) {
+    triggers.calculatorFlow = true;
+  }
+  
+  // Location needed
+  if (lowerResponse.includes('what city') ||
+      lowerResponse.includes('zip code') ||
+      lowerResponse.includes('where are you located')) {
+    triggers.locationNeeded = true;
+  }
+  
+  return triggers;
+}
+
+/**
+ * Detect triggers in document analysis
+ */
+function detectDocumentTriggers(analysis) {
+  const triggers = {
+    highBillAmount: false,
+    upcodingFlagged: false,
+    consultationSuggested: false,
+    multipleFlags: false
+  };
+  
+  const lower = analysis.toLowerCase();
+  
+  // High bill amount
+  if (lower.includes('$10,000') || lower.includes('$15,000') || 
+      lower.includes('$20,000') || lower.includes('significant amount')) {
+    triggers.highBillAmount = true;
+  }
+  
+  // Upcoding flagged
+  const upcodingDiagnoses = ['sepsis', 'acute kidney injury', 'aki', 'respiratory failure', 
+                             'encephalopathy', 'chf', 'copd exacerbation'];
+  if (upcodingDiagnoses.some(d => lower.includes(d)) && 
+      lower.includes('flag') || lower.includes('confirm')) {
+    triggers.upcodingFlagged = true;
+  }
+  
+  // Consultation suggested
+  if (lower.includes('free consultation') || lower.includes('request a consultation')) {
+    triggers.consultationSuggested = true;
+  }
+  
+  // Multiple flags
+  const flagCount = (lower.match(/\*\*flag/g) || []).length;
+  if (flagCount >= 2) {
+    triggers.multipleFlags = true;
+  }
+  
+  return triggers;
+}
+
+/**
+ * Detect document type from analysis content
+ */
+function detectDocumentType(analysis) {
+  const lower = analysis.toLowerCase();
+  
+  if (lower.includes('this is not a bill') || lower.includes('explanation of benefits') || lower.includes('eob')) {
+    return 'eob';
+  }
+  if (lower.includes('lab result') || lower.includes('blood test') || lower.includes('test result')) {
+    return 'lab';
+  }
+  if (lower.includes('collection') || lower.includes('debt') || lower.includes('past due')) {
+    return 'collection';
+  }
+  if (lower.includes('estimate') || lower.includes('quote')) {
+    return 'estimate';
+  }
+  if (lower.includes('imaging') || lower.includes('radiology') || lower.includes('mri') || lower.includes('ct scan')) {
+    return 'imaging';
+  }
+  if (lower.includes('bill') || lower.includes('charges') || lower.includes('amount due')) {
+    return 'bill';
+  }
+  
+  return 'unknown';
+}
+
+/**
+ * Get fallback response for errors
+ */
+function getFallbackResponse(type) {
+  const responses = {
+    rate_limit: "I'm experiencing high demand right now. Here are some general tips while you wait:\n\n1. Always request an itemized bill\n2. Compare prices using Healthcare Bluebook\n3. Ask for the cash/self-pay price\n4. Don't be afraid to negotiate\n\nPlease try again in a moment.",
+    
+    error: "I'm having trouble connecting right now. In the meantime:\n\n1. You have the right to an itemized bill\n2. Most hospital bills can be negotiated\n3. Cash prices are often 40-60% less than insurance rates\n\nPlease try again, or request a consultation for complex issues."
+  };
+  
+  return responses[type] || responses.error;
+}
+
 module.exports = router;
