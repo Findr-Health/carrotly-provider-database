@@ -3,19 +3,34 @@
  * Two tools + One service
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DocumentUpload from '../components/clarity/DocumentUpload';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
+  // Navigate to clarity with a preset question that will auto-send
   const handleCostNavigator = (question = '') => {
-    navigate('/clarity', { state: { initialQuestion: question, mode: 'cost' } });
+    if (question) {
+      navigate('/clarity', { state: { presetQuestion: question } });
+    } else {
+      navigate('/clarity');
+    }
   };
 
-  const handleDocumentUpload = () => {
-    navigate('/clarity', { state: { mode: 'document', openUpload: true } });
+  // Handle document upload - navigate to clarity page with file to analyze
+  const handleDocumentUpload = (file) => {
+    setShowUploadModal(false);
+    // Navigate to clarity with the file - ClarityChat will handle the analysis
+    navigate('/clarity', { 
+      state: { 
+        uploadedFile: file,
+        fileName: file.name
+      } 
+    });
   };
 
   return (
@@ -85,7 +100,7 @@ function Home() {
             <span className="format-pill">Medical records</span>
           </div>
           
-          <button className="tool-cta" onClick={handleDocumentUpload}>
+          <button className="tool-cta" onClick={() => setShowUploadModal(true)}>
             Upload a document
             <span className="cta-arrow">→</span>
           </button>
@@ -156,6 +171,14 @@ function Home() {
           </div>
         </div>
       </section>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <DocumentUpload
+          onUpload={handleDocumentUpload}
+          onClose={() => setShowUploadModal(false)}
+        />
+      )}
     </div>
   );
 }
