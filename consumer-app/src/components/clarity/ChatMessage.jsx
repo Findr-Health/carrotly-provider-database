@@ -1,13 +1,13 @@
 /**
  * ChatMessage - Individual message bubble
  */
-
 import React from 'react';
 import AnalysisResult from './AnalysisResult';
 
 function ChatMessage({ message }) {
-  const isUser = message.type === 'user';
-
+  // Support both 'type' and 'role' for backwards compatibility
+  const isUser = message.role === 'user' || message.type === 'user';
+  
   return (
     <div className={`chat-message ${isUser ? 'user' : 'ai'}`}>
       <div className="message-bubble">
