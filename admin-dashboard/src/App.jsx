@@ -8,6 +8,8 @@ import ProviderList from './components/ProviderList';
 import ProviderDetail from './components/ProviderDetail';
 import UserList from './components/UserList';
 import UserDetail from './components/UserDetail';
+import InquiryQueue from './pages/InquiryQueue';
+import PriceDatabase from './pages/PriceDatabase';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -51,6 +53,8 @@ function App() {
           <Route path="/providers" element={<ProtectedRoute><Layout><ProviderList /></Layout></ProtectedRoute>} />
           <Route path="/providers/:id" element={<ProtectedRoute><Layout><ProviderDetail /></Layout></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute><Layout><UsersPage /></Layout></ProtectedRoute>} />
+          <Route path="/inquiries" element={<ProtectedRoute><Layout><InquiryQueue /></Layout></ProtectedRoute>} />
+          <Route path="/price-database" element={<ProtectedRoute><Layout><PriceDatabase /></Layout></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

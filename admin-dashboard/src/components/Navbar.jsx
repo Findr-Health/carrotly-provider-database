@@ -1,10 +1,19 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
+  
+  const linkClass = (path) => `px-3 py-2 rounded-lg text-sm font-medium transition ${
+    isActive(path) 
+      ? 'text-teal-600 bg-teal-50' 
+      : 'text-gray-600 hover:text-teal-600'
+  }`;
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-100">
@@ -18,14 +27,20 @@ export default function Navbar() {
                 className="h-20 w-auto"
               />
             </Link>
-            <Link to="/dashboard" className="text-gray-600 hover:text-teal-600 px-3 py-2 rounded-lg text-sm font-medium transition">
+            <Link to="/dashboard" className={linkClass('/dashboard')}>
               Dashboard
             </Link>
-            <Link to="/providers" className="text-gray-600 hover:text-teal-600 px-3 py-2 rounded-lg text-sm font-medium transition">
+            <Link to="/providers" className={linkClass('/providers')}>
               Providers
             </Link>
-            <Link to="/users" className="text-gray-600 hover:text-teal-600 px-3 py-2 rounded-lg text-sm font-medium transition">
+            <Link to="/users" className={linkClass('/users')}>
               Users
+            </Link>
+            <Link to="/inquiries" className={linkClass('/inquiries')}>
+              Inquiries
+            </Link>
+            <Link to="/price-database" className={linkClass('/price-database')}>
+              Price Database
             </Link>
           </div>
           <div className="flex items-center space-x-4">
