@@ -13,7 +13,7 @@ const Service = require('../models/Service');
 const ClarityProvider = require('../models/ClarityProvider');
 const Price = require('../models/Price');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'carrotly-admin-secret-2024';
 
 // Middleware to verify admin token
 const verifyToken = (req, res, next) => {
