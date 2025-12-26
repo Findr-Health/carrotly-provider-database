@@ -1,18 +1,18 @@
 /**
  * Home Page - Main landing for Findr Health Consumer App
- * Shows upload modal directly on home page
+ * Two tools + One service
  */
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DocumentUpload from '../components/clarity/DocumentUpload';
-import { setPendingUploadFile } from './ClarityChat';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
   const [showUploadModal, setShowUploadModal] = useState(false);
 
+  // Navigate to clarity with a preset question that will auto-send
   const handleCostNavigator = (question = '') => {
     if (question) {
       navigate('/clarity', { state: { presetQuestion: question } });
@@ -21,15 +21,16 @@ function Home() {
     }
   };
 
-  // Handle file upload from modal
-  const handleFileUpload = (file) => {
-    console.log('Home: File uploaded, storing and navigating:', file.name);
-    // Store the file in the module-level variable
-    setPendingUploadFile(file);
-    // Close modal
+  // Handle document upload - navigate to clarity page with file to analyze
+  const handleDocumentUpload = (file) => {
     setShowUploadModal(false);
-    // Navigate to clarity page - it will auto-process the pending file
-    navigate('/clarity');
+    // Navigate to clarity with the file - ClarityChat will handle the analysis
+    navigate('/clarity', { 
+      state: { 
+        uploadedFile: file,
+        fileName: file.name
+      } 
+    });
   };
 
   return (
@@ -171,10 +172,10 @@ function Home() {
         </div>
       </section>
 
-      {/* Upload Modal - rendered on Home page */}
+      {/* Upload Modal */}
       {showUploadModal && (
         <DocumentUpload
-          onUpload={handleFileUpload}
+          onUpload={handleDocumentUpload}
           onClose={() => setShowUploadModal(false)}
         />
       )}

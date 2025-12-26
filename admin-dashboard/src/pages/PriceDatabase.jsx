@@ -10,8 +10,14 @@ function PriceDatabase() {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [providerTypeFilter, setProviderTypeFilter] = useState('all');
+  const [priceServiceFilter, setPriceServiceFilter] = useState('all');
+  const [priceProviderFilter, setPriceProviderFilter] = useState('all');
+  const [partnerFilter, setPartnerFilter] = useState('all');
 
   const categories = [
     'Imaging', 'Labs', 'Procedure', 'Dental', 'Vision', 'Preventive', 'Specialty',
@@ -38,10 +44,10 @@ function PriceDatabase() {
   const providerTypes = ['Imaging Center', 'Lab', 'Surgery Center', 'Hospital', 'Clinic', 'Dental', 'Pharmacy', 'Other'];
 
   useEffect(() => {
-    if (activeTab === 'services') fetchServices();
-    else if (activeTab === 'providers') fetchProviders();
-    else if (activeTab === 'prices') fetchPrices();
-  }, [activeTab]);
+    fetchServices();
+    fetchProviders();
+    fetchPrices();
+  }, []);
 
   const fetchServices = async () => {
     try {
@@ -55,22 +61,16 @@ function PriceDatabase() {
 
   const fetchProviders = async () => {
     try {
-      setLoading(true);
       const response = await api.get('/clarity-admin/clarity-providers');
       setProviders(response.data.providers || []);
-      setError(null);
-    } catch (err) { setError('Failed to load providers'); console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) { console.error(err); }
   };
 
   const fetchPrices = async () => {
     try {
-      setLoading(true);
       const response = await api.get('/clarity-admin/prices');
       setPrices(response.data.prices || []);
-      setError(null);
-    } catch (err) { setError('Failed to load prices'); console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) { console.error(err); }
   };
 
   const saveService = async (data) => {
@@ -108,16 +108,43 @@ function PriceDatabase() {
     } catch (err) { alert('Failed to delete'); }
   };
 
-  // Filter services by search and category
+  // Reset filters when changing tabs
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSearchTerm('');
+    setCategoryFilter('all');
+    setProviderTypeFilter('all');
+    setPriceServiceFilter('all');
+    setPriceProviderFilter('all');
+    setPartnerFilter('all');
+  };
+
+  // Filter services
   const filteredServices = services.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || s.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const filteredProviders = providers.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter providers
+  const filteredProviders = providers.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          p.address?.city?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = providerTypeFilter === 'all' || p.type === providerTypeFilter;
+    const matchesPartner = partnerFilter === 'all' || 
+                           (partnerFilter === 'partner' && p.isPartner) ||
+                           (partnerFilter === 'standard' && !p.isPartner);
+    return matchesSearch && matchesType && matchesPartner;
+  });
+
+  // Filter prices
+  const filteredPrices = prices.filter(p => {
+    const matchesSearch = p.serviceId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          p.providerId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesServiceCategory = priceServiceFilter === 'all' || p.serviceId?.category === priceServiceFilter;
+    const matchesProvider = priceProviderFilter === 'all' || p.providerId?._id === priceProviderFilter;
+    return matchesSearch && matchesServiceCategory && matchesProvider;
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -142,20 +169,69 @@ function PriceDatabase() {
       {/* Tabs */}
       <div className="flex border-b mb-6">
         {['services', 'providers', 'prices'].map((tab) => (
-          <button key={tab} onClick={() => { setActiveTab(tab); setSearchTerm(''); setCategoryFilter('all'); }} className={`px-4 py-2 font-medium capitalize ${activeTab === tab ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>{tab}</button>
+          <button key={tab} onClick={() => handleTabChange(tab)} className={`px-4 py-2 font-medium capitalize ${activeTab === tab ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>{tab}</button>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 border rounded-lg flex-1 min-w-[200px]" />
-        {activeTab === 'services' && (
+      {/* Services Filters */}
+      {activeTab === 'services' && (
+        <div className="flex flex-wrap gap-4 mb-6">
+          <input type="text" placeholder="Search services..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 border rounded-lg flex-1 min-w-[200px]" />
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="px-3 py-2 border rounded-lg">
-            <option value="all">All Categories</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            <option value="all">All Categories ({services.length})</option>
+            {categories.map(c => {
+              const count = services.filter(s => s.category === c).length;
+              return count > 0 ? <option key={c} value={c}>{c} ({count})</option> : null;
+            })}
           </select>
-        )}
-        <button onClick={() => { setEditingItem(null); setShowModal(true); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add {activeTab.slice(0, -1)}</button>
+          <button onClick={() => { setEditingItem(null); setShowModal(true); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Service</button>
+        </div>
+      )}
+
+      {/* Providers Filters */}
+      {activeTab === 'providers' && (
+        <div className="flex flex-wrap gap-4 mb-6">
+          <input type="text" placeholder="Search providers or city..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 border rounded-lg flex-1 min-w-[200px]" />
+          <select value={providerTypeFilter} onChange={(e) => setProviderTypeFilter(e.target.value)} className="px-3 py-2 border rounded-lg">
+            <option value="all">All Types ({providers.length})</option>
+            {providerTypes.map(t => {
+              const count = providers.filter(p => p.type === t).length;
+              return count > 0 ? <option key={t} value={t}>{t} ({count})</option> : null;
+            })}
+          </select>
+          <select value={partnerFilter} onChange={(e) => setPartnerFilter(e.target.value)} className="px-3 py-2 border rounded-lg">
+            <option value="all">All Providers</option>
+            <option value="partner">Partners Only ({providers.filter(p => p.isPartner).length})</option>
+            <option value="standard">Standard Only ({providers.filter(p => !p.isPartner).length})</option>
+          </select>
+          <button onClick={() => { setEditingItem(null); setShowModal(true); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Provider</button>
+        </div>
+      )}
+
+      {/* Prices Filters */}
+      {activeTab === 'prices' && (
+        <div className="flex flex-wrap gap-4 mb-6">
+          <input type="text" placeholder="Search service or provider..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 border rounded-lg flex-1 min-w-[200px]" />
+          <select value={priceServiceFilter} onChange={(e) => setPriceServiceFilter(e.target.value)} className="px-3 py-2 border rounded-lg">
+            <option value="all">All Service Categories</option>
+            {categories.map(c => {
+              const count = prices.filter(p => p.serviceId?.category === c).length;
+              return count > 0 ? <option key={c} value={c}>{c} ({count})</option> : null;
+            })}
+          </select>
+          <select value={priceProviderFilter} onChange={(e) => setPriceProviderFilter(e.target.value)} className="px-3 py-2 border rounded-lg">
+            <option value="all">All Providers</option>
+            {providers.map(p => (
+              <option key={p._id} value={p._id}>{p.name}</option>
+            ))}
+          </select>
+          <button onClick={() => { setEditingItem(null); setShowModal(true); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Price</button>
+        </div>
+      )}
+
+      {/* Results count */}
+      <div className="text-sm text-gray-500 mb-4">
+        Showing {activeTab === 'services' ? filteredServices.length : activeTab === 'providers' ? filteredProviders.length : filteredPrices.length} results
       </div>
 
       {loading && <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}
@@ -259,9 +335,9 @@ function PriceDatabase() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {prices.length === 0 ? (
+              {filteredPrices.length === 0 ? (
                 <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-500">No prices found</td></tr>
-              ) : prices.map((price) => (
+              ) : filteredPrices.map((price) => (
                 <tr key={price._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="font-medium">{price.serviceId?.name || 'Unknown'}</div>
