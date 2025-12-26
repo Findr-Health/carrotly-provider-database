@@ -1,19 +1,19 @@
 /**
  * Home Page - Main landing for Findr Health Consumer App
- * Two tools + One service
+ * Updated: Broader healthcare guide positioning
  */
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DocumentUpload from '../components/clarity/DocumentUpload';
+import { setPendingUploadFile } from './ClarityChat';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  // Navigate to clarity with a preset question that will auto-send
-  const handleCostNavigator = (question = '') => {
+  const handleAskClarity = (question = '') => {
     if (question) {
       navigate('/clarity', { state: { presetQuestion: question } });
     } else {
@@ -21,16 +21,15 @@ function Home() {
     }
   };
 
-  // Handle document upload - navigate to clarity page with file to analyze
-  const handleDocumentUpload = (file) => {
+  // Handle file upload from modal
+  const handleFileUpload = (file) => {
+    console.log('Home: File uploaded, storing and navigating:', file.name);
+    // Store the file in the module-level variable
+    setPendingUploadFile(file);
+    // Close modal
     setShowUploadModal(false);
-    // Navigate to clarity with the file - ClarityChat will handle the analysis
-    navigate('/clarity', { 
-      state: { 
-        uploadedFile: file,
-        fileName: file.name
-      } 
-    });
+    // Navigate to clarity page - it will auto-process the pending file
+    navigate('/clarity');
   };
 
   return (
@@ -51,34 +50,37 @@ function Home() {
         <p className="tagline">Healthcare, simplified</p>
       </header>
 
-      {/* Tool 1: Cost Navigator */}
+      {/* Tool 1: Health Guide (formerly Cost Navigator) */}
       <section className="tool-section">
         <div className="tool-card cost-navigator">
-          <h2>Cost Navigator</h2>
-          <p className="tool-subtitle">Find your lowest-cost path</p>
+          <h2>Ask Clarity</h2>
+          <p className="tool-subtitle">Your healthcare questions, answered</p>
           <p className="tool-body">
-            Insurance isn't always the answer. We help you compare options—whether that's going without coverage, choosing a high-deductible plan, or paying cash. Ask anything about costs, coverage, or strategy.
+            Whether you're comparing costs, finding the right provider, understanding your options, or navigating wellness services—Clarity is here to help. Ask anything (except for medical diagnosis).
           </p>
           
           <div className="example-pills">
-            <button onClick={() => handleCostNavigator("Should I use insurance or pay cash for my procedure?")}>
+            <button onClick={() => handleAskClarity("What's a fair price for Botox?")}>
+              What's a fair price for Botox?
+            </button>
+            <button onClick={() => handleAskClarity("How do I find a good therapist?")}>
+              How do I find a good therapist?
+            </button>
+            <button onClick={() => handleAskClarity("Should I use insurance or pay cash?")}>
               Should I use insurance or pay cash?
             </button>
-            <button onClick={() => handleCostNavigator("How do I survive without insurance? What are my options?")}>
-              How do I survive without insurance?
-            </button>
-            <button onClick={() => handleCostNavigator("Is a high-deductible health plan right for me?")}>
-              Is a high-deductible plan right for me?
+            <button onClick={() => handleAskClarity("What questions should I ask my doctor?")}>
+              What questions should I ask my doctor?
             </button>
           </div>
           
-          <button className="tool-cta" onClick={() => handleCostNavigator()}>
+          <button className="tool-cta" onClick={() => handleAskClarity()}>
             Start a conversation
             <span className="cta-arrow">→</span>
           </button>
           
           <p className="micro-disclaimer">
-            We don't know your specific plan details or financial situation. Use this as a starting point, not a final answer.
+            Clarity provides general guidance, not medical advice. Always verify with your specific provider or plan.
           </p>
         </div>
       </section>
@@ -89,15 +91,16 @@ function Home() {
           <h2>Document Clarity</h2>
           <p className="tool-subtitle">Upload anything. We'll explain it.</p>
           <p className="tool-body">
-            Bills, labs, medical records, imaging reports, EOBs—drop it here and we'll tell you what it means in plain English.
+            Bills, labs, insurance documents, wellness receipts—drop it here and we'll tell you what it means in plain English.
           </p>
           
           <div className="format-pills">
             <span className="format-pill">Medical bills</span>
             <span className="format-pill">Lab results</span>
             <span className="format-pill">EOBs</span>
-            <span className="format-pill">Imaging reports</span>
-            <span className="format-pill">Medical records</span>
+            <span className="format-pill">Insurance docs</span>
+            <span className="format-pill">Wellness receipts</span>
+            <span className="format-pill">Provider agreements</span>
           </div>
           
           <button className="tool-cta" onClick={() => setShowUploadModal(true)}>
@@ -172,10 +175,10 @@ function Home() {
         </div>
       </section>
 
-      {/* Upload Modal */}
+      {/* Upload Modal - rendered on Home page */}
       {showUploadModal && (
         <DocumentUpload
-          onUpload={handleDocumentUpload}
+          onUpload={handleFileUpload}
           onClose={() => setShowUploadModal(false)}
         />
       )}

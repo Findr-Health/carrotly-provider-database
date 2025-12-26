@@ -1,12 +1,9 @@
 /**
- * ClarityChat Page
- * Findr Health - Consumer App
- * 
- * Main chat interface for Cost Navigator and Document Analysis
- * Updated with conversation history and geolocation support
+ * ClarityChat Page - Updated for broader healthcare guidance
+ * More welcoming, less restrictive messaging
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ChatMessage from '../components/clarity/ChatMessage';
 import DocumentUpload from '../components/clarity/DocumentUpload';
@@ -21,88 +18,108 @@ import {
 } from '../services/clarityApi';
 import '../styles/ClarityChat.css';
 
-// Maximum messages to keep in history (for memory management)
 const MAX_MESSAGES = 50;
+
+// Global variable to store pending file (survives navigation)
+let pendingUploadFile = null;
+
+// Function to set pending file (called from Home.jsx)
+export const setPendingUploadFile = (file) => {
+  pendingUploadFile = file;
+};
 
 function ClarityChat() {
   const navigate = useNavigate();
   const location = useLocation();
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const hasProcessedState = useRef(false);
+  const hasProcessedPendingFile = useRef(false);
   
-  // State
+  const shouldOpenUpload = location.state?.openUpload === true;
+  
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingType, setLoadingType] = useState('chat'); // 'chat' or 'document'
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [loadingType, setLoadingType] = useState('chat');
+  const [showUploadModal, setShowUploadModal] = useState(shouldOpenUpload);
   const [locationPromptShown, setLocationPromptShown] = useState(false);
-  
-  // Check for preset question from navigation
+
+  // Process any pending file from Home page navigation
   useEffect(() => {
-    if (location.state?.presetQuestion) {
-      handleSendMessage(location.state.presetQuestion);
-      // Clear the state so it doesn't re-trigger
-      navigate(location.pathname, { replace: true, state: {} });
+    if (hasProcessedPendingFile.current) return;
+    
+    if (pendingUploadFile) {
+      hasProcessedPendingFile.current = true;
+      const file = pendingUploadFile;
+      pendingUploadFile = null; // Clear it
+      
+      console.log('Processing pending upload file:', file.name);
+      // Small delay to ensure component is fully mounted
+      setTimeout(() => {
+        handleDocumentUpload(file);
+      }, 100);
     }
-  }, [location.state]);
+  }, []);
   
-  // Request geolocation on mount (once)
+  // Handle preset question on mount
+  useEffect(() => {
+    if (hasProcessedState.current) return;
+    
+    const state = location.state;
+    if (!state) return;
+    
+    if (state.presetQuestion || state.initialQuestion) {
+      hasProcessedState.current = true;
+      const question = state.presetQuestion || state.initialQuestion;
+      setTimeout(() => {
+        handleSendMessage(question);
+      }, 100);
+    }
+    
+    if (state.openUpload) {
+      hasProcessedState.current = true;
+    }
+  }, []);
+  
   useEffect(() => {
     getUserLocation().then(loc => {
-      if (loc) {
-        console.log('Location obtained:', loc);
-      }
+      if (loc) console.log('Location obtained:', loc);
     });
   }, []);
   
-  // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
   
-  // Auto-focus input when not loading
   useEffect(() => {
-    if (!isLoading && inputRef.current) {
+    if (!isLoading && inputRef.current && !showUploadModal) {
       inputRef.current.focus();
     }
-  }, [isLoading]);
+  }, [isLoading, showUploadModal]);
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
-  /**
-   * Get conversation history for API (excludes welcome, system messages)
-   */
   const getHistoryForAPI = () => {
     return messages
       .filter(msg => msg.role === 'user' || msg.role === 'assistant')
-      .map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
+      .map(msg => ({ role: msg.role, content: msg.content }));
   };
   
-  /**
-   * Handle sending a chat message
-   */
   const handleSendMessage = async (messageText = null) => {
     const text = messageText || inputValue.trim();
     if (!text || isLoading) return;
     
-    // Check if user is providing location info
     const locationKeywords = ['i live in', 'i\'m in', 'located in', 'my zip', 'zip code is'];
     const isLocationResponse = locationKeywords.some(kw => text.toLowerCase().includes(kw));
     
     if (isLocationResponse) {
       const parsed = parseLocationInput(text.replace(/.*(?:i live in|i'm in|located in|my zip|zip code is)\s*/i, ''));
-      if (parsed) {
-        setUserLocation(parsed);
-      }
+      if (parsed) setUserLocation(parsed);
     }
     
-    // Add user message
     const userMessage = {
       id: Date.now(),
       role: 'user',
@@ -129,14 +146,11 @@ function ClarityChat() {
       
       setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), assistantMessage]);
       
-      // Handle triggers (for future UI enhancements)
       if (response.triggers?.locationNeeded && !locationPromptShown) {
         setLocationPromptShown(true);
       }
-      
     } catch (error) {
       console.error('Send message error:', error);
-      
       const errorMessage = {
         id: Date.now() + 1,
         role: 'assistant',
@@ -144,22 +158,20 @@ function ClarityChat() {
         timestamp: new Date().toISOString(),
         isError: true
       };
-      
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
   
-  /**
-   * Handle document upload and analysis
-   */
   const handleDocumentUpload = async (file) => {
+    console.log('=== handleDocumentUpload called ===');
+    console.log('File:', file?.name, file?.type, file?.size);
+    
     setShowUploadModal(false);
     setIsLoading(true);
     setLoadingType('document');
     
-    // Add user message indicating upload
     const userMessage = {
       id: Date.now(),
       role: 'user',
@@ -172,7 +184,9 @@ function ClarityChat() {
     setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), userMessage]);
     
     try {
+      console.log('Calling analyzeDocument API...');
       const response = await analyzeDocument(file);
+      console.log('Analysis response received:', response);
       
       const analysisMessage = {
         id: Date.now() + 1,
@@ -185,10 +199,8 @@ function ClarityChat() {
       };
       
       setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), analysisMessage]);
-      
     } catch (error) {
       console.error('Document analysis error:', error);
-      
       const errorMessage = {
         id: Date.now() + 1,
         role: 'assistant',
@@ -196,26 +208,21 @@ function ClarityChat() {
         timestamp: new Date().toISOString(),
         isError: true
       };
-      
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
   
-  /**
-   * Handle new chat - clear messages
-   */
   const handleNewChat = () => {
     setMessages([]);
     setInputValue('');
     setLocationPromptShown(false);
+    hasProcessedState.current = false;
+    hasProcessedPendingFile.current = false;
     inputRef.current?.focus();
   };
   
-  /**
-   * Handle input key press
-   */
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -223,12 +230,10 @@ function ClarityChat() {
     }
   };
   
-  // Determine if we're in welcome state (no messages)
   const isWelcomeState = messages.length === 0;
   
   return (
     <div className="clarity-chat-page">
-      {/* Header */}
       <header className="clarity-header">
         <button className="back-btn" onClick={() => navigate('/')}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -260,10 +265,8 @@ function ClarityChat() {
         )}
       </header>
       
-      {/* Messages Area */}
       <div className={`clarity-messages ${!isWelcomeState ? 'chat-active' : ''}`}>
         {isWelcomeState ? (
-          /* Welcome State */
           <div className="clarity-welcome">
             <h1 style={{ 
               fontFamily: 'Urbanist, sans-serif',
@@ -280,10 +283,10 @@ function ClarityChat() {
               fontWeight: 500,
               color: '#4B5563',
               marginBottom: '1.5rem',
-              maxWidth: '320px',
-              lineHeight: 1.5
+              maxWidth: '340px',
+              lineHeight: 1.6
             }}>
-              I help you understand healthcare costs. Upload a bill or ask me anything about medical pricing, insurance, or negotiation.
+              I'm your healthcare guide. Ask me about costs, finding providers, understanding documents, or navigating wellness services. I'm here to help (just not with providing medical advice).
             </p>
             
             <button 
@@ -300,23 +303,31 @@ function ClarityChat() {
             
             <div className="quick-prompts">
               <span className="prompts-label">Or try asking:</span>
-              <button onClick={() => handleSendMessage("How do I negotiate a hospital bill?")}>
-                How do I negotiate a hospital bill?
+              <button onClick={() => handleSendMessage("How do I find a good therapist near me?")}>
+                How do I find a good therapist near me?
               </button>
               <button onClick={() => handleSendMessage("What's a fair price for an MRI?")}>
                 What's a fair price for an MRI?
               </button>
-              <button onClick={() => handleSendMessage("Should I get health insurance or pay cash?")}>
-                Should I get insurance or pay cash?
+              <button onClick={() => handleSendMessage("How do I negotiate a hospital bill?")}>
+                How do I negotiate a hospital bill?
+              </button>
+              <button onClick={() => handleSendMessage("What should I look for in a med spa?")}>
+                What should I look for in a med spa?
+              </button>
+              <button onClick={() => handleSendMessage("Help me understand my insurance benefits")}>
+                Help me understand my insurance benefits
+              </button>
+              <button onClick={() => handleSendMessage("What questions should I ask a new doctor?")}>
+                What questions should I ask a new doctor?
               </button>
             </div>
             
-            {/* Inline input in welcome state */}
-            <div className="inline-chat-input" style={{ marginTop: '1.5rem', maxWidth: '320px' }}>
+            <div className="inline-chat-input" style={{ marginTop: '1.5rem', maxWidth: '340px' }}>
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Ask about healthcare costs..."
+                placeholder="Ask me anything about healthcare..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -333,25 +344,16 @@ function ClarityChat() {
             </div>
           </div>
         ) : (
-          /* Chat Messages */
           <>
             {messages.map((msg) => (
-              <ChatMessage 
-                key={msg.id} 
-                message={msg}
-              />
+              <ChatMessage key={msg.id} message={msg} />
             ))}
-            
-            {isLoading && (
-              <LoadingIndicator type={loadingType} />
-            )}
-            
+            {isLoading && <LoadingIndicator type={loadingType} />}
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
       
-      {/* Input Area - Only show in chat mode */}
       {!isWelcomeState && (
         <div className="clarity-input-area">
           <button 
@@ -370,7 +372,7 @@ function ClarityChat() {
             ref={!isWelcomeState ? inputRef : null}
             type="text"
             className="clarity-input"
-            placeholder="Ask about healthcare costs..."
+            placeholder="Ask me anything about healthcare..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -391,7 +393,6 @@ function ClarityChat() {
         </div>
       )}
       
-      {/* Upload Modal */}
       {showUploadModal && (
         <DocumentUpload
           onUpload={handleDocumentUpload}
@@ -399,7 +400,6 @@ function ClarityChat() {
         />
       )}
       
-      {/* Bottom Navigation */}
       <BottomNav />
     </div>
   );
