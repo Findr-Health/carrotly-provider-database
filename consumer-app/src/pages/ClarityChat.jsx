@@ -232,18 +232,49 @@ function ClarityChat() {
     const recognition = new SpeechRecognition();
     
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true; // Show results as they come in
     recognition.lang = 'en-US';
     
-    recognition.onstart = () => setIsListening(true);
+    recognition.onstart = () => {
+      console.log('Speech recognition started');
+      setIsListening(true);
+    };
+    
     recognition.onresult = (event) => {
-      setInputValue(event.results[0][0].transcript);
+      console.log('Speech result:', event.results);
+      const transcript = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join('');
+      console.log('Transcript:', transcript);
+      setInputValue(transcript);
+      
+      // If this is a final result, stop listening
+      if (event.results[event.results.length - 1].isFinal) {
+        setIsListening(false);
+      }
+    };
+    
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error, event.message);
+      setIsListening(false);
+      if (event.error === 'not-allowed') {
+        alert('Microphone access denied. Please allow microphone access in your browser settings.');
+      } else if (event.error === 'no-speech') {
+        console.log('No speech detected');
+      }
+    };
+    
+    recognition.onend = () => {
+      console.log('Speech recognition ended');
       setIsListening(false);
     };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
     
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      setIsListening(false);
+    }
   };
   
   const formatTime = (date) => {
