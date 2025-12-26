@@ -1,5 +1,5 @@
 /**
- * ClarityChat Page - FIXED VERSION 2
+ * ClarityChat Page - FIXED VERSION 3
  * Findr Health - Consumer App
  */
 
@@ -27,39 +27,35 @@ function ClarityChat() {
   const inputRef = useRef(null);
   const hasProcessedState = useRef(false);
   
+  // Check if we should open upload modal on mount
+  const shouldOpenUpload = location.state?.openUpload === true;
+  
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingType, setLoadingType] = useState('chat');
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(shouldOpenUpload);
   const [locationPromptShown, setLocationPromptShown] = useState(false);
   
-  // Handle navigation state on mount
+  // Handle preset question on mount (not openUpload - that's handled by initial state)
   useEffect(() => {
     if (hasProcessedState.current) return;
     
     const state = location.state;
     if (!state) return;
     
-    hasProcessedState.current = true;
-    
-    // Handle preset question - need to clear state
+    // Only handle preset questions here
     if (state.presetQuestion || state.initialQuestion) {
+      hasProcessedState.current = true;
       const question = state.presetQuestion || state.initialQuestion;
-      // Clear state first, then send message
-      window.history.replaceState({}, document.title);
       setTimeout(() => {
         handleSendMessage(question);
       }, 100);
-      return;
     }
     
-    // Handle openUpload flag - just open modal, clear state without navigate
+    // Mark openUpload as processed too
     if (state.openUpload) {
-      console.log('Opening upload modal from navigation state');
-      setShowUploadModal(true);
-      // Clear state without causing re-render
-      window.history.replaceState({}, document.title);
+      hasProcessedState.current = true;
     }
   }, []);
   
