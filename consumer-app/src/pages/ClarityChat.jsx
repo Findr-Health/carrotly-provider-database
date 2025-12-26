@@ -1,5 +1,5 @@
 /**
- * ClarityChat Page - FIXED VERSION
+ * ClarityChat Page - FIXED VERSION 2
  * Findr Health - Consumer App
  */
 
@@ -34,7 +34,7 @@ function ClarityChat() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [locationPromptShown, setLocationPromptShown] = useState(false);
   
-  // IMPORTANT: Handle navigation state including openUpload
+  // Handle navigation state on mount
   useEffect(() => {
     if (hasProcessedState.current) return;
     
@@ -43,22 +43,24 @@ function ClarityChat() {
     
     hasProcessedState.current = true;
     
-    // Handle preset question
+    // Handle preset question - need to clear state
     if (state.presetQuestion || state.initialQuestion) {
       const question = state.presetQuestion || state.initialQuestion;
+      // Clear state first, then send message
+      window.history.replaceState({}, document.title);
       setTimeout(() => {
         handleSendMessage(question);
       }, 100);
+      return;
     }
     
-    // Handle openUpload flag from Home page - THIS IS THE KEY FIX
+    // Handle openUpload flag - just open modal, clear state without navigate
     if (state.openUpload) {
       console.log('Opening upload modal from navigation state');
       setShowUploadModal(true);
+      // Clear state without causing re-render
+      window.history.replaceState({}, document.title);
     }
-    
-    // Clear navigation state
-    navigate(location.pathname, { replace: true, state: {} });
   }, []);
   
   useEffect(() => {
@@ -144,7 +146,8 @@ function ClarityChat() {
   };
   
   const handleDocumentUpload = async (file) => {
-    console.log('handleDocumentUpload called with file:', file?.name);
+    console.log('=== handleDocumentUpload called ===');
+    console.log('File:', file?.name, file?.type, file?.size);
     
     setShowUploadModal(false);
     setIsLoading(true);
@@ -162,9 +165,9 @@ function ClarityChat() {
     setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), userMessage]);
     
     try {
-      console.log('Calling analyzeDocument...');
+      console.log('Calling analyzeDocument API...');
       const response = await analyzeDocument(file);
-      console.log('Analysis response:', response);
+      console.log('Analysis response received:', response);
       
       const analysisMessage = {
         id: Date.now() + 1,
