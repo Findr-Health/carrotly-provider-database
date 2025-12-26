@@ -1,9 +1,10 @@
 /**
- * ClarityChat Page - FIXED VERSION 3
+ * ClarityChat Page - FIXED VERSION 4
  * Findr Health - Consumer App
+ * Uses ref to prevent stale closure issue with upload handler
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ChatMessage from '../components/clarity/ChatMessage';
 import DocumentUpload from '../components/clarity/DocumentUpload';
@@ -27,7 +28,9 @@ function ClarityChat() {
   const inputRef = useRef(null);
   const hasProcessedState = useRef(false);
   
-  // Check if we should open upload modal on mount
+  // Use ref to store the latest upload handler - prevents stale closure
+  const uploadHandlerRef = useRef(null);
+  
   const shouldOpenUpload = location.state?.openUpload === true;
   
   const [messages, setMessages] = useState([]);
@@ -37,14 +40,74 @@ function ClarityChat() {
   const [showUploadModal, setShowUploadModal] = useState(shouldOpenUpload);
   const [locationPromptShown, setLocationPromptShown] = useState(false);
   
-  // Handle preset question on mount (not openUpload - that's handled by initial state)
+  // The actual upload handler
+  const handleDocumentUpload = useCallback(async (file) => {
+    console.log('=== handleDocumentUpload called ===');
+    console.log('File:', file?.name, file?.type, file?.size);
+    
+    setShowUploadModal(false);
+    setIsLoading(true);
+    setLoadingType('document');
+    
+    const userMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: `[Uploaded document: ${file.name}]`,
+      timestamp: new Date().toISOString(),
+      isUpload: true,
+      fileName: file.name
+    };
+    
+    setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), userMessage]);
+    
+    try {
+      console.log('Calling analyzeDocument API...');
+      const response = await analyzeDocument(file);
+      console.log('Analysis response received:', response);
+      
+      const analysisMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: response.analysis,
+        timestamp: new Date().toISOString(),
+        documentType: response.documentType,
+        triggers: response.triggers,
+        isAnalysis: true
+      };
+      
+      setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), analysisMessage]);
+    } catch (error) {
+      console.error('Document analysis error:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: "I'm sorry, I couldn't analyze that document. Please try uploading a clearer image, or describe what you're seeing and I'll try to help.",
+        timestamp: new Date().toISOString(),
+        isError: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  // Keep ref updated with latest handler
+  uploadHandlerRef.current = handleDocumentUpload;
+  
+  // Wrapper that always calls the latest handler via ref
+  const onUploadWrapper = useCallback((file) => {
+    console.log('onUploadWrapper called, invoking ref...');
+    if (uploadHandlerRef.current) {
+      uploadHandlerRef.current(file);
+    }
+  }, []);
+  
   useEffect(() => {
     if (hasProcessedState.current) return;
     
     const state = location.state;
     if (!state) return;
     
-    // Only handle preset questions here
     if (state.presetQuestion || state.initialQuestion) {
       hasProcessedState.current = true;
       const question = state.presetQuestion || state.initialQuestion;
@@ -53,7 +116,6 @@ function ClarityChat() {
       }, 100);
     }
     
-    // Mark openUpload as processed too
     if (state.openUpload) {
       hasProcessedState.current = true;
     }
@@ -132,56 +194,6 @@ function ClarityChat() {
         id: Date.now() + 1,
         role: 'assistant',
         content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
-        timestamp: new Date().toISOString(),
-        isError: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDocumentUpload = async (file) => {
-    console.log('=== handleDocumentUpload called ===');
-    console.log('File:', file?.name, file?.type, file?.size);
-    
-    setShowUploadModal(false);
-    setIsLoading(true);
-    setLoadingType('document');
-    
-    const userMessage = {
-      id: Date.now(),
-      role: 'user',
-      content: `[Uploaded document: ${file.name}]`,
-      timestamp: new Date().toISOString(),
-      isUpload: true,
-      fileName: file.name
-    };
-    
-    setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), userMessage]);
-    
-    try {
-      console.log('Calling analyzeDocument API...');
-      const response = await analyzeDocument(file);
-      console.log('Analysis response received:', response);
-      
-      const analysisMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: response.analysis,
-        timestamp: new Date().toISOString(),
-        documentType: response.documentType,
-        triggers: response.triggers,
-        isAnalysis: true
-      };
-      
-      setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), analysisMessage]);
-    } catch (error) {
-      console.error('Document analysis error:', error);
-      const errorMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: "I'm sorry, I couldn't analyze that document. Please try uploading a clearer image, or describe what you're seeing and I'll try to help.",
         timestamp: new Date().toISOString(),
         isError: true
       };
@@ -362,7 +374,7 @@ function ClarityChat() {
       
       {showUploadModal && (
         <DocumentUpload
-          onUpload={handleDocumentUpload}
+          onUpload={onUploadWrapper}
           onClose={() => setShowUploadModal(false)}
         />
       )}
