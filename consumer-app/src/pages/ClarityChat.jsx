@@ -1,6 +1,6 @@
 /**
- * ClarityChat Page - Matching Figma Design
- * Features: + button for uploads, microphone, user avatars, teal assistant bubbles
+ * ClarityChat Page v8 - Fixed Version
+ * Removed duplicate nav, updated placeholder, modal for uploads
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -17,10 +17,8 @@ import {
 
 const MAX_MESSAGES = 50;
 
-// Global variable to store pending file (survives navigation)
 let pendingUploadFile = null;
 
-// Function to set pending file (called from Home.jsx)
 export const setPendingUploadFile = (file) => {
   pendingUploadFile = file;
 };
@@ -39,16 +37,13 @@ function ClarityChat() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingType, setLoadingType] = useState('chat');
-  const [showUploadSheet, setShowUploadSheet] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(shouldOpenUpload);
   const [locationPromptShown, setLocationPromptShown] = useState(false);
   const [isListening, setIsListening] = useState(false);
   
-  // Get user info from localStorage (Google auth)
   const [userAvatar, setUserAvatar] = useState(null);
   
   useEffect(() => {
-    // Try to get user avatar from stored auth
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -60,7 +55,6 @@ function ClarityChat() {
     }
   }, []);
 
-  // Process any pending file from Home page navigation
   useEffect(() => {
     if (hasProcessedPendingFile.current) return;
     
@@ -75,7 +69,6 @@ function ClarityChat() {
     }
   }, []);
   
-  // Handle preset question on mount
   useEffect(() => {
     if (hasProcessedState.current) return;
     
@@ -106,10 +99,10 @@ function ClarityChat() {
   }, [messages]);
   
   useEffect(() => {
-    if (!isLoading && inputRef.current && !showUploadSheet && !showUploadModal) {
+    if (!isLoading && inputRef.current && !showUploadModal) {
       inputRef.current.focus();
     }
-  }, [isLoading, showUploadSheet, showUploadModal]);
+  }, [isLoading, showUploadModal]);
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -179,7 +172,6 @@ function ClarityChat() {
   
   const handleDocumentUpload = async (file) => {
     setShowUploadModal(false);
-    setShowUploadSheet(false);
     setIsLoading(true);
     setLoadingType('document');
     
@@ -230,7 +222,6 @@ function ClarityChat() {
     }
   };
   
-  // Voice input handler
   const handleMicrophoneClick = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert('Voice input is not supported in your browser. Try Chrome or Safari.');
@@ -244,57 +235,15 @@ function ClarityChat() {
     recognition.interimResults = false;
     recognition.lang = 'en-US';
     
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-    
+    recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setInputValue(transcript);
+      setInputValue(event.results[0][0].transcript);
       setIsListening(false);
     };
-    
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      setIsListening(false);
-    };
-    
-    recognition.onend = () => {
-      setIsListening(false);
-    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
     
     recognition.start();
-  };
-  
-  // Attachment sheet handlers
-  const handleTakePhoto = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) handleDocumentUpload(file);
-    };
-    input.click();
-    setShowUploadSheet(false);
-  };
-  
-  const handlePhotoLibrary = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) handleDocumentUpload(file);
-    };
-    input.click();
-    setShowUploadSheet(false);
-  };
-  
-  const handleBrowseFiles = () => {
-    setShowUploadSheet(false);
-    setShowUploadModal(true);
   };
   
   const formatTime = (date) => {
@@ -307,7 +256,6 @@ function ClarityChat() {
   
   const isWelcomeState = messages.length === 0;
   
-  // Prompt cards for welcome state
   const promptCards = [
     "How do I find a good therapist near me?",
     "What's a fair price for an MRI?",
@@ -335,6 +283,10 @@ function ClarityChat() {
             <h1 style={styles.welcomeTitle}>
               Hi I'm Clarity your personal health and wellness assistant
             </h1>
+            
+            <p style={styles.welcomeSubtitle}>
+              Ask me anything or upload a document—bills, labs, EOBs—and I'll explain it in plain English.
+            </p>
             
             {/* Prompt Cards */}
             <div style={styles.promptCards}>
@@ -431,15 +383,15 @@ function ClarityChat() {
         )}
       </div>
       
-      {/* Input Area */}
+      {/* Input Area - NO BOTTOM NAV */}
       <div style={styles.inputArea}>
         <div style={styles.inputContainer}>
-          {/* Plus Button */}
+          {/* Plus Button - Opens Upload Modal */}
           <button
             style={styles.plusButton}
-            onClick={() => setShowUploadSheet(true)}
+            onClick={() => setShowUploadModal(true)}
             disabled={isLoading}
-            aria-label="Add attachment"
+            aria-label="Upload document"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19"/>
@@ -452,7 +404,7 @@ function ClarityChat() {
             ref={inputRef}
             type="text"
             style={styles.textInput}
-            placeholder="Search anything medical and wellness"
+            placeholder="Ask anything about healthcare."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -493,71 +445,7 @@ function ClarityChat() {
         </div>
       </div>
       
-      {/* Bottom Navigation */}
-      <nav style={styles.bottomNav}>
-        <button style={styles.navButton} onClick={() => navigate('/')}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9,22 9,12 15,12 15,22"/>
-          </svg>
-        </button>
-        
-        <button style={styles.navButtonCenter}>
-          <svg width="32" height="32" viewBox="0 0 63 63" fill="none">
-            <circle cx="31.5" cy="31.5" r="30" fill="#17DDC0"/>
-            <path d="M13.2831 30.8584V22.68C18.6881 22.68 23.0842 18.2829 23.0842 12.8789H31.2627C31.2627 22.7927 23.1969 30.8584 13.2831 30.8584Z" fill="white"/>
-            <path d="M50 30.8584C40.0862 30.8584 32.0204 22.7927 32.0204 12.8789H40.1989C40.1989 18.2838 44.596 22.68 50 22.68V30.8584Z" fill="white"/>
-            <path d="M40.198 49.6807H32.0196C32.0196 39.7669 40.0853 31.7012 49.9991 31.7012V39.8796C44.5942 39.8796 40.198 44.2767 40.198 49.6807Z" fill="white"/>
-            <path d="M31.2627 49.6807H23.0842C23.0842 44.2758 18.6871 39.8796 13.2831 39.8796V31.7012C23.1969 31.7012 31.2627 39.7669 31.2627 49.6807Z" fill="white"/>
-          </svg>
-        </button>
-        
-        <button style={styles.navButton} onClick={() => navigate('/profile')}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-        </button>
-      </nav>
-      
-      {/* Upload Bottom Sheet */}
-      {showUploadSheet && (
-        <>
-          <div style={styles.overlay} onClick={() => setShowUploadSheet(false)} />
-          <div style={styles.bottomSheet}>
-            <button style={styles.sheetOption} onClick={handleTakePhoto}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-              <span>Take Photo</span>
-            </button>
-            
-            <button style={styles.sheetOption} onClick={handlePhotoLibrary}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21,15 16,10 5,21"/>
-              </svg>
-              <span>Photo Library</span>
-            </button>
-            
-            <button style={styles.sheetOption} onClick={handleBrowseFiles}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14,2 14,8 20,8"/>
-              </svg>
-              <span>Browse Files</span>
-            </button>
-            
-            <button style={styles.cancelButton} onClick={() => setShowUploadSheet(false)}>
-              Cancel
-            </button>
-          </div>
-        </>
-      )}
-      
-      {/* Document Upload Modal (for file browser) */}
+      {/* Document Upload Modal */}
       {showUploadModal && (
         <DocumentUpload
           onUpload={handleDocumentUpload}
@@ -586,7 +474,7 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '60vh',
+    minHeight: '70vh',
     padding: '20px',
     textAlign: 'center'
   },
@@ -597,9 +485,17 @@ const styles = {
     fontSize: '1.25rem',
     fontWeight: 600,
     color: '#111827',
-    marginBottom: '32px',
+    marginBottom: '12px',
     maxWidth: '280px',
     lineHeight: 1.4
+  },
+  welcomeSubtitle: {
+    fontSize: '0.95rem',
+    fontWeight: 400,
+    color: '#6B7280',
+    marginBottom: '28px',
+    maxWidth: '300px',
+    lineHeight: 1.5
   },
   promptCards: {
     display: 'grid',
@@ -618,7 +514,7 @@ const styles = {
     color: '#374151',
     textAlign: 'left',
     cursor: 'pointer',
-    minHeight: '80px',
+    minHeight: '70px',
     display: 'flex',
     alignItems: 'center',
     fontFamily: 'inherit',
@@ -681,8 +577,7 @@ const styles = {
     marginLeft: '4px'
   },
   inputArea: {
-    padding: '12px 16px',
-    borderTop: '1px solid #E5E7EB',
+    padding: '12px 16px 24px 16px',
     backgroundColor: '#FFFFFF'
   },
   inputContainer: {
@@ -721,76 +616,6 @@ const styles = {
     justifyContent: 'center',
     borderRadius: '50%',
     transition: 'background-color 0.2s'
-  },
-  bottomNav: {
-    display: 'flex',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    padding: '12px 0 24px 0',
-    borderTop: '1px solid #E5E7EB',
-    backgroundColor: '#FFFFFF'
-  },
-  navButton: {
-    background: 'none',
-    border: 'none',
-    padding: '8px',
-    cursor: 'pointer'
-  },
-  navButtonCenter: {
-    background: 'none',
-    border: 'none',
-    padding: '0',
-    cursor: 'pointer',
-    marginTop: '-24px'
-  },
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 100
-  },
-  bottomSheet: {
-    position: 'fixed',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: '20px',
-    borderTopRightRadius: '20px',
-    padding: '20px',
-    zIndex: 101,
-    animation: 'slideUp 0.3s ease-out'
-  },
-  sheetOption: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    width: '100%',
-    padding: '16px',
-    border: 'none',
-    background: 'none',
-    fontSize: '1rem',
-    fontFamily: 'inherit',
-    color: '#374151',
-    cursor: 'pointer',
-    borderRadius: '12px',
-    transition: 'background-color 0.2s'
-  },
-  cancelButton: {
-    width: '100%',
-    padding: '16px',
-    marginTop: '8px',
-    border: 'none',
-    backgroundColor: '#F3F4F6',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    fontWeight: 600,
-    fontFamily: 'inherit',
-    color: '#6B7280',
-    cursor: 'pointer'
   }
 };
 
