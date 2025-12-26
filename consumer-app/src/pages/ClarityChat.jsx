@@ -1,7 +1,6 @@
 /**
- * ClarityChat Page - FIXED VERSION 4
- * Findr Health - Consumer App
- * Uses ref to prevent stale closure issue with upload handler
+ * ClarityChat Page - FIXED VERSION 5
+ * Uses sessionStorage to pass file across navigation
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -21,15 +20,21 @@ import '../styles/ClarityChat.css';
 
 const MAX_MESSAGES = 50;
 
+// Global variable to store pending file (survives navigation)
+let pendingUploadFile = null;
+
+// Function to set pending file (called from Home.jsx)
+export const setPendingUploadFile = (file) => {
+  pendingUploadFile = file;
+};
+
 function ClarityChat() {
   const navigate = useNavigate();
   const location = useLocation();
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const hasProcessedState = useRef(false);
-  
-  // Use ref to store the latest upload handler - prevents stale closure
-  const uploadHandlerRef = useRef(null);
+  const hasProcessedPendingFile = useRef(false);
   
   const shouldOpenUpload = location.state?.openUpload === true;
   
@@ -39,69 +44,25 @@ function ClarityChat() {
   const [loadingType, setLoadingType] = useState('chat');
   const [showUploadModal, setShowUploadModal] = useState(shouldOpenUpload);
   const [locationPromptShown, setLocationPromptShown] = useState(false);
-  
-  // The actual upload handler
-  const handleDocumentUpload = useCallback(async (file) => {
-    console.log('=== handleDocumentUpload called ===');
-    console.log('File:', file?.name, file?.type, file?.size);
+
+  // Process any pending file from Home page navigation
+  useEffect(() => {
+    if (hasProcessedPendingFile.current) return;
     
-    setShowUploadModal(false);
-    setIsLoading(true);
-    setLoadingType('document');
-    
-    const userMessage = {
-      id: Date.now(),
-      role: 'user',
-      content: `[Uploaded document: ${file.name}]`,
-      timestamp: new Date().toISOString(),
-      isUpload: true,
-      fileName: file.name
-    };
-    
-    setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), userMessage]);
-    
-    try {
-      console.log('Calling analyzeDocument API...');
-      const response = await analyzeDocument(file);
-      console.log('Analysis response received:', response);
+    if (pendingUploadFile) {
+      hasProcessedPendingFile.current = true;
+      const file = pendingUploadFile;
+      pendingUploadFile = null; // Clear it
       
-      const analysisMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: response.analysis,
-        timestamp: new Date().toISOString(),
-        documentType: response.documentType,
-        triggers: response.triggers,
-        isAnalysis: true
-      };
-      
-      setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), analysisMessage]);
-    } catch (error) {
-      console.error('Document analysis error:', error);
-      const errorMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: "I'm sorry, I couldn't analyze that document. Please try uploading a clearer image, or describe what you're seeing and I'll try to help.",
-        timestamp: new Date().toISOString(),
-        isError: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+      console.log('Processing pending upload file:', file.name);
+      // Small delay to ensure component is fully mounted
+      setTimeout(() => {
+        handleDocumentUpload(file);
+      }, 100);
     }
   }, []);
   
-  // Keep ref updated with latest handler
-  uploadHandlerRef.current = handleDocumentUpload;
-  
-  // Wrapper that always calls the latest handler via ref
-  const onUploadWrapper = useCallback((file) => {
-    console.log('onUploadWrapper called, invoking ref...');
-    if (uploadHandlerRef.current) {
-      uploadHandlerRef.current(file);
-    }
-  }, []);
-  
+  // Handle preset question on mount
   useEffect(() => {
     if (hasProcessedState.current) return;
     
@@ -203,11 +164,62 @@ function ClarityChat() {
     }
   };
   
+  const handleDocumentUpload = async (file) => {
+    console.log('=== handleDocumentUpload called ===');
+    console.log('File:', file?.name, file?.type, file?.size);
+    
+    setShowUploadModal(false);
+    setIsLoading(true);
+    setLoadingType('document');
+    
+    const userMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: `[Uploaded document: ${file.name}]`,
+      timestamp: new Date().toISOString(),
+      isUpload: true,
+      fileName: file.name
+    };
+    
+    setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), userMessage]);
+    
+    try {
+      console.log('Calling analyzeDocument API...');
+      const response = await analyzeDocument(file);
+      console.log('Analysis response received:', response);
+      
+      const analysisMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: response.analysis,
+        timestamp: new Date().toISOString(),
+        documentType: response.documentType,
+        triggers: response.triggers,
+        isAnalysis: true
+      };
+      
+      setMessages(prev => [...prev.slice(-MAX_MESSAGES + 1), analysisMessage]);
+    } catch (error) {
+      console.error('Document analysis error:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: "I'm sorry, I couldn't analyze that document. Please try uploading a clearer image, or describe what you're seeing and I'll try to help.",
+        timestamp: new Date().toISOString(),
+        isError: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const handleNewChat = () => {
     setMessages([]);
     setInputValue('');
     setLocationPromptShown(false);
     hasProcessedState.current = false;
+    hasProcessedPendingFile.current = false;
     inputRef.current?.focus();
   };
   
@@ -374,7 +386,7 @@ function ClarityChat() {
       
       {showUploadModal && (
         <DocumentUpload
-          onUpload={onUploadWrapper}
+          onUpload={handleDocumentUpload}
           onClose={() => setShowUploadModal(false)}
         />
       )}

@@ -3,16 +3,15 @@
  * Two tools + One service
  */
 
-import React, { useState } from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import DocumentUpload from '../components/clarity/DocumentUpload';
+import { setPendingUploadFile } from './ClarityChat';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // Navigate to clarity with a preset question that will auto-send
   const handleCostNavigator = (question = '') => {
     if (question) {
       navigate('/clarity', { state: { presetQuestion: question } });
@@ -21,20 +20,47 @@ function Home() {
     }
   };
 
-  // Handle document upload - navigate to clarity page with file to analyze
-  const handleDocumentUpload = (file) => {
-    setShowUploadModal(false);
-    // Navigate to clarity with the file - ClarityChat will handle the analysis
-    navigate('/clarity', { 
-      state: { 
-        uploadedFile: file,
-        fileName: file.name
-      } 
-    });
+  // Open file picker directly on home page
+  const handleDocumentUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // When file is selected, store it and navigate
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+      if (!validTypes.includes(file.type)) {
+        alert('Please upload an image (JPEG, PNG, WebP) or PDF file.');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File is too large. Please upload a file under 10MB.');
+        return;
+      }
+      
+      console.log('Home: File selected, storing and navigating:', file.name);
+      // Store the file in the module-level variable
+      setPendingUploadFile(file);
+      // Navigate to clarity page
+      navigate('/clarity');
+    }
+    // Reset input so same file can be selected again
+    e.target.value = '';
   };
 
   return (
     <div className="home-page">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
+        onChange={handleFileSelected}
+        style={{ display: 'none' }}
+      />
+
       {/* Header with Findr Health Logo */}
       <header className="home-header">
         <div className="findr-logo">
@@ -100,7 +126,7 @@ function Home() {
             <span className="format-pill">Medical records</span>
           </div>
           
-          <button className="tool-cta" onClick={() => setShowUploadModal(true)}>
+          <button className="tool-cta" onClick={handleDocumentUploadClick}>
             Upload a document
             <span className="cta-arrow">→</span>
           </button>
@@ -171,14 +197,6 @@ function Home() {
           </div>
         </div>
       </section>
-
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <DocumentUpload
-          onUpload={handleDocumentUpload}
-          onClose={() => setShowUploadModal(false)}
-        />
-      )}
     </div>
   );
 }
