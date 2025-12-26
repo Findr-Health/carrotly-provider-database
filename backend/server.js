@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const clarityAdminRoutes = require('./routes/clarityAdmin');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/verification', require('./routes/verification'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/clarity', require('./routes/clarity'));
+app.use('/api/clarity-admin', clarityAdminRoutes);
 // Health check with MongoDB status
 app.get('/health', (req, res) => {
   const mongoose = require('mongoose');
