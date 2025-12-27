@@ -1,6 +1,6 @@
 /**
- * ClarityChat Page v8 - Fixed Version
- * Removed duplicate nav, updated placeholder, modal for uploads
+ * ClarityChat Page v10 - With Feedback Buttons
+ * Added: Copy, Thumbs Up/Down, Retry buttons on AI messages
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -12,7 +12,8 @@ import {
   analyzeDocument, 
   getUserLocation,
   setUserLocation,
-  parseLocationInput 
+  parseLocationInput,
+  submitFeedback
 } from '../services/clarityApi';
 
 const MAX_MESSAGES = 50;
@@ -40,6 +41,8 @@ function ClarityChat() {
   const [showUploadModal, setShowUploadModal] = useState(shouldOpenUpload);
   const [locationPromptShown, setLocationPromptShown] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState(null);
+  const [feedbackGiven, setFeedbackGiven] = useState({});
   
   const [userAvatar, setUserAvatar] = useState(null);
   
@@ -112,6 +115,112 @@ function ClarityChat() {
     return messages
       .filter(msg => msg.role === 'user' || msg.role === 'assistant')
       .map(msg => ({ role: msg.role, content: msg.content }));
+  };
+  
+  // Find the user message that prompted a given assistant message
+  const findPromptingMessage = (assistantMessageId) => {
+    const msgIndex = messages.findIndex(m => m.id === assistantMessageId);
+    if (msgIndex > 0) {
+      for (let i = msgIndex - 1; i >= 0; i--) {
+        if (messages[i].role === 'user') {
+          return messages[i].content;
+        }
+      }
+    }
+    return null;
+  };
+  
+  const handleCopyMessage = async (messageId, content) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+  
+  const handleFeedback = async (messageId, rating, content) => {
+    // Prevent duplicate feedback
+    if (feedbackGiven[messageId]) return;
+    
+    const userPrompt = findPromptingMessage(messageId);
+    
+    try {
+      await submitFeedback({
+        messageId,
+        rating, // 'positive' or 'negative'
+        aiResponse: content,
+        userPrompt,
+        timestamp: new Date().toISOString(),
+        sessionId: sessionStorage.getItem('claritySessionId') || 'unknown'
+      });
+      
+      setFeedbackGiven(prev => ({ ...prev, [messageId]: rating }));
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+      // Still mark as given locally even if API fails
+      setFeedbackGiven(prev => ({ ...prev, [messageId]: rating }));
+    }
+  };
+  
+  const handleRetry = async (messageId) => {
+    // Find the user message that prompted this response
+    const msgIndex = messages.findIndex(m => m.id === messageId);
+    if (msgIndex <= 0) return;
+    
+    let userMessageContent = null;
+    let userMessageIndex = -1;
+    
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        userMessageContent = messages[i].content;
+        userMessageIndex = i;
+        break;
+      }
+    }
+    
+    if (!userMessageContent) return;
+    
+    // Remove the AI response we're retrying
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+    
+    // Resend the message
+    setIsLoading(true);
+    setLoadingType('chat');
+    
+    try {
+      // Get history up to but not including the message we're retrying
+      const history = messages
+        .slice(0, userMessageIndex)
+        .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+        .map(msg => ({ role: msg.role, content: msg.content }));
+      
+      const response = await sendChatMessage(userMessageContent, history);
+      
+      const assistantMessage = {
+        id: Date.now(),
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date(),
+        triggers: response.triggers,
+        isRetry: true
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Retry error:', error);
+      const errorMessage = {
+        id: Date.now(),
+        role: 'assistant',
+        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: new Date(),
+        isError: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleSendMessage = async (messageText = null) => {
@@ -232,7 +341,7 @@ function ClarityChat() {
     const recognition = new SpeechRecognition();
     
     recognition.continuous = false;
-    recognition.interimResults = true; // Show results as they come in
+    recognition.interimResults = true;
     recognition.lang = 'en-US';
     
     recognition.onstart = () => {
@@ -241,31 +350,25 @@ function ClarityChat() {
     };
     
     recognition.onresult = (event) => {
-      console.log('Speech result:', event.results);
       const transcript = Array.from(event.results)
         .map(result => result[0].transcript)
         .join('');
-      console.log('Transcript:', transcript);
       setInputValue(transcript);
       
-      // If this is a final result, stop listening
       if (event.results[event.results.length - 1].isFinal) {
         setIsListening(false);
       }
     };
     
     recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error, event.message);
+      console.error('Speech recognition error:', event.error);
       setIsListening(false);
       if (event.error === 'not-allowed') {
         alert('Microphone access denied. Please allow microphone access in your browser settings.');
-      } else if (event.error === 'no-speech') {
-        console.log('No speech detected');
       }
     };
     
     recognition.onend = () => {
-      console.log('Speech recognition ended');
       setIsListening(false);
     };
     
@@ -295,6 +398,83 @@ function ClarityChat() {
     "Help me understand my insurance benefits",
     "What questions should I ask a new doctor?"
   ];
+  
+  // Feedback button component
+  const FeedbackButtons = ({ message }) => {
+    const hasVoted = feedbackGiven[message.id];
+    const isCopied = copiedMessageId === message.id;
+    
+    return (
+      <div style={styles.feedbackContainer}>
+        {/* Copy Button */}
+        <button
+          style={{
+            ...styles.feedbackButton,
+            color: isCopied ? '#059669' : '#6B7280'
+          }}
+          onClick={() => handleCopyMessage(message.id, message.content)}
+          title="Copy response"
+        >
+          {isCopied ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="20,6 9,17 4,12"/>
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          )}
+          <span style={styles.feedbackLabel}>{isCopied ? 'Copied!' : 'Copy'}</span>
+        </button>
+        
+        {/* Thumbs Up */}
+        <button
+          style={{
+            ...styles.feedbackButton,
+            color: hasVoted === 'positive' ? '#059669' : '#6B7280',
+            backgroundColor: hasVoted === 'positive' ? '#D1FAE5' : 'transparent'
+          }}
+          onClick={() => handleFeedback(message.id, 'positive', message.content)}
+          disabled={hasVoted}
+          title="Helpful response"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill={hasVoted === 'positive' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+          </svg>
+        </button>
+        
+        {/* Thumbs Down */}
+        <button
+          style={{
+            ...styles.feedbackButton,
+            color: hasVoted === 'negative' ? '#DC2626' : '#6B7280',
+            backgroundColor: hasVoted === 'negative' ? '#FEE2E2' : 'transparent'
+          }}
+          onClick={() => handleFeedback(message.id, 'negative', message.content)}
+          disabled={hasVoted}
+          title="Not helpful"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill={hasVoted === 'negative' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+            <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+          </svg>
+        </button>
+        
+        {/* Retry Button */}
+        <button
+          style={styles.feedbackButton}
+          onClick={() => handleRetry(message.id)}
+          title="Regenerate response"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="23,4 23,10 17,10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          <span style={styles.feedbackLabel}>Retry</span>
+        </button>
+      </div>
+    );
+  };
   
   return (
     <div style={styles.container}>
@@ -335,60 +515,66 @@ function ClarityChat() {
         ) : (
           <div style={styles.chatMessages}>
             {messages.map((msg) => (
-              <div
-                key={msg.id}
-                style={{
-                  ...styles.messageRow,
-                  flexDirection: msg.role === 'user' ? 'row' : 'row-reverse'
-                }}
-              >
-                {/* Avatar */}
-                {msg.role === 'user' ? (
-                  <div style={styles.avatarContainer}>
-                    {userAvatar ? (
-                      <img src={userAvatar} alt="" style={styles.userAvatar} />
-                    ) : (
-                      <div style={styles.defaultAvatar}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#9CA3AF">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                          <circle cx="12" cy="7" r="4"/>
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div style={styles.assistantAvatarContainer}>
-                    <svg width="24" height="24" viewBox="0 0 63 63" fill="none">
-                      <circle cx="31.5" cy="31.5" r="30" fill="#17DDC0"/>
-                      <path d="M13.2831 30.8584V22.68C18.6881 22.68 23.0842 18.2829 23.0842 12.8789H31.2627C31.2627 22.7927 23.1969 30.8584 13.2831 30.8584Z" fill="white"/>
-                      <path d="M50 30.8584C40.0862 30.8584 32.0204 22.7927 32.0204 12.8789H40.1989C40.1989 18.2838 44.596 22.68 50 22.68V30.8584Z" fill="white"/>
-                      <path d="M40.198 49.6807H32.0196C32.0196 39.7669 40.0853 31.7012 49.9991 31.7012V39.8796C44.5942 39.8796 40.198 44.2767 40.198 49.6807Z" fill="white"/>
-                      <path d="M31.2627 49.6807H23.0842C23.0842 44.2758 18.6871 39.8796 13.2831 39.8796V31.7012C23.1969 31.7012 31.2627 39.7669 31.2627 49.6807Z" fill="white"/>
-                    </svg>
-                  </div>
-                )}
-                
-                {/* Message Bubble */}
-                <div style={styles.messageContent}>
-                  <div
-                    style={{
-                      ...styles.messageBubble,
-                      backgroundColor: msg.role === 'user' ? '#F3F4F6' : '#E0FAF5',
-                      color: msg.role === 'user' ? '#111827' : '#064E3B',
-                      borderRadius: msg.role === 'user' 
-                        ? '16px 16px 16px 4px' 
-                        : '16px 16px 4px 16px'
-                    }}
-                  >
-                    {msg.content}
-                  </div>
-                  <div style={{
-                    ...styles.timestamp,
-                    textAlign: msg.role === 'user' ? 'left' : 'right'
-                  }}>
-                    {formatTime(msg.timestamp)} <span style={styles.sentIndicator}>✓✓ Sent</span>
+              <div key={msg.id}>
+                <div
+                  style={{
+                    ...styles.messageRow,
+                    flexDirection: msg.role === 'user' ? 'row' : 'row-reverse'
+                  }}
+                >
+                  {/* Avatar */}
+                  {msg.role === 'user' ? (
+                    <div style={styles.avatarContainer}>
+                      {userAvatar ? (
+                        <img src={userAvatar} alt="" style={styles.userAvatar} />
+                      ) : (
+                        <div style={styles.defaultAvatar}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="#9CA3AF">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={styles.assistantAvatarContainer}>
+                      <svg width="24" height="24" viewBox="0 0 63 63" fill="none">
+                        <circle cx="31.5" cy="31.5" r="30" fill="#17DDC0"/>
+                        <path d="M13.2831 30.8584V22.68C18.6881 22.68 23.0842 18.2829 23.0842 12.8789H31.2627C31.2627 22.7927 23.1969 30.8584 13.2831 30.8584Z" fill="white"/>
+                        <path d="M50 30.8584C40.0862 30.8584 32.0204 22.7927 32.0204 12.8789H40.1989C40.1989 18.2838 44.596 22.68 50 22.68V30.8584Z" fill="white"/>
+                        <path d="M40.198 49.6807H32.0196C32.0196 39.7669 40.0853 31.7012 49.9991 31.7012V39.8796C44.5942 39.8796 40.198 44.2767 40.198 49.6807Z" fill="white"/>
+                        <path d="M31.2627 49.6807H23.0842C23.0842 44.2758 18.6871 39.8796 13.2831 39.8796V31.7012C23.1969 31.7012 31.2627 39.7669 31.2627 49.6807Z" fill="white"/>
+                      </svg>
+                    </div>
+                  )}
+                  
+                  {/* Message Bubble */}
+                  <div style={styles.messageContent}>
+                    <div
+                      style={{
+                        ...styles.messageBubble,
+                        backgroundColor: msg.role === 'user' ? '#F3F4F6' : '#E0FAF5',
+                        color: msg.role === 'user' ? '#111827' : '#064E3B',
+                        borderRadius: msg.role === 'user' 
+                          ? '16px 16px 16px 4px' 
+                          : '16px 16px 4px 16px'
+                      }}
+                    >
+                      {msg.content}
+                    </div>
+                    <div style={{
+                      ...styles.timestamp,
+                      textAlign: msg.role === 'user' ? 'left' : 'right'
+                    }}>
+                      {formatTime(msg.timestamp)} {msg.role === 'user' && <span style={styles.sentIndicator}>✓✓</span>}
+                    </div>
                   </div>
                 </div>
+                
+                {/* Feedback buttons for assistant messages */}
+                {msg.role === 'assistant' && !msg.isError && (
+                  <FeedbackButtons message={msg} />
+                )}
               </div>
             ))}
             {isLoading && (
@@ -414,10 +600,10 @@ function ClarityChat() {
         )}
       </div>
       
-      {/* Input Area - NO BOTTOM NAV */}
+      {/* Input Area */}
       <div style={styles.inputArea}>
         <div style={styles.inputContainer}>
-          {/* Plus Button - Opens Upload Modal */}
+          {/* Plus Button */}
           <button
             style={styles.plusButton}
             onClick={() => setShowUploadModal(true)}
@@ -593,20 +779,47 @@ const styles = {
     maxWidth: '75%'
   },
   messageBubble: {
-  padding: '14px 18px',
-  fontSize: '1rem',
-  fontWeight: 500,
-  lineHeight: 1.65,
-  whiteSpace: 'pre-wrap',
-  wordBreak: 'break-word'
+    padding: '14px 18px',
+    fontSize: '1rem',
+    fontWeight: 500,
+    lineHeight: 1.65,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word'
   },
   timestamp: {
     fontSize: '0.75rem',
-    color: '#17DDC0',
+    color: '#9CA3AF',
     marginTop: '4px'
   },
   sentIndicator: {
-    marginLeft: '4px'
+    marginLeft: '4px',
+    color: '#17DDC0'
+  },
+  feedbackContainer: {
+    display: 'flex',
+    gap: '4px',
+    marginTop: '8px',
+    marginLeft: '48px',
+    justifyContent: 'flex-end',
+    paddingRight: '12px'
+  },
+  feedbackButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '6px 10px',
+    border: 'none',
+    borderRadius: '8px',
+    backgroundColor: 'transparent',
+    color: '#6B7280',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontFamily: 'inherit'
+  },
+  feedbackLabel: {
+    fontSize: '0.7rem',
+    fontWeight: 500
   },
   inputArea: {
     padding: '12px 16px 24px 16px',

@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const clarityAdminRoutes = require('./routes/clarityAdmin');
+const feedbackRoutes = require('./routes/feedback');
 
 const app = express();
 
@@ -32,6 +33,8 @@ app.use('/api/search', require('./routes/search'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/clarity', require('./routes/clarity'));
 app.use('/api/clarity-admin', clarityAdminRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/clarity-admin/feedback', feedbackRoutes);
 // Health check with MongoDB status
 app.get('/health', (req, res) => {
   const mongoose = require('mongoose');
