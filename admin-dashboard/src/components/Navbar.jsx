@@ -42,6 +42,9 @@ export default function Navbar() {
             <Link to="/price-database" className={linkClass('/price-database')}>
               Price Database
             </Link>
+            <Link to="/feedback" className={linkClass('/feedback')}>
+              AI Feedback
+            </Link>
           </div>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">{user?.email}</span>
