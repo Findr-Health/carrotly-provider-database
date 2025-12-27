@@ -1,18 +1,49 @@
 /**
- * Findr Health - Clarity System Prompts
+ * Prompts Index
+ * Findr Health - Clarity Platform
  * 
- * Exports all system prompts for the Clarity platform.
+ * Exports all system prompts
  */
 
-const { costNavigatorPrompt, buildCostNavigatorPrompt } = require('./costNavigator');
-const { documentAnalysisPrompt, buildDocumentAnalysisPrompt } = require('./documentAnalysis');
+const { 
+  clarityPrompt, 
+  costNavigatorPrompt, 
+  buildClarityPrompt, 
+  buildCostNavigatorPrompt 
+} = require('./costNavigator');
+
+const { 
+  documentAnalysisPrompt, 
+  buildDocumentAnalysisPrompt 
+} = require('./documentAnalysis');
+
+const { 
+  calculatorPrompt, 
+  buildCalculatorPrompt,
+  conditionMapping,
+  mapCondition,
+  determineTier,
+  a1cToTier,
+  bpToTier
+} = require('./calculatorPrompt');
 
 module.exports = {
-  // Cost Navigator (chat)
+  // Cost Navigator / Clarity Chat
+  clarityPrompt,
   costNavigatorPrompt,
+  buildClarityPrompt,
   buildCostNavigatorPrompt,
   
   // Document Analysis
   documentAnalysisPrompt,
-  buildDocumentAnalysisPrompt
+  buildDocumentAnalysisPrompt,
+  
+  // Financial Risk Calculator
+  calculatorPrompt,
+  buildCalculatorPrompt,
+  conditionMapping,
+  mapCondition,
+  determineTier,
+  a1cToTier,
+  bpToTier
 };

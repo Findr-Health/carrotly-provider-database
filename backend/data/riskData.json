@@ -1,0 +1,782 @@
+{
+  "baseRates": {
+    "description": "Annual event rates per 1,000 population by age and sex",
+    "male": {
+      "18-24": {
+        "hospitalization": 38,
+        "erVisit": 265,
+        "majorSurgery": 10,
+        "cancerDiagnosis": 0.4,
+        "cardiacEvent": 0.3,
+        "seriousInjury": 32,
+        "mentalHealthCrisis": 16
+      },
+      "25-34": {
+        "hospitalization": 45,
+        "erVisit": 195,
+        "majorSurgery": 20,
+        "cancerDiagnosis": 1.4,
+        "cardiacEvent": 0.9,
+        "seriousInjury": 18,
+        "mentalHealthCrisis": 12
+      },
+      "35-44": {
+        "hospitalization": 62,
+        "erVisit": 180,
+        "majorSurgery": 32,
+        "cancerDiagnosis": 3.0,
+        "cardiacEvent": 2.5,
+        "seriousInjury": 14,
+        "mentalHealthCrisis": 10
+      },
+      "45-54": {
+        "hospitalization": 95,
+        "erVisit": 185,
+        "majorSurgery": 58,
+        "cancerDiagnosis": 8.2,
+        "cardiacEvent": 7.5,
+        "seriousInjury": 12,
+        "mentalHealthCrisis": 8
+      },
+      "55-64": {
+        "hospitalization": 145,
+        "erVisit": 205,
+        "majorSurgery": 92,
+        "cancerDiagnosis": 18.5,
+        "cardiacEvent": 18.0,
+        "seriousInjury": 14,
+        "mentalHealthCrisis": 6
+      }
+    },
+    "female": {
+      "18-24": {
+        "hospitalization": 46,
+        "erVisit": 305,
+        "majorSurgery": 14,
+        "cancerDiagnosis": 0.4,
+        "cardiacEvent": 0.1,
+        "seriousInjury": 24,
+        "mentalHealthCrisis": 20,
+        "pregnancy": 62
+      },
+      "25-34": {
+        "hospitalization": 71,
+        "erVisit": 225,
+        "majorSurgery": 30,
+        "cancerDiagnosis": 1.6,
+        "cardiacEvent": 0.7,
+        "seriousInjury": 12,
+        "mentalHealthCrisis": 16,
+        "pregnancy": 85
+      },
+      "35-44": {
+        "hospitalization": 82,
+        "erVisit": 210,
+        "majorSurgery": 44,
+        "cancerDiagnosis": 3.4,
+        "cardiacEvent": 1.7,
+        "seriousInjury": 10,
+        "mentalHealthCrisis": 12,
+        "pregnancy": 42
+      },
+      "45-54": {
+        "hospitalization": 111,
+        "erVisit": 211,
+        "majorSurgery": 66,
+        "cancerDiagnosis": 8.8,
+        "cardiacEvent": 5.1,
+        "seriousInjury": 10,
+        "mentalHealthCrisis": 10,
+        "pregnancy": 5
+      },
+      "55-64": {
+        "hospitalization": 159,
+        "erVisit": 225,
+        "majorSurgery": 98,
+        "cancerDiagnosis": 18.9,
+        "cardiacEvent": 12.4,
+        "seriousInjury": 12,
+        "mentalHealthCrisis": 8,
+        "pregnancy": 0.5
+      }
+    }
+  },
+  
+  "conditionTiers": {
+    "description": "Risk multipliers and annual costs by condition and severity tier",
+    
+    "diabetesType1": {
+      "name": "Type 1 Diabetes",
+      "tier1": {
+        "description": "Well-controlled, A1c <7.0, no complications",
+        "hospitalizationRR": 1.4,
+        "cardiacRR": 1.3,
+        "annualCostAdd": 4800
+      },
+      "tier2": {
+        "description": "Moderate control, A1c 7.0-9.0, no complications",
+        "hospitalizationRR": 2.0,
+        "cardiacRR": 1.8,
+        "annualCostAdd": 8500
+      },
+      "tier3": {
+        "description": "Poor control, A1c >9.0, or complications present",
+        "hospitalizationRR": 3.2,
+        "cardiacRR": 2.8,
+        "annualCostAdd": 18000
+      }
+    },
+    
+    "diabetesType2": {
+      "name": "Type 2 Diabetes",
+      "tier1": {
+        "description": "Well-controlled, A1c <7.0, duration <10 years, no complications",
+        "hospitalizationRR": 1.3,
+        "cardiacRR": 1.3,
+        "annualCostAdd": 3200
+      },
+      "tier2": {
+        "description": "Moderate control, A1c 7.0-9.0, or duration 10+ years",
+        "hospitalizationRR": 2.0,
+        "cardiacRR": 1.8,
+        "annualCostAdd": 9000
+      },
+      "tier3": {
+        "description": "Poor control, A1c >9.0, or complications present",
+        "hospitalizationRR": 3.5,
+        "cardiacRR": 3.0,
+        "annualCostAdd": 22000
+      }
+    },
+    
+    "prediabetes": {
+      "name": "Prediabetes",
+      "tier1": {
+        "description": "A1c 5.7-6.4, monitoring",
+        "hospitalizationRR": 1.1,
+        "cardiacRR": 1.1,
+        "annualCostAdd": 800
+      },
+      "tier2": {
+        "description": "A1c approaching 6.5, lifestyle intervention",
+        "hospitalizationRR": 1.2,
+        "cardiacRR": 1.2,
+        "annualCostAdd": 1200
+      },
+      "tier3": {
+        "description": "Not applicable - would be diabetes",
+        "hospitalizationRR": 1.2,
+        "cardiacRR": 1.2,
+        "annualCostAdd": 1200
+      }
+    },
+    
+    "hypertension": {
+      "name": "High Blood Pressure",
+      "tier1": {
+        "description": "Controlled, BP <130/80, on medication",
+        "hospitalizationRR": 1.2,
+        "cardiacRR": 1.3,
+        "annualCostAdd": 1400
+      },
+      "tier2": {
+        "description": "Somewhat controlled, BP 130-159/80-99",
+        "hospitalizationRR": 1.5,
+        "cardiacRR": 1.8,
+        "annualCostAdd": 3800
+      },
+      "tier3": {
+        "description": "Uncontrolled, BP ≥160/100, or recent cardiac events",
+        "hospitalizationRR": 2.2,
+        "cardiacRR": 3.0,
+        "annualCostAdd": 9500
+      }
+    },
+    
+    "highCholesterol": {
+      "name": "High Cholesterol",
+      "tier1": {
+        "description": "Controlled with medication, LDL at goal",
+        "hospitalizationRR": 1.1,
+        "cardiacRR": 1.2,
+        "annualCostAdd": 900
+      },
+      "tier2": {
+        "description": "Partially controlled, LDL elevated",
+        "hospitalizationRR": 1.2,
+        "cardiacRR": 1.5,
+        "annualCostAdd": 1800
+      },
+      "tier3": {
+        "description": "Uncontrolled, very high LDL, or with cardiac history",
+        "hospitalizationRR": 1.4,
+        "cardiacRR": 2.0,
+        "annualCostAdd": 4500
+      }
+    },
+    
+    "coronaryArteryDisease": {
+      "name": "Coronary Artery Disease / Heart Attack History",
+      "tier1": {
+        "description": "Stable, event >5 years ago, no current symptoms",
+        "hospitalizationRR": 1.8,
+        "cardiacRR": 2.2,
+        "annualCostAdd": 5800
+      },
+      "tier2": {
+        "description": "Stable, event 2-5 years ago, or mild symptoms",
+        "hospitalizationRR": 2.5,
+        "cardiacRR": 3.2,
+        "annualCostAdd": 12500
+      },
+      "tier3": {
+        "description": "Recent event <2 years, or active symptoms",
+        "hospitalizationRR": 3.5,
+        "cardiacRR": 4.5,
+        "annualCostAdd": 25000
+      }
+    },
+    
+    "heartFailure": {
+      "name": "Heart Failure",
+      "tier1": {
+        "description": "Mild, minimal symptoms, EF >50%",
+        "hospitalizationRR": 2.0,
+        "cardiacRR": 2.5,
+        "annualCostAdd": 8500
+      },
+      "tier2": {
+        "description": "Moderate, some limitations, EF 30-50%",
+        "hospitalizationRR": 3.2,
+        "cardiacRR": 3.8,
+        "annualCostAdd": 18000
+      },
+      "tier3": {
+        "description": "Severe, significant limitations, EF <30%",
+        "hospitalizationRR": 5.0,
+        "cardiacRR": 5.5,
+        "annualCostAdd": 45000
+      }
+    },
+    
+    "arrhythmia": {
+      "name": "Arrhythmia (AFib, etc.)",
+      "tier1": {
+        "description": "Controlled with medication, no recent episodes",
+        "hospitalizationRR": 1.4,
+        "cardiacRR": 1.6,
+        "annualCostAdd": 3200
+      },
+      "tier2": {
+        "description": "Occasional episodes, rate controlled",
+        "hospitalizationRR": 1.8,
+        "cardiacRR": 2.2,
+        "annualCostAdd": 6500
+      },
+      "tier3": {
+        "description": "Frequent episodes, anticoagulation required, or cardioversion history",
+        "hospitalizationRR": 2.5,
+        "cardiacRR": 3.0,
+        "annualCostAdd": 12000
+      }
+    },
+    
+    "asthma": {
+      "name": "Asthma",
+      "tier1": {
+        "description": "Well-controlled, rescue inhaler rarely used",
+        "hospitalizationRR": 1.2,
+        "respiratoryRR": 1.4,
+        "annualCostAdd": 1800
+      },
+      "tier2": {
+        "description": "Moderate, daily controller medication, occasional flares",
+        "hospitalizationRR": 1.6,
+        "respiratoryRR": 2.0,
+        "annualCostAdd": 4200
+      },
+      "tier3": {
+        "description": "Severe/uncontrolled, frequent ER visits or hospitalizations",
+        "hospitalizationRR": 2.4,
+        "respiratoryRR": 3.2,
+        "annualCostAdd": 9500
+      }
+    },
+    
+    "copd": {
+      "name": "COPD / Emphysema",
+      "tier1": {
+        "description": "Mild (GOLD 1-2), minimal symptoms, no hospitalizations",
+        "hospitalizationRR": 1.6,
+        "respiratoryRR": 2.0,
+        "annualCostAdd": 4800
+      },
+      "tier2": {
+        "description": "Moderate (GOLD 2-3), daily symptoms, occasional exacerbations",
+        "hospitalizationRR": 2.5,
+        "respiratoryRR": 3.2,
+        "annualCostAdd": 12000
+      },
+      "tier3": {
+        "description": "Severe, frequent exacerbations, oxygen required",
+        "hospitalizationRR": 4.2,
+        "respiratoryRR": 5.0,
+        "annualCostAdd": 28000
+      }
+    },
+    
+    "cancerRemission": {
+      "name": "Cancer (in remission)",
+      "tier1": {
+        "description": "Remission >5 years, no ongoing treatment",
+        "hospitalizationRR": 1.3,
+        "cancerRR": 1.5,
+        "annualCostAdd": 2500
+      },
+      "tier2": {
+        "description": "Remission 1-5 years, or on maintenance therapy",
+        "hospitalizationRR": 1.8,
+        "cancerRR": 2.2,
+        "annualCostAdd": 15000
+      },
+      "tier3": {
+        "description": "Recent remission <1 year, active surveillance",
+        "hospitalizationRR": 2.5,
+        "cancerRR": 3.0,
+        "annualCostAdd": 25000
+      }
+    },
+    
+    "cancerActive": {
+      "name": "Cancer (active treatment)",
+      "tier1": {
+        "description": "Not applicable - active cancer is always high acuity",
+        "hospitalizationRR": 3.5,
+        "cancerRR": 5.0,
+        "annualCostAdd": 75000
+      },
+      "tier2": {
+        "description": "Active treatment, standard chemotherapy/radiation",
+        "hospitalizationRR": 3.5,
+        "cancerRR": 5.0,
+        "annualCostAdd": 75000
+      },
+      "tier3": {
+        "description": "Active treatment, immunotherapy or advanced regimens",
+        "hospitalizationRR": 4.5,
+        "cancerRR": 6.0,
+        "annualCostAdd": 150000
+      }
+    },
+    
+    "depression": {
+      "name": "Depression",
+      "tier1": {
+        "description": "Stable on treatment, no recent episodes",
+        "hospitalizationRR": 1.1,
+        "mentalHealthRR": 1.4,
+        "annualCostAdd": 2400
+      },
+      "tier2": {
+        "description": "Mostly stable, occasional difficult periods",
+        "hospitalizationRR": 1.3,
+        "mentalHealthRR": 2.0,
+        "annualCostAdd": 4800
+      },
+      "tier3": {
+        "description": "Struggling, recent crisis or hospitalization",
+        "hospitalizationRR": 2.0,
+        "mentalHealthRR": 3.5,
+        "annualCostAdd": 12000
+      }
+    },
+    
+    "anxiety": {
+      "name": "Anxiety Disorder",
+      "tier1": {
+        "description": "Well-managed, minimal impact on daily life",
+        "hospitalizationRR": 1.1,
+        "mentalHealthRR": 1.3,
+        "annualCostAdd": 2000
+      },
+      "tier2": {
+        "description": "Moderate, requires ongoing treatment",
+        "hospitalizationRR": 1.2,
+        "mentalHealthRR": 1.8,
+        "annualCostAdd": 3600
+      },
+      "tier3": {
+        "description": "Severe, panic attacks, or with crisis history",
+        "hospitalizationRR": 1.6,
+        "mentalHealthRR": 2.8,
+        "annualCostAdd": 8500
+      }
+    },
+    
+    "bipolar": {
+      "name": "Bipolar Disorder",
+      "tier1": {
+        "description": "Stable on medication, no episodes in 2+ years",
+        "hospitalizationRR": 1.4,
+        "mentalHealthRR": 2.0,
+        "annualCostAdd": 5200
+      },
+      "tier2": {
+        "description": "Mostly stable, occasional mood fluctuations",
+        "hospitalizationRR": 1.8,
+        "mentalHealthRR": 2.8,
+        "annualCostAdd": 8500
+      },
+      "tier3": {
+        "description": "Unstable, recent episode or hospitalization",
+        "hospitalizationRR": 2.8,
+        "mentalHealthRR": 4.5,
+        "annualCostAdd": 18000
+      }
+    },
+    
+    "rheumatoidArthritis": {
+      "name": "Rheumatoid Arthritis",
+      "tier1": {
+        "description": "Controlled with oral medications, minimal symptoms",
+        "hospitalizationRR": 1.4,
+        "annualCostAdd": 4800
+      },
+      "tier2": {
+        "description": "Controlled with biologics",
+        "hospitalizationRR": 1.6,
+        "annualCostAdd": 48000
+      },
+      "tier3": {
+        "description": "Active disease, flares, or joint damage progression",
+        "hospitalizationRR": 2.2,
+        "annualCostAdd": 65000
+      }
+    },
+    
+    "lupus": {
+      "name": "Lupus (SLE)",
+      "tier1": {
+        "description": "Mild, skin/joint involvement only, stable",
+        "hospitalizationRR": 1.5,
+        "annualCostAdd": 6500
+      },
+      "tier2": {
+        "description": "Moderate, requires immunosuppression",
+        "hospitalizationRR": 2.2,
+        "annualCostAdd": 25000
+      },
+      "tier3": {
+        "description": "Severe, organ involvement, or frequent flares",
+        "hospitalizationRR": 3.5,
+        "annualCostAdd": 55000
+      }
+    },
+    
+    "crohnsColitis": {
+      "name": "Crohn's Disease / Ulcerative Colitis",
+      "tier1": {
+        "description": "Remission, oral medications only",
+        "hospitalizationRR": 1.4,
+        "annualCostAdd": 4200
+      },
+      "tier2": {
+        "description": "Controlled with biologics",
+        "hospitalizationRR": 1.7,
+        "annualCostAdd": 52000
+      },
+      "tier3": {
+        "description": "Active disease, frequent flares, or surgery history",
+        "hospitalizationRR": 2.8,
+        "annualCostAdd": 70000
+      }
+    },
+    
+    "multipleSclerosis": {
+      "name": "Multiple Sclerosis",
+      "tier1": {
+        "description": "Stable, minimal disability, on disease-modifying therapy",
+        "hospitalizationRR": 1.5,
+        "annualCostAdd": 65000
+      },
+      "tier2": {
+        "description": "Moderate disability, occasional relapses",
+        "hospitalizationRR": 2.0,
+        "annualCostAdd": 80000
+      },
+      "tier3": {
+        "description": "Progressive, significant disability",
+        "hospitalizationRR": 2.8,
+        "annualCostAdd": 95000
+      }
+    },
+    
+    "kidneyDisease": {
+      "name": "Chronic Kidney Disease",
+      "tier1": {
+        "description": "Stage 1-2, GFR >60, monitoring only",
+        "hospitalizationRR": 1.3,
+        "annualCostAdd": 2200
+      },
+      "tier2": {
+        "description": "Stage 3, GFR 30-59, medication management",
+        "hospitalizationRR": 1.8,
+        "annualCostAdd": 8500
+      },
+      "tier3": {
+        "description": "Stage 4-5, GFR <30, or dialysis",
+        "hospitalizationRR": 3.5,
+        "annualCostAdd": 85000
+      }
+    },
+    
+    "obesity": {
+      "name": "Obesity (as primary condition)",
+      "tier1": {
+        "description": "BMI 30-34, no obesity-related complications",
+        "hospitalizationRR": 1.2,
+        "cardiacRR": 1.4,
+        "annualCostAdd": 1200
+      },
+      "tier2": {
+        "description": "BMI 35-39, or with mild complications",
+        "hospitalizationRR": 1.4,
+        "cardiacRR": 1.8,
+        "annualCostAdd": 2800
+      },
+      "tier3": {
+        "description": "BMI 40+, or with significant complications",
+        "hospitalizationRR": 1.8,
+        "cardiacRR": 2.4,
+        "annualCostAdd": 5500
+      }
+    }
+  },
+  
+  "lifestyleFactors": {
+    "smoking": {
+      "never": {
+        "hospitalizationRR": 1.0,
+        "cardiacRR": 1.0,
+        "cancerRR": 1.0,
+        "respiratoryRR": 1.0
+      },
+      "former": {
+        "hospitalizationRR": 1.2,
+        "cardiacRR": 1.3,
+        "cancerRR": 1.8,
+        "respiratoryRR": 1.4
+      },
+      "current": {
+        "hospitalizationRR": 1.6,
+        "cardiacRR": 2.5,
+        "cancerRR": 3.5,
+        "respiratoryRR": 2.8
+      }
+    },
+    "bmi": {
+      "under18_5": {
+        "hospitalizationRR": 1.1,
+        "cardiacRR": 1.0,
+        "injuryRR": 1.1
+      },
+      "normal": {
+        "hospitalizationRR": 1.0,
+        "cardiacRR": 1.0,
+        "injuryRR": 1.0
+      },
+      "overweight": {
+        "hospitalizationRR": 1.1,
+        "cardiacRR": 1.3,
+        "injuryRR": 1.0
+      },
+      "obese1": {
+        "hospitalizationRR": 1.3,
+        "cardiacRR": 1.7,
+        "injuryRR": 1.1
+      },
+      "obese2": {
+        "hospitalizationRR": 1.5,
+        "cardiacRR": 2.0,
+        "injuryRR": 1.2
+      },
+      "obese3": {
+        "hospitalizationRR": 1.8,
+        "cardiacRR": 2.5,
+        "injuryRR": 1.3
+      }
+    },
+    "activityLevel": {
+      "sedentary": {
+        "hospitalizationRR": 1.15,
+        "cardiacRR": 1.4,
+        "injuryRR": 0.9
+      },
+      "lightActivity": {
+        "hospitalizationRR": 1.0,
+        "cardiacRR": 1.1,
+        "injuryRR": 1.0
+      },
+      "moderate": {
+        "hospitalizationRR": 0.95,
+        "cardiacRR": 0.9,
+        "injuryRR": 1.1
+      },
+      "veryActive": {
+        "hospitalizationRR": 0.9,
+        "cardiacRR": 0.8,
+        "injuryRR": 1.3
+      },
+      "highRisk": {
+        "hospitalizationRR": 1.2,
+        "cardiacRR": 0.85,
+        "injuryRR": 1.8
+      }
+    },
+    "alcoholUse": {
+      "none": {
+        "hospitalizationRR": 1.0,
+        "cardiacRR": 1.0,
+        "injuryRR": 1.0
+      },
+      "moderate": {
+        "hospitalizationRR": 1.0,
+        "cardiacRR": 0.95,
+        "injuryRR": 1.1
+      },
+      "heavy": {
+        "hospitalizationRR": 1.5,
+        "cardiacRR": 1.3,
+        "injuryRR": 1.6
+      }
+    }
+  },
+  
+  "familyHistory": {
+    "cardiacEarly": {
+      "description": "Heart disease in parent/sibling before age 55",
+      "cardiacRR": 2.0,
+      "hospitalizationRR": 1.1
+    },
+    "cancer": {
+      "description": "Cancer in parent/sibling",
+      "cancerRR": 1.8,
+      "hospitalizationRR": 1.05
+    },
+    "diabetes": {
+      "description": "Type 2 diabetes in parent/sibling",
+      "diabetesRR": 2.5,
+      "hospitalizationRR": 1.05
+    },
+    "none": {
+      "description": "No significant family history",
+      "cardiacRR": 1.0,
+      "cancerRR": 1.0,
+      "hospitalizationRR": 1.0
+    }
+  },
+  
+  "eventCosts": {
+    "description": "Cost distributions by event type (cash vs billed)",
+    "erVisit": {
+      "cashMedian": 1200,
+      "cash75th": 2800,
+      "cash90th": 4500,
+      "billedMedian": 2200,
+      "billed75th": 5500,
+      "billed90th": 8500
+    },
+    "hospitalization": {
+      "cashMedian": 9000,
+      "cash75th": 18000,
+      "cash90th": 28000,
+      "billedMedian": 15000,
+      "billed75th": 32000,
+      "billed90th": 45000
+    },
+    "majorSurgery": {
+      "cashMedian": 18000,
+      "cash75th": 32000,
+      "cash90th": 50000,
+      "billedMedian": 35000,
+      "billed75th": 60000,
+      "billed90th": 85000
+    },
+    "cancerDiagnosis": {
+      "cashMedian": 45000,
+      "cash75th": 85000,
+      "cash90th": 120000,
+      "billedMedian": 75000,
+      "billed75th": 140000,
+      "billed90th": 200000
+    },
+    "cardiacEvent": {
+      "cashMedian": 32000,
+      "cash75th": 65000,
+      "cash90th": 95000,
+      "billedMedian": 55000,
+      "billed75th": 110000,
+      "billed90th": 150000
+    },
+    "seriousInjury": {
+      "cashMedian": 8000,
+      "cash75th": 22000,
+      "cash90th": 45000,
+      "billedMedian": 15000,
+      "billed75th": 40000,
+      "billed90th": 75000
+    },
+    "mentalHealthCrisis": {
+      "cashMedian": 6000,
+      "cash75th": 12000,
+      "cash90th": 25000,
+      "billedMedian": 10000,
+      "billed75th": 22000,
+      "billed90th": 45000
+    },
+    "pregnancyRoutine": {
+      "cashMedian": 8000,
+      "cash75th": 12000,
+      "cash90th": 15000,
+      "billedMedian": 15000,
+      "billed75th": 22000,
+      "billed90th": 28000
+    },
+    "pregnancyComplicated": {
+      "cashMedian": 18000,
+      "cash75th": 32000,
+      "cash90th": 45000,
+      "billedMedian": 35000,
+      "billed75th": 55000,
+      "billed90th": 80000
+    }
+  },
+  
+  "routineCare": {
+    "description": "Annual baseline costs for routine care by age group",
+    "18-24": {
+      "cashAnnual": 800,
+      "billedAnnual": 1500
+    },
+    "25-34": {
+      "cashAnnual": 1000,
+      "billedAnnual": 1800
+    },
+    "35-44": {
+      "cashAnnual": 1400,
+      "billedAnnual": 2400
+    },
+    "45-54": {
+      "cashAnnual": 2000,
+      "billedAnnual": 3500
+    },
+    "55-64": {
+      "cashAnnual": 2800,
+      "billedAnnual": 4800
+    },
+    "pediatric": {
+      "cashAnnual": 600,
+      "billedAnnual": 1200
+    }
+  }
+}

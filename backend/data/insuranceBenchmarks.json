@@ -1,0 +1,375 @@
+{
+  "description": "Insurance plan benchmarks - national averages, adjust by state/age as needed",
+  
+  "planTypes": {
+    "bronze": {
+      "name": "Bronze (ACA)",
+      "actuarialValue": 0.60,
+      "premiums": {
+        "individual": {
+          "18-24": 280,
+          "25-34": 320,
+          "35-44": 380,
+          "45-54": 520,
+          "55-64": 720
+        },
+        "family": {
+          "base": 850,
+          "perAdditionalAdult": 400,
+          "perChild": 180
+        }
+      },
+      "deductible": {
+        "individual": 7000,
+        "family": 14000
+      },
+      "oopMax": {
+        "individual": 9100,
+        "family": 18200
+      },
+      "coinsurance": 0.40,
+      "copays": {
+        "primaryCare": 50,
+        "specialist": 80,
+        "urgentCare": 75,
+        "er": 500,
+        "genericRx": 20,
+        "brandRx": 50
+      }
+    },
+    
+    "silver": {
+      "name": "Silver (ACA)",
+      "actuarialValue": 0.70,
+      "premiums": {
+        "individual": {
+          "18-24": 380,
+          "25-34": 440,
+          "35-44": 520,
+          "45-54": 720,
+          "55-64": 980
+        },
+        "family": {
+          "base": 1150,
+          "perAdditionalAdult": 550,
+          "perChild": 240
+        }
+      },
+      "deductible": {
+        "individual": 4500,
+        "family": 9000
+      },
+      "oopMax": {
+        "individual": 9100,
+        "family": 18200
+      },
+      "coinsurance": 0.30,
+      "copays": {
+        "primaryCare": 40,
+        "specialist": 65,
+        "urgentCare": 60,
+        "er": 400,
+        "genericRx": 15,
+        "brandRx": 45
+      }
+    },
+    
+    "gold": {
+      "name": "Gold (ACA)",
+      "actuarialValue": 0.80,
+      "premiums": {
+        "individual": {
+          "18-24": 480,
+          "25-34": 560,
+          "35-44": 680,
+          "45-54": 920,
+          "55-64": 1250
+        },
+        "family": {
+          "base": 1500,
+          "perAdditionalAdult": 700,
+          "perChild": 320
+        }
+      },
+      "deductible": {
+        "individual": 1500,
+        "family": 3000
+      },
+      "oopMax": {
+        "individual": 8000,
+        "family": 16000
+      },
+      "coinsurance": 0.20,
+      "copays": {
+        "primaryCare": 25,
+        "specialist": 50,
+        "urgentCare": 40,
+        "er": 300,
+        "genericRx": 10,
+        "brandRx": 35
+      }
+    },
+    
+    "platinum": {
+      "name": "Platinum (ACA)",
+      "actuarialValue": 0.90,
+      "premiums": {
+        "individual": {
+          "18-24": 580,
+          "25-34": 680,
+          "35-44": 820,
+          "45-54": 1120,
+          "55-64": 1520
+        },
+        "family": {
+          "base": 1850,
+          "perAdditionalAdult": 850,
+          "perChild": 400
+        }
+      },
+      "deductible": {
+        "individual": 500,
+        "family": 1000
+      },
+      "oopMax": {
+        "individual": 4000,
+        "family": 8000
+      },
+      "coinsurance": 0.10,
+      "copays": {
+        "primaryCare": 15,
+        "specialist": 35,
+        "urgentCare": 25,
+        "er": 150,
+        "genericRx": 5,
+        "brandRx": 25
+      }
+    },
+    
+    "catastrophic": {
+      "name": "Catastrophic (Under 30)",
+      "actuarialValue": 0.57,
+      "eligibility": "Under 30 or hardship exemption",
+      "premiums": {
+        "individual": {
+          "18-24": 180,
+          "25-34": 200
+        }
+      },
+      "deductible": {
+        "individual": 9100
+      },
+      "oopMax": {
+        "individual": 9100
+      },
+      "coinsurance": 0.0,
+      "notes": "3 free primary care visits before deductible"
+    },
+    
+    "shortTerm": {
+      "name": "Short-Term Health Insurance",
+      "actuarialValue": 0.50,
+      "premiums": {
+        "individual": {
+          "18-24": 120,
+          "25-34": 150,
+          "35-44": 200,
+          "45-54": 320,
+          "55-64": 480
+        },
+        "family": {
+          "base": 350,
+          "perAdditionalAdult": 180,
+          "perChild": 80
+        }
+      },
+      "deductible": {
+        "individual": 5000,
+        "family": 10000
+      },
+      "oopMax": {
+        "individual": 1000000,
+        "family": 2000000
+      },
+      "coinsurance": 0.30,
+      "limitations": [
+        "Pre-existing conditions not covered",
+        "No mental health coverage typically",
+        "No maternity coverage",
+        "Limited prescription coverage",
+        "Not ACA-compliant"
+      ]
+    },
+    
+    "healthShare": {
+      "name": "Health Sharing Ministry",
+      "actuarialValue": 0.55,
+      "premiums": {
+        "individual": {
+          "18-24": 150,
+          "25-34": 180,
+          "35-44": 220,
+          "45-54": 300,
+          "55-64": 380
+        },
+        "family": {
+          "base": 450,
+          "perAdditionalAdult": 200,
+          "perChild": 100
+        }
+      },
+      "deductible": {
+        "individual": 2500,
+        "family": 5000
+      },
+      "oopMax": {
+        "individual": 100000,
+        "family": 200000
+      },
+      "limitations": [
+        "Not insurance - no guarantee of payment",
+        "Pre-existing conditions often excluded or limited",
+        "Lifestyle requirements may apply",
+        "No mental health/substance abuse typically",
+        "No contraception/some reproductive services"
+      ]
+    },
+    
+    "employerHDHP": {
+      "name": "Employer HDHP with HSA",
+      "actuarialValue": 0.70,
+      "premiums": {
+        "individual": {
+          "18-24": 150,
+          "25-34": 180,
+          "35-44": 220,
+          "45-54": 300,
+          "55-64": 420
+        },
+        "family": {
+          "base": 480,
+          "perAdditionalAdult": 250,
+          "perChild": 120
+        }
+      },
+      "deductible": {
+        "individual": 3000,
+        "family": 6000
+      },
+      "oopMax": {
+        "individual": 6500,
+        "family": 13000
+      },
+      "coinsurance": 0.20,
+      "hsaContributionLimit": {
+        "individual": 4150,
+        "family": 8300
+      },
+      "notes": "Premiums often subsidized by employer - these are employee-paid portion estimates"
+    },
+    
+    "employerPPO": {
+      "name": "Employer PPO",
+      "actuarialValue": 0.82,
+      "premiums": {
+        "individual": {
+          "18-24": 200,
+          "25-34": 240,
+          "35-44": 300,
+          "45-54": 400,
+          "55-64": 550
+        },
+        "family": {
+          "base": 650,
+          "perAdditionalAdult": 350,
+          "perChild": 180
+        }
+      },
+      "deductible": {
+        "individual": 1000,
+        "family": 2500
+      },
+      "oopMax": {
+        "individual": 5000,
+        "family": 10000
+      },
+      "coinsurance": 0.20,
+      "notes": "Premiums often subsidized by employer - these are employee-paid portion estimates"
+    }
+  },
+  
+  "stateMultipliers": {
+    "description": "Premium adjustment factors by state (1.0 = national average)",
+    "AL": 0.92, "AK": 1.65, "AZ": 1.02, "AR": 0.88, "CA": 1.08,
+    "CO": 1.05, "CT": 1.12, "DE": 1.15, "FL": 1.05, "GA": 0.95,
+    "HI": 1.10, "ID": 0.90, "IL": 1.02, "IN": 0.95, "IA": 0.88,
+    "KS": 0.92, "KY": 0.90, "LA": 0.95, "ME": 1.08, "MD": 1.10,
+    "MA": 1.15, "MI": 0.98, "MN": 1.02, "MS": 0.88, "MO": 0.92,
+    "MT": 1.05, "NE": 0.95, "NV": 1.00, "NH": 1.08, "NJ": 1.18,
+    "NM": 0.98, "NY": 1.25, "NC": 1.00, "ND": 0.88, "OH": 0.95,
+    "OK": 0.90, "OR": 1.05, "PA": 1.02, "RI": 1.10, "SC": 0.95,
+    "SD": 0.90, "TN": 0.92, "TX": 0.98, "UT": 0.92, "VT": 1.20,
+    "VA": 1.00, "WA": 1.08, "WV": 1.25, "WI": 1.00, "WY": 1.35
+  },
+  
+  "subsidyThresholds": {
+    "description": "ACA subsidy eligibility by FPL percentage (2024)",
+    "fpl2024": {
+      "individual": 14580,
+      "couple": 19720,
+      "family3": 24860,
+      "family4": 30000,
+      "perAdditional": 5140
+    },
+    "subsidyRanges": {
+      "under150FPL": {
+        "maxPremiumPercent": 0,
+        "silverCSR": "94% AV"
+      },
+      "150to200FPL": {
+        "maxPremiumPercent": 2.0,
+        "silverCSR": "87% AV"
+      },
+      "200to250FPL": {
+        "maxPremiumPercent": 4.0,
+        "silverCSR": "73% AV"
+      },
+      "250to400FPL": {
+        "maxPremiumPercent": 8.5,
+        "silverCSR": "none"
+      },
+      "over400FPL": {
+        "maxPremiumPercent": 8.5,
+        "silverCSR": "none"
+      }
+    }
+  },
+  
+  "cashPayDiscounts": {
+    "description": "Typical discount from billed price when paying cash",
+    "hospital": {
+      "averageDiscount": 0.55,
+      "range": [0.40, 0.70]
+    },
+    "surgery": {
+      "averageDiscount": 0.50,
+      "range": [0.35, 0.65]
+    },
+    "imaging": {
+      "averageDiscount": 0.60,
+      "range": [0.45, 0.75]
+    },
+    "labs": {
+      "averageDiscount": 0.70,
+      "range": [0.50, 0.85]
+    },
+    "physician": {
+      "averageDiscount": 0.35,
+      "range": [0.20, 0.50]
+    },
+    "er": {
+      "averageDiscount": 0.45,
+      "range": [0.30, 0.60]
+    }
+  }
+}
