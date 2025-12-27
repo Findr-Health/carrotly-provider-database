@@ -181,34 +181,51 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
     // Build system prompt
     const systemPrompt = buildDocumentAnalysisPrompt(documentType);
     
-    // Prepare the image for Anthropic
-    const base64Image = req.file.buffer.toString('base64');
+    // Prepare the file for Anthropic
+    const base64Data = req.file.buffer.toString('base64');
     const mediaType = req.file.mimetype;
+    const isPDF = mediaType === 'application/pdf';
     
-    // Build user message with image
-    const userContent = [
-      {
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: mediaType,
-          data: base64Image
+    // Build the file content block based on file type
+    // PDFs use 'document' type, images use 'image' type
+    const fileContentBlock = isPDF 
+      ? {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Data
+          }
         }
-      },
-      {
-        type: 'text',
-        text: question 
-          ? `Please analyze this healthcare document. Specific question: ${question}`
-          : 'Please analyze this healthcare document and explain what it shows. Identify any concerns or action items.'
-      }
-    ];
+      : {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Data
+          }
+        };
+    
+    // Build text prompt
+    let textPrompt = question 
+      ? `Please analyze this healthcare document. Specific question: ${question}`
+      : 'Please analyze this healthcare document and explain what it shows.';
     
     // Add location context if available
     if (location && (location.city || location.state)) {
-      userContent[1].text += ` The user is located in ${[location.city, location.state].filter(Boolean).join(', ')}.`;
+      textPrompt += ` The user is located in ${[location.city, location.state].filter(Boolean).join(', ')}.`;
     }
     
-    // Call Anthropic API with vision
+    // Build user message with file
+    const userContent = [
+      fileContentBlock,
+      {
+        type: 'text',
+        text: textPrompt
+      }
+    ];
+    
+    // Call Anthropic API with vision/document support
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096, // Longer for document analysis
@@ -248,7 +265,7 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to analyze document',
-      analysis: "I'm sorry, I couldn't analyze this document. Please try uploading a clearer image or PDF."
+      analysis: "I'm having trouble analyzing this document right now. Please try again in a moment, or try uploading a clearer image."
     });
   }
 });
