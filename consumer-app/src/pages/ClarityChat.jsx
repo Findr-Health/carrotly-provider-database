@@ -374,7 +374,7 @@ function ClarityChat() {
                     style={{
                       ...styles.messageBubble,
                       backgroundColor: msg.role === 'user' ? '#F3F4F6' : '#E0FAF5',
-                      color: msg.role === 'user' ? '#374151' : '#065F46',
+                      color: msg.role === 'user' ? '#111827' : '#064E3B',
                       borderRadius: msg.role === 'user' 
                         ? '16px 16px 16px 4px' 
                         : '16px 16px 4px 16px'
@@ -593,11 +593,12 @@ const styles = {
     maxWidth: '75%'
   },
   messageBubble: {
-    padding: '12px 16px',
-    fontSize: '0.95rem',
-    lineHeight: 1.5,
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word'
+  padding: '14px 18px',
+  fontSize: '1rem',
+  fontWeight: 500,
+  lineHeight: 1.65,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word'
   },
   timestamp: {
     fontSize: '0.75rem',
