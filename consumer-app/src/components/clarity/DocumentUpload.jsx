@@ -10,9 +10,6 @@ function DocumentUpload({ onUpload, onClose }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Debug: Log props on render
-  console.log('DocumentUpload render - onUpload exists:', typeof onUpload === 'function');
-
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -41,30 +38,23 @@ function DocumentUpload({ onUpload, onClose }) {
   };
 
   const validateAndSelect = (file) => {
+    // Check file type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!validTypes.includes(file.type)) {
       alert('Please upload an image (JPEG, PNG, WebP) or PDF file.');
       return;
     }
+    // Check file size (10MB limit)
     if (file.size > 10 * 1024 * 1024) {
       alert('File is too large. Please upload a file under 10MB.');
       return;
     }
-    console.log('DocumentUpload: File selected:', file.name);
     setSelectedFile(file);
   };
 
   const handleUpload = () => {
-    console.log('=== DocumentUpload: handleUpload clicked ===');
-    console.log('selectedFile:', selectedFile?.name);
-    console.log('onUpload type:', typeof onUpload);
-    
     if (selectedFile && onUpload) {
-      console.log('DocumentUpload: Calling onUpload now...');
       onUpload(selectedFile);
-      console.log('DocumentUpload: onUpload called successfully');
-    } else {
-      console.log('DocumentUpload: NOT calling onUpload - missing:', !selectedFile ? 'file' : 'onUpload function');
     }
   };
 
@@ -85,6 +75,7 @@ function DocumentUpload({ onUpload, onClose }) {
   };
 
   const handleOverlayClick = (e) => {
+    // Close when clicking the overlay background
     if (e.target === e.currentTarget && onClose) {
       onClose();
     }
@@ -93,6 +84,7 @@ function DocumentUpload({ onUpload, onClose }) {
   return (
     <div className="upload-modal-overlay" onClick={handleOverlayClick}>
       <div className="upload-modal">
+        {/* Close button */}
         <button className="close-modal" onClick={onClose}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -112,6 +104,7 @@ function DocumentUpload({ onUpload, onClose }) {
         </h2>
 
         <div className="document-upload">
+          {/* Hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -120,6 +113,7 @@ function DocumentUpload({ onUpload, onClose }) {
             className="file-input-hidden"
           />
 
+          {/* Drop zone */}
           <div 
             className={`upload-dropzone ${isDragging ? 'dragging' : ''} ${selectedFile ? 'has-file' : ''}`}
             onDrop={handleDrop}
@@ -144,6 +138,7 @@ function DocumentUpload({ onUpload, onClose }) {
             </div>
           </div>
 
+          {/* Action buttons */}
           <div className="upload-actions">
             <button className="upload-action-btn file-btn" onClick={triggerFileInput}>
               <span className="btn-icon">📁</span>
@@ -155,12 +150,14 @@ function DocumentUpload({ onUpload, onClose }) {
             </button>
           </div>
 
+          {/* Analyze button - shows when file selected */}
           {selectedFile && (
             <button className="analyze-btn" onClick={handleUpload}>
               Analyze Document
             </button>
           )}
 
+          {/* Privacy note */}
           <p className="upload-privacy">
             <span className="lock-icon">🔒</span>
             Documents are processed securely and deleted immediately after analysis
