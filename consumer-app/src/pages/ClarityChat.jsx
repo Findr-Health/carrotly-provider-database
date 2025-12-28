@@ -1,12 +1,18 @@
 /**
- * ClarityChat Page v10 - With Feedback Buttons
- * Added: Copy, Thumbs Up/Down, Retry buttons on AI messages
+ * ClarityChat Page v11 - With Calculator Results Rendering
+ * 
+ * Changes from v10:
+ * - Added CalculatorResults component import
+ * - Added calculatorParser utility import  
+ * - Updated message rendering to detect and render structured calculator output
  */
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DocumentUpload from '../components/clarity/DocumentUpload';
 import LoadingIndicator from '../components/clarity/LoadingIndicator';
+import CalculatorResults from '../components/clarity/CalculatorResults';
+import { parseCalculatorResponse } from '../utils/calculatorParser';
 import { 
   sendChatMessage, 
   analyzeDocument, 
@@ -117,7 +123,6 @@ function ClarityChat() {
       .map(msg => ({ role: msg.role, content: msg.content }));
   };
   
-  // Find the user message that prompted a given assistant message
   const findPromptingMessage = (assistantMessageId) => {
     const msgIndex = messages.findIndex(m => m.id === assistantMessageId);
     if (msgIndex > 0) {
@@ -141,7 +146,6 @@ function ClarityChat() {
   };
   
   const handleFeedback = async (messageId, rating, content) => {
-    // Prevent duplicate feedback
     if (feedbackGiven[messageId]) return;
     
     const userPrompt = findPromptingMessage(messageId);
@@ -149,7 +153,7 @@ function ClarityChat() {
     try {
       await submitFeedback({
         messageId,
-        rating, // 'positive' or 'negative'
+        rating,
         aiResponse: content,
         userPrompt,
         timestamp: new Date().toISOString(),
@@ -159,13 +163,11 @@ function ClarityChat() {
       setFeedbackGiven(prev => ({ ...prev, [messageId]: rating }));
     } catch (err) {
       console.error('Failed to submit feedback:', err);
-      // Still mark as given locally even if API fails
       setFeedbackGiven(prev => ({ ...prev, [messageId]: rating }));
     }
   };
   
   const handleRetry = async (messageId) => {
-    // Find the user message that prompted this response
     const msgIndex = messages.findIndex(m => m.id === messageId);
     if (msgIndex <= 0) return;
     
@@ -182,15 +184,11 @@ function ClarityChat() {
     
     if (!userMessageContent) return;
     
-    // Remove the AI response we're retrying
     setMessages(prev => prev.filter(m => m.id !== messageId));
-    
-    // Resend the message
     setIsLoading(true);
     setLoadingType('chat');
     
     try {
-      // Get history up to but not including the message we're retrying
       const history = messages
         .slice(0, userMessageIndex)
         .filter(msg => msg.role === 'user' || msg.role === 'assistant')
@@ -198,10 +196,15 @@ function ClarityChat() {
       
       const response = await sendChatMessage(userMessageContent, history);
       
+      // Parse for calculator JSON
+      const { json: calculatorData, text: textContent } = parseCalculatorResponse(response.message);
+      
       const assistantMessage = {
         id: Date.now(),
         role: 'assistant',
         content: response.message,
+        textContent,
+        calculatorData,
         timestamp: new Date(),
         triggers: response.triggers,
         isRetry: true
@@ -251,10 +254,15 @@ function ClarityChat() {
       const history = getHistoryForAPI();
       const response = await sendChatMessage(text, history);
       
+      // Parse for calculator JSON
+      const { json: calculatorData, text: textContent } = parseCalculatorResponse(response.message);
+      
       const assistantMessage = {
         id: Date.now() + 1,
         role: 'assistant',
         content: response.message,
+        textContent,         // Text without JSON block
+        calculatorData,      // Parsed calculator assessment (or null)
         timestamp: new Date(),
         triggers: response.triggers
       };
@@ -345,7 +353,6 @@ function ClarityChat() {
     recognition.lang = 'en-US';
     
     recognition.onstart = () => {
-      console.log('Speech recognition started');
       setIsListening(true);
     };
     
@@ -399,6 +406,44 @@ function ClarityChat() {
     "What questions should I ask a new doctor?"
   ];
   
+  // Render message content - handles both text and calculator assessments
+  const renderMessageContent = (msg) => {
+    // If this message has calculator data, render the component
+    if (msg.calculatorData) {
+      return (
+        <div>
+          <CalculatorResults data={msg.calculatorData} />
+          {msg.textContent && (
+            <div style={{
+              ...styles.messageBubble,
+              backgroundColor: '#E0FAF5',
+              color: '#064E3B',
+              marginTop: '12px'
+            }}>
+              {msg.textContent}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Regular text message
+    return (
+      <div
+        style={{
+          ...styles.messageBubble,
+          backgroundColor: msg.role === 'user' ? '#F3F4F6' : '#E0FAF5',
+          color: msg.role === 'user' ? '#111827' : '#064E3B',
+          borderRadius: msg.role === 'user' 
+            ? '16px 16px 16px 4px' 
+            : '16px 16px 4px 16px'
+        }}
+      >
+        {msg.content}
+      </div>
+    );
+  };
+  
   // Feedback button component
   const FeedbackButtons = ({ message }) => {
     const hasVoted = feedbackGiven[message.id];
@@ -412,7 +457,7 @@ function ClarityChat() {
             ...styles.feedbackButton,
             color: isCopied ? '#059669' : '#6B7280'
           }}
-          onClick={() => handleCopyMessage(message.id, message.content)}
+          onClick={() => handleCopyMessage(message.id, message.textContent || message.content)}
           title="Copy response"
         >
           {isCopied ? (
@@ -548,20 +593,12 @@ function ClarityChat() {
                     </div>
                   )}
                   
-                  {/* Message Bubble */}
-                  <div style={styles.messageContent}>
-                    <div
-                      style={{
-                        ...styles.messageBubble,
-                        backgroundColor: msg.role === 'user' ? '#F3F4F6' : '#E0FAF5',
-                        color: msg.role === 'user' ? '#111827' : '#064E3B',
-                        borderRadius: msg.role === 'user' 
-                          ? '16px 16px 16px 4px' 
-                          : '16px 16px 4px 16px'
-                      }}
-                    >
-                      {msg.content}
-                    </div>
+                  {/* Message Content */}
+                  <div style={{
+                    ...styles.messageContent,
+                    maxWidth: msg.calculatorData ? '95%' : '75%'
+                  }}>
+                    {renderMessageContent(msg)}
                     <div style={{
                       ...styles.timestamp,
                       textAlign: msg.role === 'user' ? 'left' : 'right'
