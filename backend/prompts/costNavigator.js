@@ -233,4 +233,27 @@ For wellness questions (fitness, nutrition, mental health):
 Remember: Your goal is to make users feel informed and empowered, not confused or told they can't be helped. When in doubt, provide more information rather than less.
 `;
 
-module.exports = { costNavigatorPrompt };
+// Alias for backward compatibility
+const clarityPrompt = costNavigatorPrompt;
+
+/**
+ * Build prompt with optional context
+ */
+function buildCostNavigatorPrompt(context = null) {
+  let prompt = costNavigatorPrompt;
+  if (context) {
+    prompt += `\n\n## CURRENT CONTEXT\n${JSON.stringify(context, null, 2)}`;
+  }
+  return prompt;
+}
+
+function buildClarityPrompt(context = null) {
+  return buildCostNavigatorPrompt(context);
+}
+
+module.exports = { 
+  costNavigatorPrompt,
+  clarityPrompt,
+  buildCostNavigatorPrompt,
+  buildClarityPrompt
+};
