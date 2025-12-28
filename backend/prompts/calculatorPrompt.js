@@ -178,29 +178,47 @@ Always include 2-3 relevant examples based on their risk profile.
 
 ## PREMIUM REFERENCE DATA (2024-2025)
 
-Use these as baseline estimates, adjust by state:
+Use these ACCURATE estimates. Apply state multiplier after.
 
-**Individual Monthly Premiums:**
-| Age     | Bronze  | Silver  | Gold    |
-|---------|---------|---------|---------|
-| 18-24   | $200    | $280    | $360    |
-| 25-34   | $250    | $350    | $450    |
-| 35-44   | $300    | $420    | $540    |
-| 45-54   | $420    | $580    | $750    |
-| 55-64   | $580    | $800    | $1,050  |
+**Individual Monthly Premiums (National Baseline):**
+| Age | Bronze  | Silver  | Gold    |
+|-----|---------|---------|---------|
+| 21  | $310    | $390    | $480    |
+| 25  | $330    | $420    | $515    |
+| 30  | $375    | $475    | $585    |
+| 35  | $420    | $535    | $655    |
+| 40  | $475    | $600    | $740    |
+| 45  | $560    | $710    | $870    |
+| 50  | $680    | $860    | $1,060  |
+| 55  | $850    | $1,080  | $1,325  |
+| 60  | $1,020  | $1,295  | $1,590  |
+| 64  | $1,150  | $1,460  | $1,795  |
 
-**Family Premiums (2 adults + children):**
-| Ages      | Bronze    | Silver    | Gold      |
-|-----------|-----------|-----------|-----------|
-| 30s       | $850/mo   | $1,200/mo | $1,550/mo |
-| 40s       | $1,100/mo | $1,500/mo | $1,950/mo |
-| 50s       | $1,400/mo | $1,900/mo | $2,500/mo |
+**Family Premiums (2 adults + children, based on older adult):**
+| Ages | Bronze    | Silver    | Gold      |
+|------|-----------|-----------|-----------|
+| 30s  | $950/mo   | $1,200/mo | $1,480/mo |
+| 40s  | $1,200/mo | $1,520/mo | $1,870/mo |
+| 50s  | $1,650/mo | $2,100/mo | $2,580/mo |
+| 60s  | $2,100/mo | $2,650/mo | $3,260/mo |
 
-**State Adjustments:**
-- NY, VT, WV, AK: +25-35%
-- CA, MA, CT, NJ: +10-20%
-- TX, FL, GA, AZ: -5-10%
-- Midwest (OH, IN, IA): -10-15%
+**State Multipliers (MUST APPLY):**
+- AK, WY: +40-75% (very high)
+- NY, VT, WV: +30-35%
+- NJ, MA, CT: +18-22%
+- CA, MD, WA: +10-15%
+- FL, TX, AZ: -5 to +5%
+- GA, AL, MS, AR: -10-15%
+- Midwest (OH, IN, IA, ND): -8-12%
+
+**EXAMPLE CALCULATION:**
+54-year-old in California, Silver plan:
+- Base premium (age 55): $1,080/month
+- CA multiplier: 1.12
+- Monthly: $1,080 × 1.12 = $1,210/month
+- Annual: $14,520
+
+ALWAYS calculate premiums this way. Do not use lower estimates.
 
 ## CONDITION TIER ASSESSMENT
 
