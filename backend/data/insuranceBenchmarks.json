@@ -1,5 +1,7 @@
 {
-  "description": "Insurance plan benchmarks - national averages, adjust by state/age as needed",
+  "description": "Insurance plan benchmarks - 2024-2025 ACA marketplace data, updated for accuracy",
+  "lastUpdated": "2025-12-27",
+  "dataSource": "Healthcare.gov, KFF, state marketplace data",
   
   "planTypes": {
     "bronze": {
@@ -7,25 +9,32 @@
       "actuarialValue": 0.60,
       "premiums": {
         "individual": {
-          "18-24": 280,
-          "25-34": 320,
-          "35-44": 380,
-          "45-54": 520,
-          "55-64": 720
+          "21": 310,
+          "25": 330,
+          "30": 375,
+          "35": 420,
+          "40": 475,
+          "45": 560,
+          "50": 680,
+          "55": 850,
+          "60": 1020,
+          "64": 1150
         },
         "family": {
-          "base": 850,
-          "perAdditionalAdult": 400,
-          "perChild": 180
+          "description": "2 adults + children, based on older adult age",
+          "30s": 950,
+          "40s": 1200,
+          "50s": 1650,
+          "60s": 2100
         }
       },
       "deductible": {
-        "individual": 7000,
-        "family": 14000
+        "individual": 7500,
+        "family": 15000
       },
       "oopMax": {
-        "individual": 9100,
-        "family": 18200
+        "individual": 9450,
+        "family": 18900
       },
       "coinsurance": 0.40,
       "copays": {
@@ -33,8 +42,8 @@
         "specialist": 80,
         "urgentCare": 75,
         "er": 500,
-        "genericRx": 20,
-        "brandRx": 50
+        "genericRx": 25,
+        "brandRx": 60
       }
     },
     
@@ -43,25 +52,32 @@
       "actuarialValue": 0.70,
       "premiums": {
         "individual": {
-          "18-24": 380,
-          "25-34": 440,
-          "35-44": 520,
-          "45-54": 720,
-          "55-64": 980
+          "21": 390,
+          "25": 420,
+          "30": 475,
+          "35": 535,
+          "40": 600,
+          "45": 710,
+          "50": 860,
+          "55": 1080,
+          "60": 1295,
+          "64": 1460
         },
         "family": {
-          "base": 1150,
-          "perAdditionalAdult": 550,
-          "perChild": 240
+          "description": "2 adults + children, based on older adult age",
+          "30s": 1200,
+          "40s": 1520,
+          "50s": 2100,
+          "60s": 2650
         }
       },
       "deductible": {
-        "individual": 4500,
-        "family": 9000
+        "individual": 5000,
+        "family": 10000
       },
       "oopMax": {
-        "individual": 9100,
-        "family": 18200
+        "individual": 9450,
+        "family": 18900
       },
       "coinsurance": 0.30,
       "copays": {
@@ -69,8 +85,8 @@
         "specialist": 65,
         "urgentCare": 60,
         "er": 400,
-        "genericRx": 15,
-        "brandRx": 45
+        "genericRx": 20,
+        "brandRx": 50
       }
     },
     
@@ -79,16 +95,23 @@
       "actuarialValue": 0.80,
       "premiums": {
         "individual": {
-          "18-24": 480,
-          "25-34": 560,
-          "35-44": 680,
-          "45-54": 920,
-          "55-64": 1250
+          "21": 480,
+          "25": 515,
+          "30": 585,
+          "35": 655,
+          "40": 740,
+          "45": 870,
+          "50": 1060,
+          "55": 1325,
+          "60": 1590,
+          "64": 1795
         },
         "family": {
-          "base": 1500,
-          "perAdditionalAdult": 700,
-          "perChild": 320
+          "description": "2 adults + children, based on older adult age",
+          "30s": 1480,
+          "40s": 1870,
+          "50s": 2580,
+          "60s": 3260
         }
       },
       "deductible": {
@@ -96,17 +119,17 @@
         "family": 3000
       },
       "oopMax": {
-        "individual": 8000,
-        "family": 16000
+        "individual": 8700,
+        "family": 17400
       },
       "coinsurance": 0.20,
       "copays": {
-        "primaryCare": 25,
+        "primaryCare": 30,
         "specialist": 50,
-        "urgentCare": 40,
+        "urgentCare": 45,
         "er": 300,
-        "genericRx": 10,
-        "brandRx": 35
+        "genericRx": 15,
+        "brandRx": 40
       }
     },
     
@@ -115,16 +138,23 @@
       "actuarialValue": 0.90,
       "premiums": {
         "individual": {
-          "18-24": 580,
-          "25-34": 680,
-          "35-44": 820,
-          "45-54": 1120,
-          "55-64": 1520
+          "21": 580,
+          "25": 620,
+          "30": 705,
+          "35": 790,
+          "40": 890,
+          "45": 1050,
+          "50": 1280,
+          "55": 1600,
+          "60": 1920,
+          "64": 2165
         },
         "family": {
-          "base": 1850,
-          "perAdditionalAdult": 850,
-          "perChild": 400
+          "description": "2 adults + children, based on older adult age",
+          "30s": 1780,
+          "40s": 2250,
+          "50s": 3110,
+          "60s": 3930
         }
       },
       "deductible": {
@@ -132,38 +162,39 @@
         "family": 1000
       },
       "oopMax": {
-        "individual": 4000,
-        "family": 8000
+        "individual": 4500,
+        "family": 9000
       },
       "coinsurance": 0.10,
       "copays": {
-        "primaryCare": 15,
-        "specialist": 35,
-        "urgentCare": 25,
-        "er": 150,
-        "genericRx": 5,
-        "brandRx": 25
+        "primaryCare": 20,
+        "specialist": 40,
+        "urgentCare": 30,
+        "er": 200,
+        "genericRx": 10,
+        "brandRx": 30
       }
     },
     
     "catastrophic": {
-      "name": "Catastrophic (Under 30)",
+      "name": "Catastrophic (Under 30 or hardship)",
       "actuarialValue": 0.57,
-      "eligibility": "Under 30 or hardship exemption",
+      "eligibility": "Under 30 or hardship/affordability exemption",
       "premiums": {
         "individual": {
-          "18-24": 180,
-          "25-34": 200
+          "21": 200,
+          "25": 215,
+          "30": 245
         }
       },
       "deductible": {
-        "individual": 9100
+        "individual": 9450
       },
       "oopMax": {
-        "individual": 9100
+        "individual": 9450
       },
       "coinsurance": 0.0,
-      "notes": "3 free primary care visits before deductible"
+      "notes": "3 free primary care visits before deductible, preventive care covered"
     },
     
     "shortTerm": {
@@ -171,16 +202,22 @@
       "actuarialValue": 0.50,
       "premiums": {
         "individual": {
-          "18-24": 120,
-          "25-34": 150,
-          "35-44": 200,
-          "45-54": 320,
-          "55-64": 480
+          "21": 120,
+          "25": 140,
+          "30": 165,
+          "35": 195,
+          "40": 240,
+          "45": 310,
+          "50": 400,
+          "55": 520,
+          "60": 680,
+          "64": 800
         },
         "family": {
-          "base": 350,
-          "perAdditionalAdult": 180,
-          "perChild": 80
+          "30s": 400,
+          "40s": 550,
+          "50s": 800,
+          "60s": 1100
         }
       },
       "deductible": {
@@ -193,11 +230,13 @@
       },
       "coinsurance": 0.30,
       "limitations": [
-        "Pre-existing conditions not covered",
+        "Pre-existing conditions NOT covered",
         "No mental health coverage typically",
         "No maternity coverage",
         "Limited prescription coverage",
-        "Not ACA-compliant"
+        "NOT ACA-compliant",
+        "Can be cancelled or not renewed",
+        "Does NOT satisfy ACA requirements in states with mandates"
       ]
     },
     
@@ -206,16 +245,22 @@
       "actuarialValue": 0.55,
       "premiums": {
         "individual": {
-          "18-24": 150,
-          "25-34": 180,
-          "35-44": 220,
-          "45-54": 300,
-          "55-64": 380
+          "21": 180,
+          "25": 200,
+          "30": 230,
+          "35": 270,
+          "40": 320,
+          "45": 380,
+          "50": 450,
+          "55": 530,
+          "60": 620,
+          "64": 700
         },
         "family": {
-          "base": 450,
-          "perAdditionalAdult": 200,
-          "perChild": 100
+          "30s": 550,
+          "40s": 700,
+          "50s": 900,
+          "60s": 1100
         }
       },
       "deductible": {
@@ -223,66 +268,58 @@
         "family": 5000
       },
       "oopMax": {
-        "individual": 100000,
-        "family": 200000
+        "individual": 125000,
+        "family": 250000
       },
       "limitations": [
-        "Not insurance - no guarantee of payment",
-        "Pre-existing conditions often excluded or limited",
-        "Lifestyle requirements may apply",
-        "No mental health/substance abuse typically",
-        "No contraception/some reproductive services"
+        "NOT insurance - sharing of costs, no guarantee",
+        "Pre-existing conditions often excluded 12-36 months",
+        "Lifestyle requirements (no tobacco, limited alcohol)",
+        "No mental health or substance abuse coverage",
+        "No contraception or some reproductive services",
+        "Religious affiliation may be required"
       ]
     },
     
     "employerHDHP": {
       "name": "Employer HDHP with HSA",
       "actuarialValue": 0.70,
+      "description": "Employee portion only - employer typically pays 70-80% of actual premium",
       "premiums": {
         "individual": {
-          "18-24": 150,
-          "25-34": 180,
-          "35-44": 220,
-          "45-54": 300,
-          "55-64": 420
+          "allAges": 180
         },
         "family": {
-          "base": 480,
-          "perAdditionalAdult": 250,
-          "perChild": 120
+          "allAges": 520
         }
       },
       "deductible": {
-        "individual": 3000,
-        "family": 6000
+        "individual": 3200,
+        "family": 6400
       },
       "oopMax": {
-        "individual": 6500,
-        "family": 13000
+        "individual": 7500,
+        "family": 15000
       },
       "coinsurance": 0.20,
       "hsaContributionLimit": {
         "individual": 4150,
-        "family": 8300
+        "family": 8300,
+        "catchUp55Plus": 1000
       },
-      "notes": "Premiums often subsidized by employer - these are employee-paid portion estimates"
+      "notes": "Premiums shown are employee portion only. Actual total premiums are typically 3-5x higher."
     },
     
     "employerPPO": {
       "name": "Employer PPO",
       "actuarialValue": 0.82,
+      "description": "Employee portion only - employer typically pays 70-80% of actual premium",
       "premiums": {
         "individual": {
-          "18-24": 200,
-          "25-34": 240,
-          "35-44": 300,
-          "45-54": 400,
-          "55-64": 550
+          "allAges": 250
         },
         "family": {
-          "base": 650,
-          "perAdditionalAdult": 350,
-          "perChild": 180
+          "allAges": 700
         }
       },
       "deductible": {
@@ -290,49 +327,105 @@
         "family": 2500
       },
       "oopMax": {
-        "individual": 5000,
-        "family": 10000
+        "individual": 5500,
+        "family": 11000
       },
       "coinsurance": 0.20,
-      "notes": "Premiums often subsidized by employer - these are employee-paid portion estimates"
+      "notes": "Premiums shown are employee portion only. Best value if employer offers it."
     }
   },
   
   "stateMultipliers": {
-    "description": "Premium adjustment factors by state (1.0 = national average)",
-    "AL": 0.92, "AK": 1.65, "AZ": 1.02, "AR": 0.88, "CA": 1.08,
-    "CO": 1.05, "CT": 1.12, "DE": 1.15, "FL": 1.05, "GA": 0.95,
-    "HI": 1.10, "ID": 0.90, "IL": 1.02, "IN": 0.95, "IA": 0.88,
-    "KS": 0.92, "KY": 0.90, "LA": 0.95, "ME": 1.08, "MD": 1.10,
-    "MA": 1.15, "MI": 0.98, "MN": 1.02, "MS": 0.88, "MO": 0.92,
-    "MT": 1.05, "NE": 0.95, "NV": 1.00, "NH": 1.08, "NJ": 1.18,
-    "NM": 0.98, "NY": 1.25, "NC": 1.00, "ND": 0.88, "OH": 0.95,
-    "OK": 0.90, "OR": 1.05, "PA": 1.02, "RI": 1.10, "SC": 0.95,
-    "SD": 0.90, "TN": 0.92, "TX": 0.98, "UT": 0.92, "VT": 1.20,
-    "VA": 1.00, "WA": 1.08, "WV": 1.25, "WI": 1.00, "WY": 1.35
+    "description": "Premium adjustment factors by state (1.0 = national average). Apply to base premiums.",
+    "AL": 0.88, 
+    "AK": 1.75,
+    "AZ": 0.95, 
+    "AR": 0.85, 
+    "CA": 1.12,
+    "CO": 1.08, 
+    "CT": 1.18, 
+    "DE": 1.20, 
+    "DC": 1.15,
+    "FL": 1.05, 
+    "GA": 0.92,
+    "HI": 1.08, 
+    "ID": 0.90, 
+    "IL": 1.00, 
+    "IN": 0.92, 
+    "IA": 0.88,
+    "KS": 0.90, 
+    "KY": 0.88, 
+    "LA": 0.92, 
+    "ME": 1.10, 
+    "MD": 1.12,
+    "MA": 1.20, 
+    "MI": 0.95, 
+    "MN": 1.02, 
+    "MS": 0.85, 
+    "MO": 0.90,
+    "MT": 1.08, 
+    "NE": 0.92, 
+    "NV": 0.98, 
+    "NH": 1.12, 
+    "NJ": 1.22,
+    "NM": 0.95, 
+    "NY": 1.35, 
+    "NC": 1.00, 
+    "ND": 0.85, 
+    "OH": 0.92,
+    "OK": 0.88, 
+    "OR": 1.05, 
+    "PA": 1.00, 
+    "RI": 1.12, 
+    "SC": 0.92,
+    "SD": 0.88, 
+    "TN": 0.90, 
+    "TX": 0.95, 
+    "UT": 0.90, 
+    "VT": 1.30,
+    "VA": 1.00, 
+    "WA": 1.10, 
+    "WV": 1.35, 
+    "WI": 0.98, 
+    "WY": 1.40
   },
   
-  "subsidyThresholds": {
-    "description": "ACA subsidy eligibility by FPL percentage (2024)",
+  "ageRatingCurve": {
+    "description": "ACA allows 3:1 age rating. These are multipliers vs age 21 baseline.",
+    "21": 1.000,
+    "25": 1.064,
+    "30": 1.210,
+    "35": 1.355,
+    "40": 1.530,
+    "45": 1.800,
+    "50": 2.190,
+    "55": 2.740,
+    "60": 3.290,
+    "64": 3.710
+  },
+  
+  "subsidyInfo": {
+    "description": "ACA Premium Tax Credit eligibility (2024-2025)",
     "fpl2024": {
-      "individual": 14580,
-      "couple": 19720,
-      "family3": 24860,
-      "family4": 30000,
-      "perAdditional": 5140
+      "individual": 15060,
+      "couple": 20440,
+      "family3": 25820,
+      "family4": 31200,
+      "perAdditional": 5380
     },
     "subsidyRanges": {
       "under150FPL": {
         "maxPremiumPercent": 0,
-        "silverCSR": "94% AV"
+        "silverCSR": "94% actuarial value",
+        "notes": "May qualify for Medicaid instead"
       },
       "150to200FPL": {
         "maxPremiumPercent": 2.0,
-        "silverCSR": "87% AV"
+        "silverCSR": "87% actuarial value"
       },
       "200to250FPL": {
         "maxPremiumPercent": 4.0,
-        "silverCSR": "73% AV"
+        "silverCSR": "73% actuarial value"
       },
       "250to400FPL": {
         "maxPremiumPercent": 8.5,
@@ -340,28 +433,32 @@
       },
       "over400FPL": {
         "maxPremiumPercent": 8.5,
-        "silverCSR": "none"
+        "silverCSR": "none",
+        "notes": "Still eligible for premium tax credits through 2025"
       }
     }
   },
   
   "cashPayDiscounts": {
-    "description": "Typical discount from billed price when paying cash",
+    "description": "Typical discount from billed/chargemaster price when paying cash upfront",
     "hospital": {
       "averageDiscount": 0.55,
-      "range": [0.40, 0.70]
+      "range": [0.40, 0.70],
+      "notes": "Nonprofit hospitals often offer 60-80% discounts"
     },
     "surgery": {
       "averageDiscount": 0.50,
       "range": [0.35, 0.65]
     },
     "imaging": {
-      "averageDiscount": 0.60,
-      "range": [0.45, 0.75]
+      "averageDiscount": 0.65,
+      "range": [0.50, 0.80],
+      "notes": "Independent imaging centers often 70-85% cheaper than hospital"
     },
     "labs": {
-      "averageDiscount": 0.70,
-      "range": [0.50, 0.85]
+      "averageDiscount": 0.75,
+      "range": [0.60, 0.90],
+      "notes": "Direct-to-consumer labs (Quest, Labcorp, etc.) are cheapest"
     },
     "physician": {
       "averageDiscount": 0.35,
@@ -369,7 +466,27 @@
     },
     "er": {
       "averageDiscount": 0.45,
-      "range": [0.30, 0.60]
+      "range": [0.30, 0.60],
+      "notes": "Always ask for itemized bill and negotiate"
+    },
+    "prescriptions": {
+      "averageDiscount": 0.60,
+      "range": [0.40, 0.85],
+      "notes": "GoodRx, CostPlus, Mark Cuban pharmacy often beat insurance"
+    }
+  },
+  
+  "premiumCalculation": {
+    "description": "How to calculate premium from this data",
+    "formula": "basePremium[age] * stateMultiplier * (1 - subsidyPercent)",
+    "example": {
+      "scenario": "54-year-old in California, Silver plan",
+      "calculation": {
+        "basePremiumAge55": 1080,
+        "stateMultiplierCA": 1.12,
+        "monthlyPremium": 1210,
+        "annualPremium": 14520
+      }
     }
   }
 }
