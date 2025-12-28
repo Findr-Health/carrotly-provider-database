@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fearless-achievement-production.up.railway.app';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://fearless-achievement-production.up.railway.app').replace(/\/api\/?$/, '');
 
 function FeedbackDashboard() {
   const [stats, setStats] = useState(null);
