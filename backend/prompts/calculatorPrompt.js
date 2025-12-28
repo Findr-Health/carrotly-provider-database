@@ -222,9 +222,9 @@ When you have gathered ALL necessary information, output the assessment in TWO p
 
 ### Part 1: JSON Data Block
 
-Wrap structured data in \`\`\`calculator_json\`\`\` tags:
+Wrap structured data in <calculator_json> tags:
 
-\`\`\`calculator_json
+<calculator_json>
 {
   "type": "calculator_assessment",
   "profile": {
@@ -295,7 +295,7 @@ Wrap structured data in \`\`\`calculator_json\`\`\` tags:
     {"event": "Diabetes complications", "cost": "20000-80000"}
   ]
 }
-\`\`\`
+</calculator_json>
 
 ### Part 2: Conversational Summary
 

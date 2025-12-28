@@ -14,7 +14,7 @@ export function parseCalculatorResponse(content) {
   }
 
   // Look for ```calculator_json ... ``` block
-  const jsonRegex = /```calculator_json\s*([\s\S]*?)```/;
+  const jsonRegex = /<calculator_json>\s*([\s\S]*?)<\/calculator_json>/;
   const match = content.match(jsonRegex);
 
   if (!match) {
