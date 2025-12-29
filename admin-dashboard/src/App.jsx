@@ -11,6 +11,8 @@ import UserDetail from './components/UserDetail';
 import InquiryQueue from './pages/InquiryQueue';
 import PriceDatabase from './pages/PriceDatabase';
 import FeedbackDashboard from './pages/FeedbackDashboard';
+import AnalyticsDashboard from './views/AnalyticsDashboard';
+import UsersRoles from './views/UsersRoles';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -57,6 +59,8 @@ function App() {
           <Route path="/inquiries" element={<ProtectedRoute><Layout><InquiryQueue /></Layout></ProtectedRoute>} />
           <Route path="/price-database" element={<ProtectedRoute><Layout><PriceDatabase /></Layout></ProtectedRoute>} />
           <Route path="/feedback" element={<ProtectedRoute><Layout><FeedbackDashboard /></Layout></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute><Layout><AnalyticsDashboard /></Layout></ProtectedRoute>} />
+          <Route path="/admin-users" element={<ProtectedRoute><Layout><UsersRoles /></Layout></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
