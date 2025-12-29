@@ -47,7 +47,7 @@ router.get('/overview',
           }
         }
       ]);
-      
+
       const providersByStatus = providerCounts.reduce((acc, p) => {
         acc[p._id] = p.count;
         return acc;
@@ -356,13 +356,13 @@ router.get('/providers',
     try {
       const { metric = 'bookings', limit = 10 } = req.query;
       
-      // Get provider distribution by type
-      const byType = await Provider.aggregate([
-        { $match: { status: 'approved' } },
-        { $unwind: '$providerTypes' },
-        { $group: { _id: '$providerTypes', count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]);
+      // Get provider distribution by type (all providers)
+        const byType = await Provider.aggregate([
+          { $match: { status: { $in: ['approved', 'pending'] } } },
+          { $unwind: '$providerTypes' },
+          { $group: { _id: '$providerTypes', count: { $sum: 1 } } },
+          { $sort: { count: -1 } }
+        ]);
       
       // Get top providers by bookings (from events)
       const topProviders = await AnalyticsEvent.aggregate([

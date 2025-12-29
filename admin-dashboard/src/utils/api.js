@@ -33,7 +33,7 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-  login: (email, password) => api.post('/admin/login', { email, password }),
+  login: (email, password) => api.post('/admin/auth/login', { email, password }),
   logout: () => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminUser');

@@ -244,37 +244,43 @@ const AnalyticsDashboard = () => {
             isRevenue
           />
         )}
-        <KPICard
-          title="Active Providers"
-          value={overview?.providers?.approved || 0}
-          icon="🏥"
-        />
+         <KPICard
+            title="Providers"
+            value={overview?.providers?.total || 0}
+            icon="🏥"
+          />
       </div>
       
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Bookings Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <SectionHeader title="Bookings Over Time" />
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={bookingsData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 12 }}
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip 
-                labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="completed" stroke={COLORS.primary} strokeWidth={2} dot={false} name="Completed" />
-              <Line type="monotone" dataKey="cancelled" stroke={COLORS.danger} strokeWidth={2} dot={false} name="Cancelled" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <SectionHeader title="Bookings Over Time" />
+            {bookingsData.some(d => d.completed > 0 || d.cancelled > 0) ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={bookingsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip 
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="completed" stroke={COLORS.primary} strokeWidth={2} dot={false} name="Completed" />
+                  <Line type="monotone" dataKey="cancelled" stroke={COLORS.danger} strokeWidth={2} dot={false} name="Cancelled" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-gray-400">
+                No booking data yet
+              </div>
+            )}
+          </div>
         
         {/* Provider Distribution */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -391,18 +397,20 @@ const AnalyticsDashboard = () => {
           </div>
         </div>
         
-        {/* Top Questions */}
-        <div>
-          <h4 className="font-medium text-gray-700 mb-3">Top Questions</h4>
-          <div className="space-y-2">
-            {(aiData?.topQuestions || []).map((q, index) => (
-              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <span className="text-gray-700">{q.question}</span>
-                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">{q.count}</span>
+        {/* Top Questions - Hidden until real data available */}
+          {(aiData?.summary?.conversations > 0) && (
+            <div>
+              <h4 className="font-medium text-gray-700 mb-3">Top Questions</h4>
+              <div className="space-y-2">
+                {(aiData?.topQuestions || []).map((q, index) => (
+                  <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <span className="text-gray-700">{q.question}</span>
+                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">{q.count}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          )}
       </div>
       
       {/* Recent Transactions & Top Providers */}
