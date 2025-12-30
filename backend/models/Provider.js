@@ -40,16 +40,14 @@ const providerSchema = new mongoose.Schema({
     zip: String
   },
   
-  // NEW: Geo coordinates for map view and distance calculations
+  // Geo coordinates for map view and distance calculations
   location: {
     type: {
       type: String,
-      enum: ['Point'],
-      default: 'Point'
+      enum: ['Point']
     },
     coordinates: {
-      type: [Number],  // [longitude, latitude]
-      default: undefined
+      type: [Number]  // [longitude, latitude]
     }
   },
 
@@ -257,7 +255,8 @@ providerSchema.set('toJSON', { virtuals: true });
 providerSchema.set('toObject', { virtuals: true });
 
 // Indexes
-providerSchema.index({ location: '2dsphere' });  // For geo queries
+// Geo index - only indexes documents with valid coordinates
+providerSchema.index({ location: '2dsphere' }, { sparse: true });
 providerSchema.index({ status: 1, isVerified: 1 });  // For filtering
 providerSchema.index({ isFeatured: 1, featuredOrder: 1 });  // For featured list
 providerSchema.index({ rating: -1 });  // For sorting by rating
