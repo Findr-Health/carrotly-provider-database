@@ -14,9 +14,10 @@ const adminAuth = async (req, res, next) => {
     }
     
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.adminId = decoded.adminId;
+    req.adminId = decoded.id || decoded.adminId;  // Support both token formats
     next();
   } catch (error) {
+    console.error('Auth error:', error);
     res.status(401).json({ error: 'Please authenticate' });
   }
 };
