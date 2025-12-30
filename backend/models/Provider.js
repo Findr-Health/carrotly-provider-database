@@ -1,51 +1,37 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-
-// Standard provider types
-const PROVIDER_TYPES = [
-  'Medical',
-  'Urgent Care', 
-  'Dental',
-  'Mental Health',
-  'Skincare/Aesthetics',
-  'Massage/Bodywork',
-  'Fitness/Training',
-  'Yoga/Pilates',
-  'Nutrition/Wellness',
-  'Pharmacy/RX'
-];
 
 const providerSchema = new mongoose.Schema({
-  // Authentication
-  password: {
-    type: String,
-    required: false  // Optional during migration, will become required
-  },
-  passwordResetToken: String,
-  passwordResetExpires: Date,
-
-  // Basic Information
-  placeId: String,
+  // Step 1: Basic Information
   practiceName: {
     type: String,
     required: true
   },
   providerTypes: [{
     type: String,
-    enum: PROVIDER_TYPES
+    enum: [
+      'Medical', 'Dental', 'Cosmetic', 'Fitness', 'Massage', 
+      'Mental Health', 'Skincare', 'Urgent Care', 'Nutrition/Wellness',
+      // Legacy lowercase values for backwards compatibility
+      'medical', 'dental', 'cosmetic', 'fitness', 'massage', 
+      'mental-health', 'skincare'
+    ]
   }],
   
-  // Contact Info
+  // NEW: Provider description/bio for profile display
+  description: String,
+  
+  // Contact Info (can be nested or flat)
   contactInfo: {
     email: String,
     phone: String,
     website: String
   },
+  // Also support flat fields for backwards compatibility
   email: String,
   phone: String,
   website: String,
 
-  // Location
+  // Step 2: Location
   address: {
     street: String,
     suite: String,
@@ -53,8 +39,21 @@ const providerSchema = new mongoose.Schema({
     state: String,
     zip: String
   },
+  
+  // NEW: Geo coordinates for map view and distance calculations
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],  // [longitude, latitude]
+      default: undefined
+    }
+  },
 
-  // Photos
+  // Step 3: Photos
   photos: [{
     url: String,
     isPrimary: { type: Boolean, default: false },
@@ -62,18 +61,17 @@ const providerSchema = new mongoose.Schema({
     uploadedAt: { type: Date, default: Date.now }
   }],
 
-  // Services
+  // Step 4: Services
   services: [{
-    serviceId: String,
     name: { type: String, required: true },
     category: String,
-    duration: Number,
+    duration: Number, // in minutes
     price: Number,
     description: String,
     isActive: { type: Boolean, default: true }
   }],
 
-  // Credentials
+  // Step 5: Optional Details - Credentials
   credentials: {
     licenseNumber: String,
     licenseState: String,
@@ -83,11 +81,13 @@ const providerSchema = new mongoose.Schema({
     certifications: [String]
   },
 
-  // Insurance & Languages
+  // Step 5: Optional Details - Insurance
   insuranceAccepted: [String],
+
+  // Step 5: Optional Details - Languages
   languagesSpoken: [String],
 
-  // Team Members
+  // Step 8: Team Members
   teamMembers: [{
     name: { type: String, required: true },
     title: String,
@@ -96,70 +96,170 @@ const providerSchema = new mongoose.Schema({
     photo: String,
     specialties: [String],
     yearsExperience: Number,
-    acceptsBookings: { type: Boolean, default: true }
+    acceptsBookings: { type: Boolean, default: true },
+    calendarConnected: { type: Boolean, default: false }
   }],
 
-  // Agreement
-  agreement: {
-    signed: Boolean,
-    signedAt: Date,
-    signature: String,
-    signerTitle: String,
-    version: String,
-    initials: {
-      type: Map,
-      of: String
+  // Step 6: Payment & Payout (Future)
+  payment: {
+    method: { type: String, enum: ['stripe', 'bank'] },
+    stripeAccountId: String,
+    stripeEmail: String,
+    bankDetails: {
+      bankName: String,
+      accountHolder: String,
+      routingNumber: String,
+      accountNumber: String,
+      accountType: { type: String, enum: ['checking', 'savings'] }
+    },
+    payoutSchedule: { type: String, enum: ['daily', 'weekly', 'monthly'] },
+    taxInfo: {
+      businessType: String,
+      taxId: String
     }
   },
 
-  // Status
+  // Step 7: Calendar & Availability (Future)
+  calendar: {
+    provider: { type: String, enum: ['google', 'microsoft', 'apple', 'manual'] },
+    calendarId: String,
+    calendarEmail: String,
+    syncDirection: { type: String, enum: ['two-way', 'one-way'] },
+    syncBusyOnly: Boolean,
+    bufferMinutes: Number,
+    businessHours: {
+      monday: { enabled: Boolean, start: String, end: String },
+      tuesday: { enabled: Boolean, start: String, end: String },
+      wednesday: { enabled: Boolean, start: String, end: String },
+      thursday: { enabled: Boolean, start: String, end: String },
+      friday: { enabled: Boolean, start: String, end: String },
+      saturday: { enabled: Boolean, start: String, end: String },
+      sunday: { enabled: Boolean, start: String, end: String }
+    }
+  },
+
+  // Step 10: Legal Agreement
+  agreement: {
+    initials: {
+      type: Map,
+      of: String
+    },
+    signature: String,
+    title: String,
+    agreedDate: Date,
+    ipAddress: String,
+    version: String
+  },
+
+  // Provider Status
   status: {
     type: String,
     enum: ['draft', 'pending', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
-  visibility: {
-    type: String,
-    enum: ['hidden', 'visible'],
-    default: 'hidden'
+  
+  // NEW: Ratings & Reviews (aggregated from Reviews collection)
+  rating: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0
+  },
+  reviewCount: {
+    type: Number,
+    default: 0
+  },
+  
+  // NEW: Verified Badge - toggleable in admin dashboard
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verifiedAt: Date,
+  verifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin'
+  },
+  
+  // NEW: Featured flag for home screen display
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  featuredOrder: {
+    type: Number,
+    default: 0
   },
 
   // Metadata
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  },
   approvedAt: Date,
-  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin'
+  },
+  
+  // Onboarding Progress
+  onboardingStep: {
+    type: Number,
+    default: 1
+  },
+  onboardingCompleted: {
+    type: Boolean,
+    default: false
+  },
+
+  // Notes (for admin use)
   adminNotes: String
 });
 
-// Hash password before saving
-providerSchema.pre('save', async function(next) {
+// Update the updatedAt field on save
+providerSchema.pre('save', function(next) {
   this.updatedAt = new Date();
-  
-  // Only hash password if it's modified and exists
-  if (this.isModified('password') && this.password) {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-  }
   next();
 });
 
-// Method to compare passwords
-providerSchema.methods.comparePassword = async function(candidatePassword) {
-  if (!this.password) return false;
-  return await bcrypt.compare(candidatePassword, this.password);
-};
+// Virtual for full address
+providerSchema.virtual('fullAddress').get(function() {
+  if (!this.address) return '';
+  const parts = [
+    this.address.street,
+    this.address.suite,
+    this.address.city,
+    this.address.state,
+    this.address.zip
+  ].filter(Boolean);
+  return parts.join(', ');
+});
 
-// Don't return password in JSON
-providerSchema.methods.toJSON = function() {
-  const obj = this.toObject();
-  delete obj.password;
-  delete obj.passwordResetToken;
-  delete obj.passwordResetExpires;
-  return obj;
-};
+// Virtual for primary photo
+providerSchema.virtual('primaryPhoto').get(function() {
+  if (!this.photos || this.photos.length === 0) return null;
+  const primary = this.photos.find(p => p.isPrimary);
+  return primary ? primary.url : this.photos[0].url;
+});
 
-// Export the types for use in other files
-providerSchema.statics.PROVIDER_TYPES = PROVIDER_TYPES;
+// Virtual for active services count
+providerSchema.virtual('activeServicesCount').get(function() {
+  if (!this.services) return 0;
+  return this.services.filter(s => s.isActive !== false).length;
+});
+
+// Ensure virtuals are included in JSON output
+providerSchema.set('toJSON', { virtuals: true });
+providerSchema.set('toObject', { virtuals: true });
+
+// Indexes
+providerSchema.index({ location: '2dsphere' });  // For geo queries
+providerSchema.index({ status: 1, isVerified: 1 });  // For filtering
+providerSchema.index({ isFeatured: 1, featuredOrder: 1 });  // For featured list
+providerSchema.index({ rating: -1 });  // For sorting by rating
 
 module.exports = mongoose.model('Provider', providerSchema);

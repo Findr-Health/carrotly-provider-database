@@ -7,6 +7,11 @@ const feedbackRoutes = require('./routes/feedback');
 const analyticsRoutes = require('./routes/analytics');
 const adminManagementRoutes = require('./routes/adminManagement');
 const eventsRoutes = require('./routes/events');
+const userRoutes = require('./routes/users');
+const reviewRoutes = require('./routes/reviews');
+const bookingRoutes = require('./routes/bookings');
+const searchRoutes = require('./routes/search');
+const providerAdminRoutes = require('./routes/providerAdmin');
 
 const app = express();
 
@@ -32,16 +37,31 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/providers', require('./routes/providers'));
 app.use('/api/verification', require('./routes/verification'));
-app.use('/api/search', require('./routes/search'));
-app.use('/api/users', require('./routes/users'));
 app.use('/api/clarity', require('./routes/clarity'));
 app.use('/api/clarity-admin', clarityAdminRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/clarity-admin/feedback', feedbackRoutes);
+
+// User routes
+app.use('/api/users', userRoutes);
+
+// Review routes  
+app.use('/api/reviews', reviewRoutes);
+
+// Booking routes
+app.use('/api/bookings', bookingRoutes);
+
+// Search routes (enhanced with geo)
+app.use('/api/search', searchRoutes);
+
+// Admin provider management (verified badge, featured)
+app.use('/api/admin/providers', providerAdminRoutes);
+
 // Analytics & RBAC routes
 app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/admin', adminManagementRoutes);
 app.use('/api/events', eventsRoutes);
+
 // Health check with MongoDB status
 app.get('/health', (req, res) => {
   const mongoose = require('mongoose');
@@ -56,4 +76,3 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
