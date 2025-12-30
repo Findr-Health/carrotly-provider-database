@@ -310,53 +310,64 @@ const AnalyticsDashboard = () => {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart (if permitted) */}
-        {canViewRevenue && (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <SectionHeader title="Revenue Over Time" />
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(value) => `$${value.toLocaleString()}`}
-                />
-                <Tooltip 
-                  labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                  formatter={(value) => [`$${value.toLocaleString()}`, '']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
-                />
-                <Area type="monotone" dataKey="gross" stroke={COLORS.primary} fill={COLORS.primaryLight} name="Revenue" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+          {canViewRevenue && (
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <SectionHeader title="Revenue Over Time" />
+              {revenueData.some(d => d.gross > 0) ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `$${value.toLocaleString()}`}
+                    />
+                    <Tooltip 
+                      labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                      formatter={(value) => [`$${value.toLocaleString()}`, '']}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
+                    />
+                    <Area type="monotone" dataKey="gross" stroke={COLORS.primary} fill={COLORS.primaryLight} name="Revenue" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-400">
+                  No revenue data yet
+                </div>
+              )}
+            </div>
+          )}
         
         {/* Top Searches */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <SectionHeader title="Top Searches" />
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={searchesData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis type="number" tick={{ fontSize: 12 }} />
-              <YAxis 
-                type="category" 
-                dataKey="query" 
-                tick={{ fontSize: 12 }}
-                width={120}
-              />
-              <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
-              />
-              <Bar dataKey="count" fill={COLORS.primary} radius={[0, 4, 4, 0]} name="Searches" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <SectionHeader title="Top Searches" />
+            {searchesData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={searchesData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
+                  <YAxis 
+                    type="category" 
+                    dataKey="query" 
+                    tick={{ fontSize: 12 }}
+                    width={120}
+                  />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
+                  />
+                  <Bar dataKey="count" fill={COLORS.primary} radius={[0, 4, 4, 0]} name="Searches" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-gray-400">
+                No search data yet
+              </div>
+            )}
+          </div>
       
       {/* AI Metrics */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
