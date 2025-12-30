@@ -11,6 +11,7 @@ export default function ProviderList() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [badgeFilter, setBadgeFilter] = useState('all');
 
   useEffect(() => {
     loadProviders();
@@ -21,10 +22,8 @@ export default function ProviderList() {
       const { data } = await providersAPI.getAll({ limit: 100 });
       console.log('Raw API Response:', data);
       
-      // CORRECT FIELD MAPPING - backend uses camelCase!
       const normalized = data.providers.map(p => ({
         _id: p._id,
-        // Try camelCase FIRST (backend format), then snake_case (frontend format)
         practice_name: p.practiceName || p.practice_name || p.contactInfo?.practiceName || 'Unnamed',
         phone: p.contactInfo?.phone || p.phone || 'No phone',
         email: p.contactInfo?.email || p.email || 'No email',
@@ -32,6 +31,8 @@ export default function ProviderList() {
         state: p.address?.state || p.state || 'N/A',
         provider_types: p.providerTypes || p.provider_types || [],
         status: p.status || 'pending',
+        isVerified: p.isVerified || false,
+        isFeatured: p.isFeatured || false,
         raw: p
       }));
       
@@ -77,17 +78,17 @@ export default function ProviderList() {
       if (!hasType) return false;
     }
     
+    // Badge filter
+    if (badgeFilter === 'verified' && !p.isVerified) return false;
+    if (badgeFilter === 'featured' && !p.isFeatured) return false;
+    if (badgeFilter === 'none' && (p.isVerified || p.isFeatured)) return false;
+    
     return true;
   });
 
-  console.log('Filter stats:', {
-    total: providers.length,
-    filtered: filtered.length,
-    search,
-    statusFilter,
-    locationFilter,
-    typeFilter
-  });
+  // Count badges for filter dropdown
+  const verifiedCount = providers.filter(p => p.isVerified).length;
+  const featuredCount = providers.filter(p => p.isFeatured).length;
 
   if (loading) {
     return (
@@ -121,10 +122,14 @@ export default function ProviderList() {
             <span className="text-lg text-gray-500 ml-2">({filtered.length} shown)</span>
           )}
         </h1>
+        <div className="flex gap-2 text-sm">
+          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full">✓ {verifiedCount} Verified</span>
+          <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full">⭐ {featuredCount} Featured</span>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <input
             type="text"
             placeholder="Search providers..."
@@ -165,6 +170,17 @@ export default function ProviderList() {
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
+
+          <select
+            value={badgeFilter}
+            onChange={(e) => setBadgeFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="all">All Badges</option>
+            <option value="verified">✓ Verified Only</option>
+            <option value="featured">⭐ Featured Only</option>
+            <option value="none">No Badges</option>
+          </select>
         </div>
       </div>
 
@@ -176,6 +192,7 @@ export default function ProviderList() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Badges</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -205,6 +222,23 @@ export default function ProviderList() {
                     {provider.status}
                   </span>
                 </td>
+                <td className="px-6 py-4">
+                  <div className="flex gap-1">
+                    {provider.isVerified && (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800" title="Verified">
+                        ✓
+                      </span>
+                    )}
+                    {provider.isFeatured && (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800" title="Featured">
+                        ⭐
+                      </span>
+                    )}
+                    {!provider.isVerified && !provider.isFeatured && (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 text-sm">
                   <button
                     onClick={(e) => {
@@ -230,6 +264,7 @@ export default function ProviderList() {
                 setStatusFilter('all');
                 setLocationFilter('all');
                 setTypeFilter('all');
+                setBadgeFilter('all');
               }}
               className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
             >

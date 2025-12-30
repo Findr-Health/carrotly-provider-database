@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { providersAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [userStats, setUserStats] = useState({ total: 0, active: 0, pending: 0, suspended: 0 });
+  const [reviewStats, setReviewStats] = useState({ total: 0, pending: 0, approved: 0, flagged: 0 });
+  const [bookingStats, setBookingStats] = useState({ total: 0, pending: 0, confirmed: 0, completed: 0, cancelled: 0, revenue: 0 });
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -39,6 +42,18 @@ export default function Dashboard() {
         pending: users.filter(u => u.status === 'pending').length,
         suspended: users.filter(u => u.status === 'suspended').length
       });
+
+      // Fetch review stats
+      try {
+        const reviewResponse = await api.get('/admin/reviews/stats');
+        setReviewStats(reviewResponse.data);
+      } catch (e) { console.log('No review stats yet'); }
+
+      // Fetch booking stats
+      try {
+        const bookingResponse = await api.get('/admin/bookings/stats');
+        setBookingStats(bookingResponse.data);
+      } catch (e) { console.log('No booking stats yet'); }
 
       // GET ALL PROVIDERS (limit: 1000)
       const { data } = await providersAPI.getAll({ limit: 1000 });
@@ -118,9 +133,9 @@ export default function Dashboard() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
 
-      {/* Stats Cards */}
+      {/* Provider Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md" onClick={() => navigate('/providers')}>
           <div className="text-sm font-medium text-gray-500">Total Providers</div>
           <div className="mt-2 text-3xl font-bold text-gray-900">{stats.total}</div>
         </div>
@@ -161,6 +176,81 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="text-sm font-medium text-gray-500">Suspended Users</div>
           <div className="mt-2 text-3xl font-bold text-red-600">{userStats.suspended}</div>
+        </div>
+      </div>
+
+      {/* Reviews & Bookings Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Reviews Widget */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900">⭐ Reviews</h2>
+            <button
+              onClick={() => navigate('/reviews')}
+              className="text-teal-600 hover:text-teal-700 font-medium text-sm"
+            >
+              View All →
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{reviewStats.total}</div>
+              <div className="text-xs text-gray-500">Total</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">{reviewStats.pending}</div>
+              <div className="text-xs text-gray-500">Pending</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{reviewStats.approved}</div>
+              <div className="text-xs text-gray-500">Approved</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">{reviewStats.flagged}</div>
+              <div className="text-xs text-gray-500">Flagged</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bookings Widget */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900">📅 Bookings</h2>
+            <button
+              onClick={() => navigate('/bookings')}
+              className="text-teal-600 hover:text-teal-700 font-medium text-sm"
+            >
+              View All →
+            </button>
+          </div>
+          <div className="grid grid-cols-5 gap-3">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{bookingStats.total}</div>
+              <div className="text-xs text-gray-500">Total</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">{bookingStats.pending}</div>
+              <div className="text-xs text-gray-500">Pending</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{bookingStats.confirmed}</div>
+              <div className="text-xs text-gray-500">Confirmed</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{bookingStats.completed}</div>
+              <div className="text-xs text-gray-500">Completed</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">{bookingStats.cancelled}</div>
+              <div className="text-xs text-gray-500">Cancelled</div>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">Total Revenue</span>
+              <span className="text-xl font-bold text-green-600">${bookingStats.revenue?.toLocaleString() || 0}</span>
+            </div>
+          </div>
         </div>
       </div>
 
