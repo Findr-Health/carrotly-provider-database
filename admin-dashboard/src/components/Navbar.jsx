@@ -51,6 +51,12 @@ export default function Navbar() {
             <Link to="/admin-users" className={linkClass('/admin-users')}>
               Admin Users
             </Link>
+            <Link to="/reviews" className={linkClass('/reviews')}>
+              Reviews
+            </Link>
+            <Link to="/bookings" className={linkClass('/bookings')}>
+              Bookings
+            </Link>
           </div>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">{user?.email}</span>

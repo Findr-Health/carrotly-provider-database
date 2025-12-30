@@ -13,6 +13,8 @@ import PriceDatabase from './pages/PriceDatabase';
 import FeedbackDashboard from './pages/FeedbackDashboard';
 import AnalyticsDashboard from './views/AnalyticsDashboard';
 import UsersRoles from './views/UsersRoles';
+import ReviewsManagement from './pages/ReviewsManagement';
+import BookingsManagement from './pages/BookingsManagement';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -61,6 +63,8 @@ function App() {
           <Route path="/feedback" element={<ProtectedRoute><Layout><FeedbackDashboard /></Layout></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><Layout><AnalyticsDashboard /></Layout></ProtectedRoute>} />
           <Route path="/admin-users" element={<ProtectedRoute><Layout><UsersRoles /></Layout></ProtectedRoute>} />
+          <Route path="/reviews" element={<ProtectedRoute><Layout><ReviewsManagement /></Layout></ProtectedRoute>} />
+          <Route path="/bookings" element={<ProtectedRoute><Layout><BookingsManagement /></Layout></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
