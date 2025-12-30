@@ -270,4 +270,28 @@ router.put('/providers/:id', verifyToken, async (req, res) => {
   }
 });
 
+// One-time migration endpoint - fix provider types case
+router.post('/fix-provider-types', async (req, res) => {
+  try {
+    const Provider = require('../models/Provider');
+    
+    // Find all providers with lowercase "dental"
+    const providers = await Provider.find({ providerTypes: 'dental' });
+    
+    let fixed = 0;
+    for (const provider of providers) {
+      provider.providerTypes = provider.providerTypes.map(type => 
+        type === 'dental' ? 'Dental' : type
+      );
+      await provider.save();
+      fixed++;
+    }
+    
+    res.json({ message: `Fixed ${fixed} providers`, fixed });
+  } catch (error) {
+    console.error('Fix error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
