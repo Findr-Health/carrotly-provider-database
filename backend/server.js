@@ -14,6 +14,7 @@ const searchRoutes = require('./routes/search');
 const providerAdminRoutes = require('./routes/providerAdmin');
 const reviewsAdminRoutes = require('./routes/reviewsAdmin');
 const bookingsAdminRoutes = require('./routes/bookingsAdmin');
+const inquiriesAdminRoutes = require('./routes/inquiriesAdmin');
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/clarity-admin/feedback', feedbackRoutes);
 // Admin reviews & bookings management
 app.use('/api/admin/reviews', reviewsAdminRoutes);
 app.use('/api/admin/bookings', bookingsAdminRoutes);
+app.use('/api/admin/inquiries', inquiriesAdminRoutes);
 
 // User routes
 app.use('/api/users', userRoutes);
