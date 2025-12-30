@@ -409,11 +409,17 @@ export default function ProviderDetail() {
             <input
               type="checkbox"
               checked={provider.isVerified || false}
+              disabled={!editMode}
               onChange={async (e) => {
+                const newValue = e.target.checked;
+                console.log('Checkbox clicked!', newValue);
                 try {
-                  await providersAPI.toggleVerified(id, e.target.checked);
-                  setProvider({ ...provider, isVerified: e.target.checked });
+                  console.log('Calling API...');
+                  await providersAPI.toggleVerified(id, newValue);
+                  console.log('API success');
+                  setProvider(prev => ({ ...prev, isVerified: newValue }));
                 } catch (err) {
+                  console.error('Error:', err);
                   alert('Failed to update verified status: ' + err.message);
                 }
               }}
@@ -429,11 +435,17 @@ export default function ProviderDetail() {
             <input
               type="checkbox"
               checked={provider.isFeatured || false}
+              disabled={!editMode}
               onChange={async (e) => {
+                const newValue = e.target.checked;
+                console.log('Featured clicked!', newValue);
                 try {
-                  await providersAPI.toggleFeatured(id, e.target.checked);
-                  setProvider({ ...provider, isFeatured: e.target.checked });
+                  console.log('Calling API...');
+                  await providersAPI.toggleFeatured(id, newValue);
+                  console.log('API success');
+                  setProvider(prev => ({ ...prev, isFeatured: newValue }));
                 } catch (err) {
+                  console.error('Error:', err);
                   alert('Failed to update featured status: ' + err.message);
                 }
               }}
