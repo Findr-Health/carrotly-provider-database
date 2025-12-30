@@ -9,14 +9,14 @@ router.get('/providers', async (req, res) => {
       query,
       lat,
       lng,
-      radius = 25,  // miles
+      radius = 25,
       types,
       minRating,
       verified,
       featured,
       page = 1,
       limit = 20,
-      sort = 'distance'  // distance, rating, name
+      sort = 'name'
     } = req.query;
     
     // Base query - only approved providers
@@ -56,11 +56,16 @@ router.get('/providers', async (req, res) => {
     let providers;
     let total;
     
-    // Geo search if coordinates provided
-    if (lat && lng) {
+    // Check if any providers have geo coordinates
+    const hasGeoProviders = await Provider.findOne({ 
+      'location.coordinates.0': { $exists: true },
+      status: 'approved'
+    });
+    
+    // Geo search if coordinates provided AND providers have coordinates
+    if (lat && lng && hasGeoProviders) {
       const radiusInMeters = parseFloat(radius) * 1609.34;
       
-      // Use aggregation for geo queries with distance calculation
       const pipeline = [
         {
           $geoNear: {
@@ -76,7 +81,7 @@ router.get('/providers', async (req, res) => {
         },
         {
           $addFields: {
-            distance: { $round: [{ $divide: ['$distanceMeters', 1609.34] }, 1] }  // Convert to miles
+            distance: { $round: [{ $divide: ['$distanceMeters', 1609.34] }, 1] }
           }
         }
       ];
@@ -87,7 +92,7 @@ router.get('/providers', async (req, res) => {
       } else if (sort === 'name') {
         pipeline.push({ $sort: { practiceName: 1 } });
       } else {
-        pipeline.push({ $sort: { distance: 1 } });  // Default: nearest first
+        pipeline.push({ $sort: { distance: 1 } });
       }
       
       // Count total
@@ -121,7 +126,7 @@ router.get('/providers', async (req, res) => {
       providers = await Provider.aggregate(pipeline);
       
     } else {
-      // Non-geo search
+      // Non-geo search (fallback)
       total = await Provider.countDocuments(filter);
       
       let sortOption = { practiceName: 1 };
@@ -155,10 +160,16 @@ router.get('/featured', async (req, res) => {
   try {
     const { lat, lng, limit = 10 } = req.query;
     
+    // Check if geo data exists
+    const hasGeoProviders = await Provider.findOne({ 
+      'location.coordinates.0': { $exists: true },
+      status: 'approved',
+      isFeatured: true
+    });
+    
     let providers;
     
-    if (lat && lng) {
-      // Get featured near user
+    if (lat && lng && hasGeoProviders) {
       providers = await Provider.aggregate([
         {
           $geoNear: {
@@ -167,7 +178,7 @@ router.get('/featured', async (req, res) => {
               coordinates: [parseFloat(lng), parseFloat(lat)]
             },
             distanceField: 'distanceMeters',
-            maxDistance: 80467,  // 50 miles
+            maxDistance: 80467,
             spherical: true,
             query: { status: 'approved', isFeatured: true }
           }
@@ -211,7 +222,6 @@ router.get('/types', async (req, res) => {
   try {
     const types = await Provider.distinct('providerTypes', { status: 'approved' });
     
-    // Normalize and dedupe (handle case variations)
     const normalizedTypes = [...new Set(
       types.map(t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase().replace('-', ' '))
     )].sort();
