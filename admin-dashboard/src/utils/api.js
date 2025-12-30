@@ -58,6 +58,8 @@ export const providersAPI = {
   
   // Update status only
   updateStatus: (id, status) => api.patch(`/admin/providers/${id}/status`, { status }),
+  toggleVerified: (id, isVerified) => api.patch(`/admin/providers/${id}/verified`, { isVerified }),
+  toggleFeatured: (id, isFeatured) => api.patch(`/admin/providers/${id}/featured`, { isFeatured }),
 };
 
 export const servicesAPI = {

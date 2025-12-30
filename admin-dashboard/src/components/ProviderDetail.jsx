@@ -376,8 +376,9 @@ export default function ProviderDetail() {
 
       {/* Status Actions */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex items-center gap-4">
-          <span className="text-gray-700 font-medium">Change Status:</span>
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Status Buttons */}
+          <span className="text-gray-700 font-medium">Status:</span>
           <button
             onClick={() => handleStatusChange('approved')}
             disabled={provider.status === 'approved'}
@@ -399,6 +400,63 @@ export default function ProviderDetail() {
           >
             ✗ Reject
           </button>
+          
+          {/* Divider */}
+          <div className="h-8 w-px bg-gray-300 mx-2"></div>
+          
+          {/* Verified Badge Toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={provider.isVerified || false}
+              onChange={async (e) => {
+                try {
+                  await providersAPI.toggleVerified(id, e.target.checked);
+                  setProvider({ ...provider, isVerified: e.target.checked });
+                } catch (err) {
+                  alert('Failed to update verified status: ' + err.message);
+                }
+              }}
+              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="text-gray-700 font-medium flex items-center gap-1">
+              <span className="text-blue-500">✓</span> Verified Badge
+            </span>
+          </label>
+          
+          {/* Featured Toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={provider.isFeatured || false}
+              onChange={async (e) => {
+                try {
+                  await providersAPI.toggleFeatured(id, e.target.checked);
+                  setProvider({ ...provider, isFeatured: e.target.checked });
+                } catch (err) {
+                  alert('Failed to update featured status: ' + err.message);
+                }
+              }}
+              className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
+            />
+            <span className="text-gray-700 font-medium flex items-center gap-1">
+              <span className="text-yellow-500">⭐</span> Featured
+            </span>
+          </label>
+        </div>
+        
+        {/* Badges Display */}
+        <div className="flex gap-2 mt-3">
+          {provider.isVerified && (
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium flex items-center gap-1">
+              ✓ Verified Provider
+            </span>
+          )}
+          {provider.isFeatured && (
+            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium flex items-center gap-1">
+              ⭐ Featured
+            </span>
+          )}
         </div>
       </div>
 
