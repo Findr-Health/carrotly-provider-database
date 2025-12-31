@@ -1,180 +1,105 @@
 /**
- * Cancellation Policy Utility Functions
- * Handles fee calculation and policy rules
+ * Cancellation Routes
  */
+const express = require('express');
+const router = express.Router();
+const Booking = require('../models/Booking');
+const Provider = require('../models/Provider');
 
-// Policy definitions
 const POLICIES = {
-  standard: {
-    name: 'Standard',
-    description: 'Free cancellation up to 24 hours before appointment',
-    rules: [
-      { hoursMin: 24, hoursMax: Infinity, feePercent: 0, label: '24+ hours: Free cancellation' },
-      { hoursMin: 12, hoursMax: 24, feePercent: 25, label: '12-24 hours: 25% fee' },
-      { hoursMin: 0, hoursMax: 12, feePercent: 50, label: 'Under 12 hours: 50% fee' },
-      { hoursMin: -Infinity, hoursMax: 0, feePercent: 100, label: 'No-show: Full charge' }
-    ],
-    freeCancellationHours: 24
-  },
-  moderate: {
-    name: 'Moderate',
-    description: 'Free cancellation up to 48 hours before appointment',
-    rules: [
-      { hoursMin: 48, hoursMax: Infinity, feePercent: 0, label: '48+ hours: Free cancellation' },
-      { hoursMin: 24, hoursMax: 48, feePercent: 25, label: '24-48 hours: 25% fee' },
-      { hoursMin: 0, hoursMax: 24, feePercent: 50, label: 'Under 24 hours: 50% fee' },
-      { hoursMin: -Infinity, hoursMax: 0, feePercent: 100, label: 'No-show: Full charge' }
-    ],
-    freeCancellationHours: 48
-  }
+  standard: { name: 'Standard', freeCancellationHours: 24, rules: [{ hoursMin: 24, feePercent: 0 }, { hoursMin: 12, feePercent: 25 }, { hoursMin: 0, feePercent: 50 }, { hoursMin: -Infinity, feePercent: 100 }] },
+  moderate: { name: 'Moderate', freeCancellationHours: 48, rules: [{ hoursMin: 48, feePercent: 0 }, { hoursMin: 24, feePercent: 25 }, { hoursMin: 0, feePercent: 50 }, { hoursMin: -Infinity, feePercent: 100 }] }
 };
 
-/**
- * Get policy details
- * @param {string} tier - 'standard' or 'moderate'
- * @returns {object} Policy details
- */
-const getPolicy = (tier = 'standard') => {
-  return POLICIES[tier] || POLICIES.standard;
+const calculateFee = (appointmentDate, amount, tier = 'standard') => {
+  const policy = POLICIES[tier] || POLICIES.standard;
+  const hoursUntil = (new Date(appointmentDate) - new Date()) / 3600000;
+  let feePercent = 100;
+  for (const rule of policy.rules) { if (hoursUntil >= rule.hoursMin) { feePercent = rule.feePercent; break; } }
+  const feeAmount = Math.round(amount * feePercent) / 100;
+  return { feePercent, feeAmount, refundAmount: amount - feeAmount, hoursUntil: Math.max(0, hoursUntil) };
 };
 
-/**
- * Calculate hours until appointment
- * @param {Date} appointmentDate
- * @returns {number} Hours until appointment (negative if past)
- */
-const hoursUntilAppointment = (appointmentDate) => {
-  const now = new Date();
-  const appointment = new Date(appointmentDate);
-  return (appointment - now) / (1000 * 60 * 60);
-};
+router.get('/:id/cancellation-quote', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('providerId');
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    const tier = booking.providerId?.cancellationPolicy?.tier || 'standard';
+    const amount = booking.totalAmount || booking.servicePrice;
+    res.json({ bookingId: booking._id, ...calculateFee(booking.appointmentDate, amount, tier) });
+  } catch (e) { res.status(500).json({ error: 'Failed' }); }
+});
 
-/**
- * Calculate cancellation fee
- * @param {object} params
- * @param {Date} params.appointmentDate - Appointment date/time
- * @param {number} params.amount - Booking amount in dollars
- * @param {string} params.policyTier - 'standard' or 'moderate'
- * @param {boolean} params.isNoShow - Is this a no-show?
- * @returns {object} Fee calculation result
- */
-const calculateCancellationFee = ({ appointmentDate, amount, policyTier = 'standard', isNoShow = false }) => {
-  const policy = getPolicy(policyTier);
-  const hoursUntil = isNoShow ? -1 : hoursUntilAppointment(appointmentDate);
-  
-  // Find applicable rule
-  let applicableRule = policy.rules[policy.rules.length - 1]; // Default to last rule (no-show)
-  
-  for (const rule of policy.rules) {
-    if (hoursUntil >= rule.hoursMin && hoursUntil < rule.hoursMax) {
-      applicableRule = rule;
-      break;
-    }
-  }
-  
-  const feePercent = applicableRule.feePercent;
-  const feeAmount = Math.round(amount * (feePercent / 100) * 100) / 100; // Round to cents
-  const refundAmount = Math.round((amount - feeAmount) * 100) / 100;
-  
-  // Calculate free cancellation deadline
-  const appointmentTime = new Date(appointmentDate);
-  const freeCancellationDeadline = new Date(
-    appointmentTime.getTime() - (policy.freeCancellationHours * 60 * 60 * 1000)
-  );
-  
-  return {
-    policyTier,
-    policyName: policy.name,
-    hoursUntilAppointment: Math.max(0, Math.round(hoursUntil * 10) / 10),
-    feePercent,
-    feeAmount,
-    refundAmount,
-    totalAmount: amount,
-    ruleApplied: applicableRule.label,
-    freeCancellationDeadline,
-    isFreeCancellation: feePercent === 0,
-    isNoShow: hoursUntil < 0 || isNoShow
-  };
-};
+router.post('/:id/cancel', async (req, res) => {
+  try {
+    const { reason, cancelledBy = 'user' } = req.body;
+    const booking = await Booking.findById(req.params.id).populate('providerId');
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    const tier = booking.providerId?.cancellationPolicy?.tier || 'standard';
+    const amount = booking.totalAmount || booking.servicePrice;
+    const fee = cancelledBy === 'provider' ? { feePercent: 0, feeAmount: 0, refundAmount: amount } : calculateFee(booking.appointmentDate, amount, tier);
+    booking.status = 'cancelled';
+    booking.cancelledAt = new Date();
+    booking.cancelledBy = cancelledBy;
+    booking.cancellationReason = reason;
+    booking.refundAmount = fee.refundAmount;
+    booking.cancellationPolicy = { tierApplied: tier, feePercent: fee.feePercent, feeAmount: fee.feeAmount, feeWaived: false };
+    await booking.save();
+    res.json({ success: true, feeCharged: fee.feeAmount, refundAmount: fee.refundAmount });
+  } catch (e) { res.status(500).json({ error: 'Failed' }); }
+});
 
-/**
- * Get user-friendly policy summary for display
- * @param {string} tier - Policy tier
- * @param {number} amount - Booking amount
- * @returns {object} Display-ready policy info
- */
-const getPolicySummary = (tier = 'standard', amount = 0) => {
-  const policy = getPolicy(tier);
-  
-  return {
-    name: policy.name,
-    description: policy.description,
-    freeCancellationHours: policy.freeCancellationHours,
-    rules: policy.rules.map(rule => ({
-      label: rule.label,
-      feePercent: rule.feePercent,
-      feeAmount: amount > 0 ? Math.round(amount * (rule.feePercent / 100) * 100) / 100 : null
-    })).filter(r => r.feePercent < 100) // Don't show no-show in summary
-  };
-};
+router.post('/:id/no-show', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    const amount = booking.totalAmount || booking.servicePrice;
+    booking.status = 'no_show';
+    booking.cancelledAt = new Date();
+    booking.cancelledBy = 'system';
+    booking.refundAmount = 0;
+    booking.cancellationPolicy = { tierApplied: 'no_show', feePercent: 100, feeAmount: amount, feeWaived: false };
+    await booking.save();
+    res.json({ success: true, amountCharged: amount });
+  } catch (e) { res.status(500).json({ error: 'Failed' }); }
+});
 
-/**
- * Check if cancellation is free
- * @param {Date} appointmentDate
- * @param {string} policyTier
- * @returns {boolean}
- */
-const isFreeCancellation = (appointmentDate, policyTier = 'standard') => {
-  const policy = getPolicy(policyTier);
-  const hoursUntil = hoursUntilAppointment(appointmentDate);
-  return hoursUntil >= policy.freeCancellationHours;
-};
+router.post('/:id/waive-fee', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (!booking.cancellationPolicy?.feeAmount) return res.status(400).json({ error: 'No fee to waive' });
+    if (booking.cancellationPolicy.feeWaived) return res.status(400).json({ error: 'Already waived' });
+    const feeAmount = booking.cancellationPolicy.feeAmount;
+    booking.cancellationPolicy.feeWaived = true;
+    booking.cancellationPolicy.feeWaivedReason = reason;
+    booking.cancellationPolicy.feeWaivedAt = new Date();
+    booking.refundAmount = (booking.refundAmount || 0) + feeAmount;
+    await booking.save();
+    res.json({ success: true, refundedAmount: feeAmount });
+  } catch (e) { res.status(500).json({ error: 'Failed' }); }
+});
 
-/**
- * Get time remaining for free cancellation
- * @param {Date} appointmentDate
- * @param {string} policyTier
- * @returns {object} Time remaining info
- */
-const getFreeCancellationTimeRemaining = (appointmentDate, policyTier = 'standard') => {
-  const policy = getPolicy(policyTier);
-  const appointmentTime = new Date(appointmentDate);
-  const deadline = new Date(
-    appointmentTime.getTime() - (policy.freeCancellationHours * 60 * 60 * 1000)
-  );
-  
-  const now = new Date();
-  const msRemaining = deadline - now;
-  
-  if (msRemaining <= 0) {
-    return {
-      expired: true,
-      deadline,
-      hoursRemaining: 0,
-      minutesRemaining: 0
-    };
-  }
-  
-  const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
-  const minutesRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
-  
-  return {
-    expired: false,
-    deadline,
-    hoursRemaining,
-    minutesRemaining,
-    displayText: hoursRemaining > 0 
-      ? `${hoursRemaining}h ${minutesRemaining}m remaining`
-      : `${minutesRemaining} minutes remaining`
-  };
-};
+router.get('/policy/:providerId', async (req, res) => {
+  try {
+    const provider = await Provider.findById(req.params.providerId);
+    if (!provider) return res.status(404).json({ error: 'Provider not found' });
+    const tier = provider.cancellationPolicy?.tier || 'standard';
+    res.json({ tier, freeCancellationHours: POLICIES[tier].freeCancellationHours, allowFeeWaiver: provider.cancellationPolicy?.allowFeeWaiver ?? true });
+  } catch (e) { res.status(500).json({ error: 'Failed' }); }
+});
 
-module.exports = {
-  POLICIES,
-  getPolicy,
-  calculateCancellationFee,
-  getPolicySummary,
-  isFreeCancellation,
-  getFreeCancellationTimeRemaining,
-  hoursUntilAppointment
-};
+router.put('/policy/:providerId', async (req, res) => {
+  try {
+    const { tier, allowFeeWaiver } = req.body;
+    if (tier && !['standard', 'moderate'].includes(tier)) return res.status(400).json({ error: 'Invalid tier' });
+    const provider = await Provider.findById(req.params.providerId);
+    if (!provider) return res.status(404).json({ error: 'Provider not found' });
+    provider.cancellationPolicy = { tier: tier || 'standard', allowFeeWaiver: allowFeeWaiver ?? true };
+    await provider.save();
+    res.json({ success: true, policy: provider.cancellationPolicy });
+  } catch (e) { res.status(500).json({ error: 'Failed' }); }
+});
+
+module.exports = router;
