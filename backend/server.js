@@ -16,6 +16,7 @@ const reviewsAdminRoutes = require('./routes/reviewsAdmin');
 const bookingsAdminRoutes = require('./routes/bookingsAdmin');
 const inquiriesAdminRoutes = require('./routes/inquiriesAdmin');
 const emailRoutes = require('./routes/email');
+const cancellationRoutes = require('./routes/cancellation');
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use('/api/reviews', reviewRoutes);
 
 // Booking routes
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/bookings', cancellationRoutes);  // ADD THIS LINE
 
 // Search routes (enhanced with geo)
 app.use('/api/search', searchRoutes);

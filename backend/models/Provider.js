@@ -188,7 +188,19 @@ const providerSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-
+  // Cancellation Policy
+  cancellationPolicy: {
+    tier: {
+      type: String,
+      enum: ['standard', 'moderate'],
+      default: 'standard'
+    },
+    allowFeeWaiver: {
+      type: Boolean,
+      default: true
+    }
+  },
+  
   // Metadata
   createdAt: {
     type: Date,

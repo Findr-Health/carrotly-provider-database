@@ -77,7 +77,28 @@ const bookingSchema = new mongoose.Schema({
   cancellationReason: String,
   refundAmount: Number,
   refundedAt: Date,
+  // Cancellation Policy Details
+  cancellationPolicy: {
+    tierApplied: String,  // 'standard' or 'moderate'
+    hoursBeforeAppointment: Number,
+    feePercent: Number,
+    feeAmount: Number,
+    feeWaived: {
+      type: Boolean,
+      default: false
+    },
+    feeWaivedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Provider'
+    },
+    feeWaivedReason: String,
+    feeWaivedAt: Date
+  },
   
+  // Stripe Payment Method (for authorize-then-capture)
+  stripeCustomerId: String,
+  stripePaymentMethodId: String,
+
   // Rescheduling
   isRescheduled: {
     type: Boolean,
