@@ -10,12 +10,15 @@ export default function InquiryQueue() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [stats, setStats] = useState({});
-  const [followUpForm, setFollowUpForm] = useState({ method: 'email', notes: '', outcome: '' });
   
   // Email modal state
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailForm, setEmailForm] = useState({ toEmail: '', providerName: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
+  
+  // Manual follow-up
+  const [showAddFollowUp, setShowAddFollowUp] = useState(false);
+  const [followUpForm, setFollowUpForm] = useState({ method: 'phone', notes: '', outcome: '' });
 
   useEffect(() => {
     fetchInquiries();
@@ -53,16 +56,26 @@ export default function InquiryQueue() {
       await api.patch(`/admin/inquiries/${id}/status`, { status });
       fetchInquiries();
       fetchStats();
+      if (selectedInquiry?._id === id) {
+        setSelectedInquiry(prev => ({ ...prev, status }));
+      }
     } catch (err) {
       alert('Failed to update: ' + err.message);
     }
   };
 
   const addFollowUp = async (id) => {
+    if (!followUpForm.notes.trim()) {
+      alert('Please add notes');
+      return;
+    }
     try {
       await api.post(`/admin/inquiries/${id}/followup`, followUpForm);
-      setFollowUpForm({ method: 'email', notes: '', outcome: '' });
-      setSelectedInquiry(null);
+      setFollowUpForm({ method: 'phone', notes: '', outcome: '' });
+      setShowAddFollowUp(false);
+      // Refresh the selected inquiry
+      const response = await api.get(`/admin/inquiries/${id}`);
+      setSelectedInquiry(response.data);
       fetchInquiries();
     } catch (err) {
       alert('Failed to add follow-up: ' + err.message);
@@ -74,6 +87,9 @@ export default function InquiryQueue() {
       await api.patch(`/admin/inquiries/${id}/outcome`, { outcome });
       fetchInquiries();
       fetchStats();
+      if (selectedInquiry?._id === id) {
+        setSelectedInquiry(prev => ({ ...prev, outcome, status: outcome === 'pending' ? 'in_progress' : 'closed' }));
+      }
     } catch (err) {
       alert('Failed to update outcome: ' + err.message);
     }
@@ -112,7 +128,11 @@ export default function InquiryQueue() {
       alert('✅ Provider invite sent successfully!');
       setShowEmailModal(false);
       setEmailForm({ toEmail: '', providerName: '' });
-      fetchInquiries(); // Refresh to show follow-up
+      
+      // Refresh the selected inquiry to show the new follow-up
+      const response = await api.get(`/admin/inquiries/${selectedInquiry._id}`);
+      setSelectedInquiry(response.data);
+      fetchInquiries();
     } catch (err) {
       alert('Failed to send email: ' + (err.response?.data?.details || err.message));
     } finally {
@@ -125,7 +145,7 @@ export default function InquiryQueue() {
     setSendingEmail(true);
     try {
       await api.post('/admin/email/test', {});
-      alert('✅ Test email sent! Check findrhealth@gmail.com');
+      alert('✅ Test email sent! Check providers@findrhealth.com');
     } catch (err) {
       alert('Email test failed: ' + (err.response?.data?.details || err.message));
     } finally {
@@ -149,12 +169,11 @@ export default function InquiryQueue() {
     manual: 'bg-gray-100 text-gray-800'
   };
 
-  const typeIcons = {
-    provider_outreach: '🏥',
-    general: '💬',
-    support: '🆘',
-    feedback: '📝',
-    partnership: '🤝'
+  const methodIcons = {
+    email: '✉️',
+    phone: '📞',
+    sms: '💬',
+    in_app: '📱'
   };
 
   if (loading && inquiries.length === 0) {
@@ -170,10 +189,8 @@ export default function InquiryQueue() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            📬 Inquiry Queue
-          </h1>
-          <p className="text-gray-600 mt-1">Manage inquiries and provider outreach requests</p>
+          <h1 className="text-2xl font-bold text-gray-900">📬 Inquiry Queue</h1>
+          <p className="text-gray-600 mt-1">Manage inquiries and provider outreach</p>
         </div>
         <button
           onClick={testEmail}
@@ -300,80 +317,50 @@ export default function InquiryQueue() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    {/* Header */}
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">{typeIcons[inquiry.type] || '📋'}</span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[inquiry.status]}`}>
                         {inquiry.status?.replace('_', ' ')}
                       </span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${sourceColors[inquiry.source]}`}>
                         {inquiry.source === 'ai_chat' ? '🤖 AI Chat' : inquiry.source}
                       </span>
-                      {inquiry.type === 'provider_outreach' && (
-                        <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
-                          Outreach Needed
-                        </span>
-                      )}
                     </div>
 
-                    {/* Provider Type Request */}
                     {inquiry.requestedProviderType && (
                       <div className="text-sm font-medium text-gray-900 mb-1">
                         Looking for: <span className="text-teal-600">{inquiry.requestedProviderType}</span>
                       </div>
                     )}
 
-                    {/* Location */}
                     {(inquiry.location?.city || inquiry.location?.state) && (
                       <div className="text-sm text-gray-600 mb-1">
                         📍 {inquiry.location.city}{inquiry.location.city && inquiry.location.state ? ', ' : ''}{inquiry.location.state}
                       </div>
                     )}
 
-                    {/* User Message */}
                     {inquiry.userMessage && (
-                      <div className="text-sm text-gray-500 italic mb-1">
-                        "{inquiry.userMessage}"
+                      <div className="text-sm text-gray-500 italic">
+                        "{inquiry.userMessage.substring(0, 50)}{inquiry.userMessage.length > 50 ? '...' : ''}"
                       </div>
                     )}
 
-                    {/* Notes */}
-                    {inquiry.notes && !inquiry.userMessage && (
-                      <div className="text-sm text-gray-500">
-                        {inquiry.notes}
-                      </div>
-                    )}
-
-                    {/* Meta */}
                     <div className="text-xs text-gray-400 mt-2">
-                      {new Date(inquiry.createdAt).toLocaleDateString()} • 
-                      {inquiry.followUps?.length || 0} follow-ups
+                      {new Date(inquiry.createdAt).toLocaleDateString()} • {inquiry.followUps?.length || 0} follow-ups
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="flex flex-col gap-1 ml-4">
-                    {inquiry.type === 'provider_outreach' && inquiry.status !== 'contacted' && (
-                      <button
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setSelectedInquiry(inquiry);
-                          setShowEmailModal(true); 
-                        }}
-                        className="px-3 py-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 flex items-center gap-1"
-                      >
-                        ✉️ Send Invite
-                      </button>
-                    )}
-                    {inquiry.status === 'new' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); updateStatus(inquiry._id, 'in_progress'); }}
-                        className="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-                      >
-                        Start
-                      </button>
-                    )}
-                  </div>
+                  {inquiry.type === 'provider_outreach' && inquiry.status !== 'closed' && (
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setSelectedInquiry(inquiry);
+                        setShowEmailModal(true); 
+                      }}
+                      className="px-3 py-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700"
+                    >
+                      ✉️ Send Invite
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -381,25 +368,27 @@ export default function InquiryQueue() {
         )}
       </div>
 
-      {/* Detail Modal */}
+      {/* Improved Detail Modal */}
       {selectedInquiry && !showEmailModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  {typeIcons[selectedInquiry.type]} Inquiry Details
-                </h2>
-                <button
-                  onClick={() => setSelectedInquiry(null)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ×
-                </button>
+          <div className="bg-white rounded-lg shadow-xl max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📬</span>
+                <h2 className="text-lg font-bold text-gray-900">Inquiry Details</h2>
               </div>
+              <button
+                onClick={() => { setSelectedInquiry(null); setShowAddFollowUp(false); }}
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
 
-              <div className="space-y-4">
-                {/* Status & Source */}
+            <div className="p-6 space-y-4">
+              {/* Status badges & Send Invite */}
+              <div className="flex items-center justify-between">
                 <div className="flex gap-2">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[selectedInquiry.status]}`}>
                     {selectedInquiry.status?.replace('_', ' ')}
@@ -408,101 +397,110 @@ export default function InquiryQueue() {
                     {selectedInquiry.source === 'ai_chat' ? '🤖 AI Chat' : selectedInquiry.source}
                   </span>
                 </div>
-
-                {/* Send Email Button */}
-                {selectedInquiry.type === 'provider_outreach' && (
+                {selectedInquiry.type === 'provider_outreach' && selectedInquiry.status !== 'closed' && (
                   <button
                     onClick={() => setShowEmailModal(true)}
-                    className="w-full px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center gap-2 font-medium"
+                    className="px-4 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 flex items-center gap-2"
                   >
-                    ✉️ Send Provider Invite Email
+                    ✉️ Send Invite
                   </button>
                 )}
+              </div>
 
-                {/* Provider Type */}
+              {/* Request Details Box */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 {selectedInquiry.requestedProviderType && (
-                  <div className="bg-teal-50 p-4 rounded-lg">
-                    <div className="text-sm text-teal-600 font-medium">Requested Provider Type</div>
-                    <div className="text-lg font-bold text-teal-800">{selectedInquiry.requestedProviderType}</div>
+                  <div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide">Looking for</div>
+                    <div className="font-semibold text-teal-700">{selectedInquiry.requestedProviderType}</div>
                   </div>
                 )}
-
-                {/* Location */}
-                {selectedInquiry.location && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600 font-medium">Location</div>
+                
+                {(selectedInquiry.location?.city || selectedInquiry.location?.state) && (
+                  <div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide">Location</div>
                     <div className="text-gray-900">
-                      {selectedInquiry.location.city}{selectedInquiry.location.city && selectedInquiry.location.state ? ', ' : ''}{selectedInquiry.location.state}
+                      📍 {selectedInquiry.location.city}{selectedInquiry.location.city && selectedInquiry.location.state ? ', ' : ''}{selectedInquiry.location.state}
                     </div>
-                    {selectedInquiry.location.coordinates && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Coordinates: {selectedInquiry.location.coordinates[1]?.toFixed(4)}, {selectedInquiry.location.coordinates[0]?.toFixed(4)}
-                      </div>
-                    )}
                   </div>
                 )}
-
-                {/* User Message */}
+                
                 {selectedInquiry.userMessage && (
                   <div>
-                    <div className="text-sm text-gray-600 font-medium mb-1">User's Request</div>
-                    <div className="bg-blue-50 p-3 rounded-lg text-blue-900 italic">
-                      "{selectedInquiry.userMessage}"
-                    </div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide">User's Request</div>
+                    <div className="text-gray-700 italic">"{selectedInquiry.userMessage}"</div>
                   </div>
                 )}
+                
+                <div className="text-xs text-gray-400 pt-2 border-t">
+                  Created: {new Date(selectedInquiry.createdAt).toLocaleString()}
+                </div>
+              </div>
 
-                {/* Notes */}
-                {selectedInquiry.notes && (
-                  <div>
-                    <div className="text-sm text-gray-600 font-medium mb-1">Notes</div>
-                    <div className="text-gray-700">{selectedInquiry.notes}</div>
-                  </div>
-                )}
-
-                {/* Follow-ups */}
-                {selectedInquiry.followUps && selectedInquiry.followUps.length > 0 && (
-                  <div>
-                    <div className="text-sm text-gray-600 font-medium mb-2">Follow-up History</div>
-                    <div className="space-y-2">
-                      {selectedInquiry.followUps.map((fu, idx) => (
-                        <div key={idx} className="bg-gray-50 p-3 rounded-lg text-sm">
-                          <div className="flex justify-between">
-                            <span className="font-medium capitalize flex items-center gap-1">
-                              {fu.method === 'email' && '✉️'}
-                              {fu.method === 'phone' && '📞'}
-                              {fu.method === 'sms' && '💬'}
-                              {fu.method}
-                            </span>
-                            <span className="text-gray-500">{new Date(fu.date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="text-gray-700 mt-1">{fu.notes}</div>
-                          {fu.outcome && <div className="text-green-600 mt-1">Outcome: {fu.outcome}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Add Follow-up */}
-                <div className="border-t pt-4">
-                  <div className="text-sm text-gray-600 font-medium mb-2">Add Follow-up</div>
+              {/* Outreach History */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900">📋 Outreach History</h3>
+                  <span className="text-xs text-gray-500">{selectedInquiry.followUps?.length || 0} activities</span>
+                </div>
+                
+                {selectedInquiry.followUps && selectedInquiry.followUps.length > 0 ? (
                   <div className="space-y-2">
+                    {selectedInquiry.followUps.map((fu, idx) => (
+                      <div key={idx} className="bg-white border rounded-lg p-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg">{methodIcons[fu.method] || '📝'}</span>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start">
+                              <span className="font-medium text-gray-900 capitalize">{fu.method}</span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(fu.date).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1">{fu.notes}</div>
+                            {fu.outcome && (
+                              <div className="text-xs text-green-600 mt-1">✓ {fu.outcome}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 bg-gray-50 rounded-lg text-gray-500 text-sm">
+                    No outreach yet. Send an invite or add a follow-up.
+                  </div>
+                )}
+                
+                {/* Add Follow-up Button/Form */}
+                {!showAddFollowUp ? (
+                  <button
+                    onClick={() => setShowAddFollowUp(true)}
+                    className="mt-3 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-teal-500 hover:text-teal-600 text-sm"
+                  >
+                    + Add Manual Follow-up
+                  </button>
+                ) : (
+                  <div className="mt-3 p-4 bg-blue-50 rounded-lg space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-gray-900">Add Follow-up</span>
+                      <button onClick={() => setShowAddFollowUp(false)} className="text-gray-400 hover:text-gray-600">×</button>
+                    </div>
                     <select
                       value={followUpForm.method}
                       onChange={(e) => setFollowUpForm({ ...followUpForm, method: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
                     >
-                      <option value="email">📧 Email</option>
-                      <option value="phone">📞 Phone</option>
+                      <option value="phone">📞 Phone Call</option>
+                      <option value="email">✉️ Email (manual)</option>
                       <option value="sms">💬 SMS</option>
                       <option value="in_app">📱 In-App</option>
                     </select>
                     <textarea
                       value={followUpForm.notes}
                       onChange={(e) => setFollowUpForm({ ...followUpForm, notes: e.target.value })}
-                      placeholder="Follow-up notes..."
-                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="What happened? (e.g., Left voicemail, Spoke with office manager...)"
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
                       rows={2}
                     />
                     <input
@@ -510,66 +508,70 @@ export default function InquiryQueue() {
                       value={followUpForm.outcome}
                       onChange={(e) => setFollowUpForm({ ...followUpForm, outcome: e.target.value })}
                       placeholder="Outcome (optional)"
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                     <button
                       onClick={() => addFollowUp(selectedInquiry._id)}
-                      disabled={!followUpForm.notes}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
                     >
-                      Add Follow-up
+                      Save Follow-up
                     </button>
                   </div>
-                </div>
-
-                {/* Outcome */}
-                <div className="border-t pt-4">
-                  <div className="text-sm text-gray-600 font-medium mb-2">Set Outcome</div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => updateOutcome(selectedInquiry._id, 'provider_onboarded')}
-                      className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                    >
-                      ✓ Provider Onboarded
-                    </button>
-                    <button
-                      onClick={() => updateOutcome(selectedInquiry._id, 'provider_declined')}
-                      className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                    >
-                      ✗ Provider Declined
-                    </button>
-                    <button
-                      onClick={() => updateOutcome(selectedInquiry._id, 'no_response')}
-                      className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
-                    >
-                      No Response
-                    </button>
-                  </div>
-                </div>
-
-                {/* Timestamps */}
-                <div className="text-xs text-gray-500 border-t pt-4">
-                  <div>Created: {new Date(selectedInquiry.createdAt).toLocaleString()}</div>
-                  {selectedInquiry.contactedAt && (
-                    <div>Contacted: {new Date(selectedInquiry.contactedAt).toLocaleString()}</div>
-                  )}
-                </div>
+                )}
               </div>
 
-              <div className="mt-6 pt-4 border-t flex justify-between">
-                <button
-                  onClick={() => deleteInquiry(selectedInquiry._id)}
-                  className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => setSelectedInquiry(null)}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                >
-                  Close
-                </button>
+              {/* Set Outcome */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">🎯 Set Outcome</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => updateOutcome(selectedInquiry._id, 'provider_onboarded')}
+                    className={`px-4 py-2 text-sm rounded-lg transition ${
+                      selectedInquiry.outcome === 'provider_onboarded' 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
+                  >
+                    ✓ Provider Onboarded
+                  </button>
+                  <button
+                    onClick={() => updateOutcome(selectedInquiry._id, 'provider_declined')}
+                    className={`px-4 py-2 text-sm rounded-lg transition ${
+                      selectedInquiry.outcome === 'provider_declined' 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-red-100 text-red-700 hover:bg-red-200'
+                    }`}
+                  >
+                    ✗ Declined
+                  </button>
+                  <button
+                    onClick={() => updateOutcome(selectedInquiry._id, 'no_response')}
+                    className={`px-4 py-2 text-sm rounded-lg transition ${
+                      selectedInquiry.outcome === 'no_response' 
+                        ? 'bg-gray-600 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    No Response
+                  </button>
+                </div>
               </div>
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-between">
+              <button
+                onClick={() => deleteInquiry(selectedInquiry._id)}
+                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => { setSelectedInquiry(null); setShowAddFollowUp(false); }}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -584,7 +586,7 @@ export default function InquiryQueue() {
                 <h2 className="text-xl font-bold text-gray-900">✉️ Send Provider Invite</h2>
                 <button
                   onClick={() => { setShowEmailModal(false); setEmailForm({ toEmail: '', providerName: '' }); }}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
                 >
                   ×
                 </button>
@@ -593,9 +595,9 @@ export default function InquiryQueue() {
               {/* Context */}
               <div className="bg-teal-50 p-4 rounded-lg mb-4">
                 <div className="text-sm text-teal-600">Searching for:</div>
-                <div className="font-bold text-teal-800">{selectedInquiry.requestedProviderType}</div>
+                <div className="font-bold text-teal-800">{selectedInquiry.requestedProviderType || 'Healthcare Provider'}</div>
                 <div className="text-sm text-teal-600 mt-1">
-                  in {selectedInquiry.location?.city}{selectedInquiry.location?.city && selectedInquiry.location?.state ? ', ' : ''}{selectedInquiry.location?.state}
+                  in {selectedInquiry.location?.city}{selectedInquiry.location?.city && selectedInquiry.location?.state ? ', ' : ''}{selectedInquiry.location?.state || 'Unknown location'}
                 </div>
               </div>
 
@@ -622,19 +624,18 @@ export default function InquiryQueue() {
                     type="text"
                     value={emailForm.providerName}
                     onChange={(e) => setEmailForm({ ...emailForm, providerName: e.target.value })}
-                    placeholder="Dr. Smith or Smith Family Dental"
+                    placeholder="Dr. Smith or Smith Family Practice"
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-2">📧 Email Preview:</div>
-                  <div className="text-sm">
-                    <strong>Subject:</strong> Patients in {selectedInquiry.location?.city || 'your area'} are looking for {selectedInquiry.requestedProviderType} providers - Join Findr Health
-                  </div>
-                  <div className="text-xs text-gray-500 mt-2">
-                    Includes: Benefits of joining, free listing info, call to action
-                  </div>
+                <div className="bg-gray-50 p-4 rounded-lg text-sm">
+                  <div className="text-gray-600 mb-1">📧 Email will include:</div>
+                  <ul className="text-gray-500 text-xs space-y-1">
+                    <li>• Patient demand in their area</li>
+                    <li>• Benefits of joining Findr Health</li>
+                    <li>• Link to providers.findrhealth.com</li>
+                  </ul>
                 </div>
               </div>
 
