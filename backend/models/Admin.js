@@ -210,7 +210,6 @@ adminSchema.methods.comparePassword = async function(candidatePassword) {
 };
 
 // Indexes
-adminSchema.index({ email: 1 });
 adminSchema.index({ role: 1 });
 adminSchema.index({ status: 1 });
 
