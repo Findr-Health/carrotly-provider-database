@@ -152,7 +152,7 @@ const providerSchema = new mongoose.Schema({
   // Provider Status
   status: {
     type: String,
-    enum: ['draft', 'pending', 'approved', 'rejected', 'suspended'],
+    enum: ['draft', 'pending_agreement', 'pending', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
   

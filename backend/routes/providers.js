@@ -63,9 +63,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'At least 1 service required' });
     }
 
-    if (!agreement || !agreement.signature) {
-      return res.status(400).json({ error: 'Agreement signature required' });
-    }
+    // Agreement signature is optional - if not signed, status will be pending_agreement
+    const hasSignature = agreement && agreement.signature;
 
     // Check if provider already exists
     const queryConditions = [{ 'contactInfo.email': email.toLowerCase() }];
@@ -127,14 +126,17 @@ router.post('/', async (req, res) => {
         photo: member.photo,
         bio: member.bio
       })),
-      agreement: {
+      agreement: hasSignature ? {
         signed: true,
         signedAt: new Date(agreement.agreedDate),
         signature: agreement.signature,
         signerTitle: agreement.title,
         version: agreement.version || '2025'
+      } : {
+        signed: false,
+        version: '2025'
       },
-      status: 'pending',
+      status: hasSignature ? 'pending' : 'pending_agreement',
       visibility: 'hidden'
     });
 
@@ -161,10 +163,13 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Provider profile submitted successfully',
+      message: hasSignature 
+        ? 'Provider profile submitted successfully' 
+        : 'Profile saved! Please sign the agreement to complete your application.',
       providerId: provider._id,
       token,
-      status: 'pending'
+      status: provider.status,
+      agreementSigned: hasSignature
     });
 
   } catch (error) {
@@ -437,5 +442,90 @@ router.post('/check-auth', async (req, res) => {
     res.status(500).json({ error: 'Failed to check authentication' });
   }
 });
+// Sign agreement (for providers who skipped signing during onboarding)
+router.post('/:id/sign-agreement', async (req, res) => {
+  try {
+    const { signature, title } = req.body;
+    
+    if (!signature || signature.trim().length < 3) {
+      return res.status(400).json({ error: 'Valid signature (full legal name) is required' });
+    }
 
+    const provider = await Provider.findById(req.params.id);
+    
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    // Check if already signed
+    if (provider.agreement?.signed) {
+      return res.status(400).json({ error: 'Agreement already signed' });
+    }
+
+    // Update agreement and status
+    provider.agreement = {
+      signed: true,
+      signedAt: new Date(),
+      signature: signature.trim(),
+      signerTitle: title?.trim() || '',
+      version: '2025',
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+    };
+    
+    // Move from pending_agreement to pending (ready for admin review)
+    if (provider.status === 'pending_agreement') {
+      provider.status = 'pending';
+    }
+    
+    provider.onboardingCompleted = true;
+    
+    await provider.save();
+
+    // Send email notification that application is complete
+    try {
+      const email = provider.contactInfo?.email || provider.email;
+      if (email) {
+        await emailService.sendProviderWelcomeEmail(email, provider.practiceName);
+      }
+    } catch (emailError) {
+      console.error('Failed to send agreement confirmation email:', emailError);
+    }
+
+    console.log('✅ Provider agreement signed:', provider._id);
+
+    res.json({
+      success: true,
+      message: 'Agreement signed successfully! Your application is now under review.',
+      status: provider.status,
+      agreementSigned: true
+    });
+
+  } catch (error) {
+    console.error('Sign agreement error:', error);
+    res.status(500).json({ error: 'Failed to sign agreement', details: error.message });
+  }
+});
+
+// Get agreement status
+router.get('/:id/agreement-status', async (req, res) => {
+  try {
+    const provider = await Provider.findById(req.params.id).select('agreement status practiceName');
+    
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    res.json({
+      signed: provider.agreement?.signed || false,
+      signedAt: provider.agreement?.signedAt,
+      signature: provider.agreement?.signature,
+      status: provider.status,
+      needsSignature: provider.status === 'pending_agreement'
+    });
+
+  } catch (error) {
+    console.error('Get agreement status error:', error);
+    res.status(500).json({ error: 'Failed to get agreement status' });
+  }
+});
 module.exports = router;
