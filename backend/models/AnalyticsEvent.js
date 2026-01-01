@@ -173,8 +173,7 @@ const analyticsEventSchema = new mongoose.Schema({
   // Time context
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   localTime: String, // User's local time
   timezone: String

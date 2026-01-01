@@ -145,7 +145,6 @@ userSchema.methods.toJSON = function() {
 };
 
 // Indexes
-userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ status: 1 });
 userSchema.index({ 'location.coordinates': '2dsphere' });
 
