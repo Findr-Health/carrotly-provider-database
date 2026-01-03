@@ -17,6 +17,7 @@ const bookingsAdminRoutes = require('./routes/bookingsAdmin');
 const inquiriesAdminRoutes = require('./routes/inquiriesAdmin');
 const emailRoutes = require('./routes/email');
 const cancellationRoutes = require('./routes/cancellation');
+const serviceTemplatesRoutes = require('./routes/serviceTemplates');
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use('/api/admin/providers', providerAdminRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/admin', adminManagementRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/service-templates', serviceTemplatesRoutes);
 
 // Health check with MongoDB status
 app.get('/health', (req, res) => {
