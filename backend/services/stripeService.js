@@ -1,306 +1,482 @@
 /**
- * Stripe Service
- * Handles payment authorization, capture, refunds, and cancellation fees
+ * Findr Health Stripe Service
+ * 
+ * Handles:
+ * - Customer management
+ * - Payment method attachment
+ * - Payment intent creation (authorize)
+ * - Payment capture
+ * - Refunds
+ * - Connect payouts to providers
  */
 
-const Stripe = require('stripe');
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { toCents, toDollars, calculateFees } = require('../utils/feeCalculation');
 
-/**
- * Create a customer in Stripe
- * @param {object} user - User object with email, name
- * @returns {object} Stripe customer
- */
-const createCustomer = async (user) => {
-  const customer = await stripe.customers.create({
-    email: user.email,
-    name: user.name || user.firstName ? `${user.firstName} ${user.lastName}` : undefined,
-    metadata: {
-      userId: user._id?.toString() || user.id
+const stripeService = {
+  
+  // ==================== CUSTOMERS ====================
+  
+  /**
+   * Create a Stripe customer
+   * @param {Object} params - Customer details
+   * @returns {Object} Stripe customer object
+   */
+  async createCustomer({ email, name, phone, metadata = {} }) {
+    try {
+      const customer = await stripe.customers.create({
+        email,
+        name,
+        phone,
+        metadata: {
+          ...metadata,
+          platform: 'findr_health'
+        }
+      });
+      
+      console.log(`Created Stripe customer: ${customer.id}`);
+      return customer;
+    } catch (error) {
+      console.error('Stripe createCustomer error:', error);
+      throw error;
     }
-  });
-  return customer;
-};
-
-/**
- * Get or create Stripe customer for user
- * @param {object} user - User object
- * @returns {string} Stripe customer ID
- */
-const getOrCreateCustomer = async (user) => {
-  if (user.stripeCustomerId) {
-    return user.stripeCustomerId;
-  }
+  },
   
-  const customer = await createCustomer(user);
-  return customer.id;
-};
-
-/**
- * Create a SetupIntent to save a card for future use
- * @param {string} customerId - Stripe customer ID
- * @returns {object} SetupIntent with client_secret
- */
-const createSetupIntent = async (customerId) => {
-  const setupIntent = await stripe.setupIntents.create({
-    customer: customerId,
-    payment_method_types: ['card'],
-    usage: 'off_session'
-  });
-  
-  return {
-    clientSecret: setupIntent.client_secret,
-    setupIntentId: setupIntent.id
-  };
-};
-
-/**
- * Authorize (hold) payment for a booking
- * Does not capture - just holds the amount on the card
- * @param {object} params
- * @param {number} params.amount - Amount in dollars
- * @param {string} params.customerId - Stripe customer ID
- * @param {string} params.paymentMethodId - Stripe payment method ID
- * @param {object} params.metadata - Additional metadata
- * @returns {object} PaymentIntent
- */
-const authorizePayment = async ({ amount, customerId, paymentMethodId, metadata = {} }) => {
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(amount * 100), // Convert to cents
-    currency: 'usd',
-    customer: customerId,
-    payment_method: paymentMethodId,
-    capture_method: 'manual', // Authorize only, don't capture
-    confirm: true,
-    off_session: true,
-    metadata: {
-      ...metadata,
-      type: 'booking_authorization'
+  /**
+   * Get a Stripe customer
+   * @param {string} customerId - Stripe customer ID
+   * @returns {Object} Stripe customer object
+   */
+  async getCustomer(customerId) {
+    try {
+      return await stripe.customers.retrieve(customerId);
+    } catch (error) {
+      console.error('Stripe getCustomer error:', error);
+      throw error;
     }
-  });
+  },
   
-  return {
-    paymentIntentId: paymentIntent.id,
-    status: paymentIntent.status,
-    amount: amount
-  };
-};
-
-/**
- * Capture full authorized amount (service completed)
- * @param {string} paymentIntentId - Stripe PaymentIntent ID
- * @returns {object} Captured PaymentIntent
- */
-const captureFullPayment = async (paymentIntentId) => {
-  const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId);
+  /**
+   * Update a Stripe customer
+   * @param {string} customerId - Stripe customer ID
+   * @param {Object} updates - Fields to update
+   * @returns {Object} Updated customer
+   */
+  async updateCustomer(customerId, updates) {
+    try {
+      return await stripe.customers.update(customerId, updates);
+    } catch (error) {
+      console.error('Stripe updateCustomer error:', error);
+      throw error;
+    }
+  },
   
-  return {
-    paymentIntentId: paymentIntent.id,
-    status: paymentIntent.status,
-    amountCaptured: paymentIntent.amount_received / 100
-  };
-};
-
-/**
- * Capture partial amount (for cancellation fees)
- * @param {string} paymentIntentId - Stripe PaymentIntent ID
- * @param {number} amount - Amount to capture in dollars
- * @returns {object} Captured PaymentIntent
- */
-const capturePartialPayment = async (paymentIntentId, amount) => {
-  const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId, {
-    amount_to_capture: Math.round(amount * 100) // Convert to cents
-  });
+  // ==================== PAYMENT METHODS ====================
   
-  return {
-    paymentIntentId: paymentIntent.id,
-    status: paymentIntent.status,
-    amountCaptured: paymentIntent.amount_received / 100,
-    amountRefunded: (paymentIntent.amount - paymentIntent.amount_received) / 100
-  };
-};
-
-/**
- * Cancel payment intent (full refund, no charge)
- * @param {string} paymentIntentId - Stripe PaymentIntent ID
- * @returns {object} Cancelled PaymentIntent
- */
-const cancelPaymentIntent = async (paymentIntentId) => {
-  const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId);
+  /**
+   * Attach a payment method to a customer
+   * @param {string} paymentMethodId - Stripe payment method ID
+   * @param {string} customerId - Stripe customer ID
+   * @returns {Object} Payment method object
+   */
+  async attachPaymentMethod(paymentMethodId, customerId) {
+    try {
+      // Attach to customer
+      const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId
+      });
+      
+      // Set as default
+      await stripe.customers.update(customerId, {
+        invoice_settings: {
+          default_payment_method: paymentMethodId
+        }
+      });
+      
+      console.log(`Attached payment method ${paymentMethodId} to customer ${customerId}`);
+      return paymentMethod;
+    } catch (error) {
+      console.error('Stripe attachPaymentMethod error:', error);
+      throw error;
+    }
+  },
   
-  return {
-    paymentIntentId: paymentIntent.id,
-    status: paymentIntent.status,
-    cancelled: true
-  };
-};
-
-/**
- * Process booking cancellation with appropriate fee
- * @param {object} params
- * @param {string} params.paymentIntentId - Stripe PaymentIntent ID
- * @param {number} params.totalAmount - Original booking amount
- * @param {number} params.feeAmount - Cancellation fee to charge
- * @param {string} params.cancelledBy - 'user' or 'provider'
- * @param {object} params.metadata - Additional metadata
- * @returns {object} Result with refund/charge details
- */
-const processCancellation = async ({ paymentIntentId, totalAmount, feeAmount, cancelledBy, metadata = {} }) => {
-  try {
-    // Provider cancellation = always full refund
-    if (cancelledBy === 'provider') {
-      await cancelPaymentIntent(paymentIntentId);
+  /**
+   * List customer's payment methods
+   * @param {string} customerId - Stripe customer ID
+   * @returns {Array} List of payment methods
+   */
+  async listPaymentMethods(customerId) {
+    try {
+      const methods = await stripe.paymentMethods.list({
+        customer: customerId,
+        type: 'card'
+      });
+      
+      return methods.data.map(pm => ({
+        id: pm.id,
+        brand: pm.card.brand,
+        last4: pm.card.last4,
+        expMonth: pm.card.exp_month,
+        expYear: pm.card.exp_year,
+        isDefault: pm.id === pm.customer?.invoice_settings?.default_payment_method
+      }));
+    } catch (error) {
+      console.error('Stripe listPaymentMethods error:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Detach (remove) a payment method
+   * @param {string} paymentMethodId - Stripe payment method ID
+   * @returns {Object} Detached payment method
+   */
+  async detachPaymentMethod(paymentMethodId) {
+    try {
+      return await stripe.paymentMethods.detach(paymentMethodId);
+    } catch (error) {
+      console.error('Stripe detachPaymentMethod error:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Create a setup intent for saving a card without charging
+   * @param {string} customerId - Stripe customer ID
+   * @returns {Object} Setup intent with client secret
+   */
+  async createSetupIntent(customerId) {
+    try {
+      const setupIntent = await stripe.setupIntents.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        usage: 'off_session' // Allow charging later without customer present
+      });
+      
       return {
-        success: true,
-        refundAmount: totalAmount,
-        feeCharged: 0,
-        action: 'full_refund'
+        id: setupIntent.id,
+        clientSecret: setupIntent.client_secret
       };
+    } catch (error) {
+      console.error('Stripe createSetupIntent error:', error);
+      throw error;
     }
-    
-    // No fee = cancel intent (full refund)
-    if (feeAmount === 0) {
-      await cancelPaymentIntent(paymentIntentId);
+  },
+  
+  // ==================== PAYMENT INTENTS ====================
+  
+  /**
+   * Create a payment intent (authorize only, don't capture)
+   * @param {Object} params - Payment parameters
+   * @returns {Object} Payment intent
+   */
+  async createPaymentIntent({
+    amount,              // In dollars
+    customerId,
+    paymentMethodId,
+    providerId,
+    bookingId,
+    serviceName,
+    capture = false      // false = authorize only
+  }) {
+    try {
+      const amountCents = toCents(amount);
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountCents,
+        currency: 'usd',
+        customer: customerId,
+        payment_method: paymentMethodId,
+        capture_method: capture ? 'automatic' : 'manual',
+        confirm: true,
+        
+        // Allow off-session payments if needed
+        off_session: false,
+        
+        // Metadata for tracking
+        metadata: {
+          platform: 'findr_health',
+          providerId: providerId?.toString(),
+          bookingId: bookingId?.toString(),
+          serviceName,
+          amountDollars: amount.toString()
+        },
+        
+        // For 3D Secure redirects
+        return_url: `${process.env.APP_URL || 'https://findrhealth.com'}/booking/payment-complete`,
+        
+        // Description shown on statements
+        statement_descriptor_suffix: 'FINDR HEALTH'
+      });
+      
+      console.log(`Created payment intent: ${paymentIntent.id}, status: ${paymentIntent.status}`);
+      
       return {
-        success: true,
-        refundAmount: totalAmount,
-        feeCharged: 0,
-        action: 'full_refund'
+        id: paymentIntent.id,
+        clientSecret: paymentIntent.client_secret,
+        status: paymentIntent.status,
+        amount: toDollars(paymentIntent.amount),
+        requiresAction: paymentIntent.status === 'requires_action',
+        nextActionUrl: paymentIntent.next_action?.redirect_to_url?.url
       };
+    } catch (error) {
+      console.error('Stripe createPaymentIntent error:', error);
+      throw error;
     }
-    
-    // Full fee (no-show) = capture full amount
-    if (feeAmount >= totalAmount) {
-      const result = await captureFullPayment(paymentIntentId);
+  },
+  
+  /**
+   * Capture an authorized payment
+   * @param {string} paymentIntentId - Stripe payment intent ID
+   * @param {number} amount - Amount to capture in dollars (optional, defaults to full amount)
+   * @returns {Object} Captured payment intent
+   */
+  async capturePaymentIntent(paymentIntentId, amount = null) {
+    try {
+      const params = {};
+      if (amount !== null) {
+        params.amount_to_capture = toCents(amount);
+      }
+      
+      const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId, params);
+      
+      console.log(`Captured payment intent: ${paymentIntentId}, amount: ${toDollars(paymentIntent.amount_received)}`);
+      
       return {
-        success: true,
-        refundAmount: 0,
-        feeCharged: totalAmount,
-        action: 'full_charge',
-        chargeId: result.paymentIntentId
+        id: paymentIntent.id,
+        status: paymentIntent.status,
+        amountCaptured: toDollars(paymentIntent.amount_received)
       };
+    } catch (error) {
+      console.error('Stripe capturePaymentIntent error:', error);
+      throw error;
     }
-    
-    // Partial fee = capture only the fee
-    const result = await capturePartialPayment(paymentIntentId, feeAmount);
-    return {
-      success: true,
-      refundAmount: totalAmount - feeAmount,
-      feeCharged: feeAmount,
-      action: 'partial_charge',
-      chargeId: result.paymentIntentId
-    };
-    
-  } catch (error) {
-    console.error('Cancellation processing error:', error);
-    throw error;
+  },
+  
+  /**
+   * Cancel a payment intent (release authorization)
+   * @param {string} paymentIntentId - Stripe payment intent ID
+   * @returns {Object} Cancelled payment intent
+   */
+  async cancelPaymentIntent(paymentIntentId) {
+    try {
+      const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId);
+      
+      console.log(`Cancelled payment intent: ${paymentIntentId}`);
+      
+      return {
+        id: paymentIntent.id,
+        status: paymentIntent.status
+      };
+    } catch (error) {
+      // If already cancelled or captured, that's ok
+      if (error.code === 'payment_intent_unexpected_state') {
+        console.log(`Payment intent ${paymentIntentId} already in final state`);
+        return { id: paymentIntentId, status: 'cancelled' };
+      }
+      console.error('Stripe cancelPaymentIntent error:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Get payment intent details
+   * @param {string} paymentIntentId - Stripe payment intent ID
+   * @returns {Object} Payment intent
+   */
+  async getPaymentIntent(paymentIntentId) {
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      return {
+        id: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: toDollars(paymentIntent.amount),
+        amountCaptured: toDollars(paymentIntent.amount_received || 0),
+        customerId: paymentIntent.customer,
+        paymentMethodId: paymentIntent.payment_method,
+        metadata: paymentIntent.metadata,
+        createdAt: new Date(paymentIntent.created * 1000)
+      };
+    } catch (error) {
+      console.error('Stripe getPaymentIntent error:', error);
+      throw error;
+    }
+  },
+  
+  // ==================== REFUNDS ====================
+  
+  /**
+   * Create a refund
+   * @param {string} paymentIntentId - Stripe payment intent ID
+   * @param {number} amount - Amount to refund in dollars (optional, defaults to full amount)
+   * @param {string} reason - Refund reason
+   * @returns {Object} Refund object
+   */
+  async createRefund(paymentIntentId, amount = null, reason = 'requested_by_customer') {
+    try {
+      const params = {
+        payment_intent: paymentIntentId,
+        reason // 'duplicate', 'fraudulent', or 'requested_by_customer'
+      };
+      
+      if (amount !== null) {
+        params.amount = toCents(amount);
+      }
+      
+      const refund = await stripe.refunds.create(params);
+      
+      console.log(`Created refund: ${refund.id}, amount: ${toDollars(refund.amount)}`);
+      
+      return {
+        id: refund.id,
+        status: refund.status,
+        amount: toDollars(refund.amount)
+      };
+    } catch (error) {
+      console.error('Stripe createRefund error:', error);
+      throw error;
+    }
+  },
+  
+  // ==================== STRIPE CONNECT (Provider Payouts) ====================
+  
+  /**
+   * Create a Connect account for a provider
+   * @param {Object} params - Provider details
+   * @returns {Object} Connect account
+   */
+  async createConnectAccount({ email, businessName, providerId }) {
+    try {
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: 'US',
+        email,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true }
+        },
+        business_type: 'individual',
+        business_profile: {
+          name: businessName,
+          product_description: 'Healthcare services via Findr Health'
+        },
+        metadata: {
+          platform: 'findr_health',
+          providerId: providerId?.toString()
+        }
+      });
+      
+      console.log(`Created Connect account: ${account.id}`);
+      return account;
+    } catch (error) {
+      console.error('Stripe createConnectAccount error:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Create an account link for Connect onboarding
+   * @param {string} accountId - Stripe Connect account ID
+   * @returns {Object} Account link with URL
+   */
+  async createConnectAccountLink(accountId) {
+    try {
+      const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: `${process.env.PROVIDER_PORTAL_URL || 'https://findrhealth-provider.vercel.app'}/settings/payments/retry`,
+        return_url: `${process.env.PROVIDER_PORTAL_URL || 'https://findrhealth-provider.vercel.app'}/settings/payments/complete`,
+        type: 'account_onboarding'
+      });
+      
+      return {
+        url: accountLink.url,
+        expiresAt: new Date(accountLink.expires_at * 1000)
+      };
+    } catch (error) {
+      console.error('Stripe createConnectAccountLink error:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Get Connect account status
+   * @param {string} accountId - Stripe Connect account ID
+   * @returns {Object} Account status details
+   */
+  async getConnectAccountStatus(accountId) {
+    try {
+      const account = await stripe.accounts.retrieve(accountId);
+      
+      return {
+        id: account.id,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        detailsSubmitted: account.details_submitted,
+        requirements: {
+          currentlyDue: account.requirements?.currently_due || [],
+          pastDue: account.requirements?.past_due || [],
+          errors: account.requirements?.errors || []
+        }
+      };
+    } catch (error) {
+      console.error('Stripe getConnectAccountStatus error:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Create a transfer to a Connect account (provider payout)
+   * @param {Object} params - Transfer details
+   * @returns {Object} Transfer object
+   */
+  async createTransfer({ amount, destinationAccountId, bookingId, description }) {
+    try {
+      const transfer = await stripe.transfers.create({
+        amount: toCents(amount),
+        currency: 'usd',
+        destination: destinationAccountId,
+        description,
+        metadata: {
+          platform: 'findr_health',
+          bookingId: bookingId?.toString()
+        }
+      });
+      
+      console.log(`Created transfer: ${transfer.id}, amount: ${toDollars(transfer.amount)}`);
+      
+      return {
+        id: transfer.id,
+        amount: toDollars(transfer.amount),
+        destination: transfer.destination
+      };
+    } catch (error) {
+      console.error('Stripe createTransfer error:', error);
+      throw error;
+    }
+  },
+  
+  // ==================== WEBHOOKS ====================
+  
+  /**
+   * Verify webhook signature
+   * @param {string} payload - Raw request body
+   * @param {string} signature - Stripe signature header
+   * @returns {Object} Verified event
+   */
+  verifyWebhookSignature(payload, signature) {
+    try {
+      return stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (error) {
+      console.error('Stripe webhook verification error:', error);
+      throw error;
+    }
   }
 };
 
-/**
- * Issue refund for a captured payment (for fee waivers)
- * @param {string} paymentIntentId - Stripe PaymentIntent ID
- * @param {number} amount - Amount to refund in dollars (optional, full refund if not specified)
- * @param {string} reason - Reason for refund
- * @returns {object} Refund details
- */
-const issueRefund = async (paymentIntentId, amount = null, reason = 'requested_by_customer') => {
-  const refundParams = {
-    payment_intent: paymentIntentId,
-    reason
-  };
-  
-  if (amount) {
-    refundParams.amount = Math.round(amount * 100); // Convert to cents
-  }
-  
-  const refund = await stripe.refunds.create(refundParams);
-  
-  return {
-    refundId: refund.id,
-    amount: refund.amount / 100,
-    status: refund.status
-  };
-};
-
-/**
- * Waive cancellation fee (refund the fee that was charged)
- * @param {object} params
- * @param {string} params.paymentIntentId - Original PaymentIntent ID
- * @param {number} params.feeAmount - Fee amount to refund
- * @param {string} params.waivedBy - Admin/provider ID who waived
- * @param {string} params.reason - Reason for waiver
- * @returns {object} Refund details
- */
-const waiveCancellationFee = async ({ paymentIntentId, feeAmount, waivedBy, reason }) => {
-  const refund = await stripe.refunds.create({
-    payment_intent: paymentIntentId,
-    amount: Math.round(feeAmount * 100),
-    reason: 'requested_by_customer',
-    metadata: {
-      type: 'fee_waiver',
-      waivedBy,
-      waiverReason: reason
-    }
-  });
-  
-  return {
-    refundId: refund.id,
-    amount: refund.amount / 100,
-    status: refund.status,
-    waived: true
-  };
-};
-
-/**
- * Get payment intent details
- * @param {string} paymentIntentId
- * @returns {object} PaymentIntent
- */
-const getPaymentIntent = async (paymentIntentId) => {
-  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-  
-  return {
-    id: paymentIntent.id,
-    status: paymentIntent.status,
-    amount: paymentIntent.amount / 100,
-    amountReceived: paymentIntent.amount_received / 100,
-    currency: paymentIntent.currency,
-    metadata: paymentIntent.metadata
-  };
-};
-
-/**
- * List customer's payment methods
- * @param {string} customerId
- * @returns {array} Payment methods
- */
-const listPaymentMethods = async (customerId) => {
-  const paymentMethods = await stripe.paymentMethods.list({
-    customer: customerId,
-    type: 'card'
-  });
-  
-  return paymentMethods.data.map(pm => ({
-    id: pm.id,
-    brand: pm.card.brand,
-    last4: pm.card.last4,
-    expMonth: pm.card.exp_month,
-    expYear: pm.card.exp_year
-  }));
-};
-
-module.exports = {
-  createCustomer,
-  getOrCreateCustomer,
-  createSetupIntent,
-  authorizePayment,
-  captureFullPayment,
-  capturePartialPayment,
-  cancelPaymentIntent,
-  processCancellation,
-  issueRefund,
-  waiveCancellationFee,
-  getPaymentIntent,
-  listPaymentMethods
-};
+module.exports = stripeService;

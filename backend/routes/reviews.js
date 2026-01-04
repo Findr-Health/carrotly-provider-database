@@ -1,304 +1,484 @@
+/**
+ * Findr Health Reviews Routes
+ * 
+ * Endpoints:
+ * GET    /api/reviews/provider/:providerId  - Get provider reviews
+ * POST   /api/reviews                       - Create review (requires completed booking)
+ * PUT    /api/reviews/:id                   - Edit review (within 7 days)
+ * DELETE /api/reviews/:id                   - Delete own review
+ * POST   /api/reviews/:id/helpful           - Mark as helpful
+ * POST   /api/reviews/:id/flag              - Flag review
+ * POST   /api/reviews/:id/respond           - Provider responds to review
+ */
+
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const Review = require('../models/Review');
-const Provider = require('../models/Provider');
 const Booking = require('../models/Booking');
+const Provider = require('../models/Provider');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'findr-health-user-secret-2025';
+// ==================== GET PROVIDER REVIEWS ====================
 
-// Auth middleware
-const auth = async (req, res, next) => {
-  try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Please authenticate' });
-  }
-};
-
-// Optional auth - doesn't fail if no token
-const optionalAuth = async (req, res, next) => {
-  try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (token) {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      req.userId = decoded.userId;
-    }
-  } catch (error) {
-    // Ignore auth errors for optional auth
-  }
-  next();
-};
-
-// ==================== PUBLIC ROUTES ====================
-
-// Get reviews for a provider
-router.get('/provider/:providerId', optionalAuth, async (req, res) => {
+router.get('/provider/:providerId', async (req, res) => {
   try {
     const { providerId } = req.params;
-    const { page = 1, limit = 10, sort = 'recent' } = req.query;
-    
-    const query = { providerId, status: 'approved' };
-    
-    let sortOption = { createdAt: -1 };  // Default: most recent
-    if (sort === 'highest') sortOption = { rating: -1, createdAt: -1 };
-    if (sort === 'lowest') sortOption = { rating: 1, createdAt: -1 };
-    if (sort === 'helpful') sortOption = { helpfulCount: -1, createdAt: -1 };
-    
-    const total = await Review.countDocuments(query);
-    const reviews = await Review.find(query)
-      .populate('userId', 'firstName lastName photoUrl')
-      .sort(sortOption)
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
-    
-    // Get rating distribution
-    const distribution = await Review.aggregate([
-      { $match: { providerId: require('mongoose').Types.ObjectId(providerId), status: 'approved' } },
-      { $group: { _id: '$rating', count: { $sum: 1 } } },
-      { $sort: { _id: -1 } }
-    ]);
-    
-    const ratingDistribution = {
-      5: 0, 4: 0, 3: 0, 2: 0, 1: 0
+    const { 
+      rating,          // Filter by star rating (1-5)
+      sort = 'recent', // 'recent', 'highest', 'lowest', 'helpful'
+      limit = 10,
+      page = 1
+    } = req.query;
+
+    const query = { 
+      provider: providerId,
+      status: 'published'
     };
-    distribution.forEach(d => {
-      ratingDistribution[d._id] = d.count;
-    });
+
+    // Filter by rating
+    if (rating) {
+      query.rating = parseInt(rating);
+    }
+
+    // Determine sort order
+    let sortOrder = { createdAt: -1 }; // Default: most recent
+    switch (sort) {
+      case 'highest':
+        sortOrder = { rating: -1, createdAt: -1 };
+        break;
+      case 'lowest':
+        sortOrder = { rating: 1, createdAt: -1 };
+        break;
+      case 'helpful':
+        sortOrder = { helpfulCount: -1, createdAt: -1 };
+        break;
+    }
+
+    const reviews = await Review.find(query)
+      .populate('user', 'firstName lastName')
+      .sort(sortOrder)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Review.countDocuments(query);
     
+    // Get stats
+    const stats = await Review.getProviderStats(providerId);
+
     res.json({
-      reviews,
+      success: true,
+      reviews: reviews.map(r => ({
+        _id: r._id,
+        rating: r.rating,
+        title: r.title,
+        content: r.content,
+        serviceName: r.serviceName,
+        author: {
+          firstName: r.user?.firstName || 'Anonymous',
+          lastInitial: r.user?.lastName?.charAt(0) || ''
+        },
+        helpfulCount: r.helpfulCount,
+        providerResponse: r.providerResponse,
+        createdAt: r.createdAt,
+        isEdited: r.isEdited
+      })),
+      stats,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / limit)
-      },
-      ratingDistribution
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        limit: parseInt(limit)
+      }
     });
+
   } catch (error) {
-    console.error('Get reviews error:', error);
-    res.status(500).json({ error: 'Failed to get reviews' });
+    console.error('Get provider reviews error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Get single review
-router.get('/:reviewId', async (req, res) => {
+// ==================== GET SINGLE REVIEW ====================
+
+router.get('/:id', async (req, res) => {
   try {
-    const review = await Review.findById(req.params.reviewId)
-      .populate('userId', 'firstName lastName photoUrl')
-      .populate('providerId', 'practiceName');
-    
+    const review = await Review.findById(req.params.id)
+      .populate('user', 'firstName lastName')
+      .populate('provider', 'practiceName');
+
     if (!review) {
       return res.status(404).json({ error: 'Review not found' });
     }
-    
-    res.json(review);
+
+    res.json({ success: true, review });
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get review' });
+    console.error('Get review error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// ==================== AUTHENTICATED ROUTES ====================
+// ==================== CREATE REVIEW ====================
 
-// Submit a review
-router.post('/', auth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { providerId, bookingId, rating, title, comment, photos } = req.body;
-    
-    // Validation
-    if (!providerId || !rating) {
-      return res.status(400).json({ error: 'Provider ID and rating are required' });
+    const { 
+      userId,
+      bookingId,
+      rating,
+      title,
+      content
+    } = req.body;
+
+    // Validate required fields
+    if (!userId || !bookingId || !rating || !content) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: ['userId', 'bookingId', 'rating', 'content']
+      });
     }
-    
+
+    // Validate rating
     if (rating < 1 || rating > 5) {
       return res.status(400).json({ error: 'Rating must be between 1 and 5' });
     }
-    
-    // Check if user already reviewed this provider
-    const existingReview = await Review.findOne({
-      providerId,
-      userId: req.userId,
-      status: { $ne: 'removed' }
-    });
-    
+
+    // Get the booking
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Verify booking belongs to user
+    if (booking.user.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only review your own bookings' });
+    }
+
+    // Verify booking is completed
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ error: 'You can only review completed appointments' });
+    }
+
+    // Check if already reviewed
+    const existingReview = await Review.findOne({ booking: bookingId });
     if (existingReview) {
-      return res.status(400).json({ error: 'You have already reviewed this provider' });
+      return res.status(400).json({ error: 'You have already reviewed this booking' });
     }
-    
-    // Check if booking exists and belongs to user
-    let isVerifiedBooking = false;
-    if (bookingId) {
-      const booking = await Booking.findOne({
-        _id: bookingId,
-        userId: req.userId,
-        providerId,
-        status: 'completed'
-      });
-      
-      if (booking) {
-        isVerifiedBooking = true;
-        
-        // Mark booking as reviewed
-        booking.hasReview = true;
-        await booking.save();
-      }
-    }
-    
+
     // Create review
     const review = new Review({
-      providerId,
-      userId: req.userId,
-      bookingId: bookingId || undefined,
+      user: userId,
+      provider: booking.provider,
+      booking: bookingId,
       rating,
       title,
-      comment,
-      photos: photos || [],
-      isVerifiedBooking
+      content,
+      serviceName: booking.service.name,
+      status: 'published', // Auto-publish
+      isVerifiedBooking: true
     });
-    
+
     await review.save();
-    
-    // Populate user data for response
-    await review.populate('userId', 'firstName lastName photoUrl');
-    
-    res.status(201).json(review);
+
+    // Update provider's rating (async, don't wait)
+    updateProviderRating(booking.provider).catch(console.error);
+
+    res.status(201).json({
+      success: true,
+      review: {
+        _id: review._id,
+        rating: review.rating,
+        title: review.title,
+        content: review.content,
+        createdAt: review.createdAt
+      },
+      message: 'Review published successfully'
+    });
+
   } catch (error) {
-    console.error('Submit review error:', error);
-    res.status(500).json({ error: 'Failed to submit review' });
+    console.error('Create review error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Update a review
-router.put('/:reviewId', auth, async (req, res) => {
-  try {
-    const { rating, title, comment, photos } = req.body;
-    
-    const review = await Review.findOne({
-      _id: req.params.reviewId,
-      userId: req.userId
-    });
-    
-    if (!review) {
-      return res.status(404).json({ error: 'Review not found or not authorized' });
-    }
-    
-    // Only allow updates within 7 days
-    const daysSinceCreation = (Date.now() - review.createdAt) / (1000 * 60 * 60 * 24);
-    if (daysSinceCreation > 7) {
-      return res.status(400).json({ error: 'Reviews can only be edited within 7 days' });
-    }
-    
-    if (rating) review.rating = rating;
-    if (title !== undefined) review.title = title;
-    if (comment !== undefined) review.comment = comment;
-    if (photos) review.photos = photos;
-    
-    await review.save();
-    await review.populate('userId', 'firstName lastName photoUrl');
-    
-    res.json(review);
-  } catch (error) {
-    console.error('Update review error:', error);
-    res.status(500).json({ error: 'Failed to update review' });
-  }
-});
+// ==================== EDIT REVIEW ====================
 
-// Delete a review
-router.delete('/:reviewId', auth, async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const review = await Review.findOne({
-      _id: req.params.reviewId,
-      userId: req.userId
-    });
-    
-    if (!review) {
-      return res.status(404).json({ error: 'Review not found or not authorized' });
-    }
-    
-    // Soft delete
-    review.status = 'removed';
-    await review.save();
-    
-    // Update booking if applicable
-    if (review.bookingId) {
-      await Booking.findByIdAndUpdate(review.bookingId, { hasReview: false });
-    }
-    
-    res.json({ message: 'Review deleted' });
-  } catch (error) {
-    console.error('Delete review error:', error);
-    res.status(500).json({ error: 'Failed to delete review' });
-  }
-});
+    const { userId, rating, title, content } = req.body;
 
-// Mark review as helpful
-router.post('/:reviewId/helpful', auth, async (req, res) => {
-  try {
-    const review = await Review.findById(req.params.reviewId);
-    
+    const review = await Review.findById(req.params.id);
     if (!review) {
       return res.status(404).json({ error: 'Review not found' });
     }
-    
-    // Check if already voted
-    const alreadyVoted = review.helpfulVotes.some(
-      v => v.userId.toString() === req.userId
-    );
-    
-    if (alreadyVoted) {
-      return res.status(400).json({ error: 'Already marked as helpful' });
+
+    // Verify ownership
+    if (review.user.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only edit your own reviews' });
     }
-    
-    review.helpfulVotes.push({ userId: req.userId, votedAt: new Date() });
-    review.helpfulCount = review.helpfulVotes.length;
+
+    // Check edit window
+    if (new Date() > review.canEditUntil) {
+      return res.status(400).json({ error: 'Edit window has expired (7 days)' });
+    }
+
+    // Save to edit history
+    review.editHistory.push({
+      content: review.content,
+      rating: review.rating,
+      editedAt: new Date()
+    });
+
+    // Update review
+    if (rating) review.rating = rating;
+    if (title !== undefined) review.title = title;
+    if (content) review.content = content;
+    review.isEdited = true;
+    review.editedAt = new Date();
+
     await review.save();
-    
-    res.json({ helpfulCount: review.helpfulCount });
+
+    // Update provider rating if changed
+    if (rating) {
+      updateProviderRating(review.provider).catch(console.error);
+    }
+
+    res.json({
+      success: true,
+      review,
+      message: 'Review updated'
+    });
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to mark as helpful' });
+    console.error('Edit review error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Get reviews needing to be written (pending bookings without reviews)
-router.get('/pending/mine', auth, async (req, res) => {
+// ==================== DELETE REVIEW ====================
+
+router.delete('/:id', async (req, res) => {
   try {
-    const pendingBookings = await Booking.find({
-      userId: req.userId,
-      status: 'completed',
-      hasReview: false,
-      completedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }  // Last 30 days
-    })
-    .populate('providerId', 'practiceName photos primaryPhoto')
-    .sort({ completedAt: -1 });
+    const { userId } = req.body;
+
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Verify ownership
+    if (review.user.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own reviews' });
+    }
+
+    const providerId = review.provider;
     
-    res.json(pendingBookings);
+    await Review.findByIdAndDelete(req.params.id);
+
+    // Update provider rating
+    updateProviderRating(providerId).catch(console.error);
+
+    res.json({
+      success: true,
+      message: 'Review deleted'
+    });
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get pending reviews' });
+    console.error('Delete review error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Get user's reviews
-router.get('/mine/all', auth, async (req, res) => {
+// ==================== MARK AS HELPFUL ====================
+
+router.post('/:id/helpful', async (req, res) => {
   try {
-    const reviews = await Review.find({
-      userId: req.userId,
-      status: { $ne: 'removed' }
-    })
-    .populate('providerId', 'practiceName photos primaryPhoto')
-    .sort({ createdAt: -1 });
-    
-    res.json(reviews);
+    const { userId } = req.body;
+
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Check if already voted
+    if (review.helpfulVoters.includes(userId)) {
+      // Remove vote
+      review.helpfulVoters = review.helpfulVoters.filter(
+        id => id.toString() !== userId
+      );
+      review.helpfulCount = Math.max(0, review.helpfulCount - 1);
+    } else {
+      // Add vote
+      review.helpfulVoters.push(userId);
+      review.helpfulCount += 1;
+    }
+
+    await review.save();
+
+    res.json({
+      success: true,
+      helpfulCount: review.helpfulCount,
+      userVoted: review.helpfulVoters.includes(userId)
+    });
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get your reviews' });
+    console.error('Helpful vote error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
+
+// ==================== FLAG REVIEW ====================
+
+router.post('/:id/flag', async (req, res) => {
+  try {
+    const { userId, reason, details } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Flag reason is required' });
+    }
+
+    const validReasons = ['inappropriate', 'fake', 'spam', 'offensive', 'other'];
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({ 
+        error: 'Invalid reason',
+        validReasons
+      });
+    }
+
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Check if user already flagged
+    const alreadyFlagged = review.flags.some(
+      f => f.flaggedBy.toString() === userId
+    );
+    if (alreadyFlagged) {
+      return res.status(400).json({ error: 'You have already flagged this review' });
+    }
+
+    // Add flag
+    review.flags.push({
+      flaggedBy: userId,
+      reason,
+      details,
+      flaggedAt: new Date()
+    });
+
+    // Auto-hide if multiple flags
+    if (review.flags.length >= 3) {
+      review.status = 'flagged';
+    }
+
+    await review.save();
+
+    res.json({
+      success: true,
+      message: 'Review flagged for review'
+    });
+
+  } catch (error) {
+    console.error('Flag review error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== PROVIDER RESPONSE ====================
+
+router.post('/:id/respond', async (req, res) => {
+  try {
+    const { providerId, content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ error: 'Response content is required' });
+    }
+
+    if (content.length > 1000) {
+      return res.status(400).json({ error: 'Response must be 1000 characters or less' });
+    }
+
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Verify provider owns this review's provider
+    if (review.provider.toString() !== providerId) {
+      return res.status(403).json({ error: 'You can only respond to reviews of your practice' });
+    }
+
+    // Check if already responded
+    if (review.providerResponse?.content) {
+      // Update existing response
+      review.providerResponse.content = content;
+      review.providerResponse.editedAt = new Date();
+    } else {
+      // Add new response
+      review.providerResponse = {
+        content,
+        respondedAt: new Date()
+      };
+    }
+
+    await review.save();
+
+    res.json({
+      success: true,
+      review,
+      message: 'Response added'
+    });
+
+  } catch (error) {
+    console.error('Provider response error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== GET USER'S REVIEWS ====================
+
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 20, page = 1 } = req.query;
+
+    const reviews = await Review.find({ user: userId })
+      .populate('provider', 'practiceName photos')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Review.countDocuments({ user: userId });
+
+    res.json({
+      success: true,
+      reviews,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user reviews error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== HELPER FUNCTIONS ====================
+
+async function updateProviderRating(providerId) {
+  try {
+    const stats = await Review.getProviderStats(providerId);
+    
+    await Provider.findByIdAndUpdate(providerId, {
+      rating: stats.averageRating,
+      reviewCount: stats.totalReviews
+    });
+    
+    console.log(`Updated provider ${providerId} rating: ${stats.averageRating} (${stats.totalReviews} reviews)`);
+  } catch (error) {
+    console.error('Update provider rating error:', error);
+  }
+}
 
 module.exports = router;

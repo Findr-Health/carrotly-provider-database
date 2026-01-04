@@ -1,44 +1,46 @@
 const mongoose = require('mongoose');
 
-const bookingSchema = new mongoose.Schema({
+const BookingSchema = new mongoose.Schema({
   // References
-  userId: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   },
-  providerId: {
+  provider: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Provider',
-    required: true
+    required: true,
+    index: true
   },
   
-  // Service Details (snapshot at booking time - prices may change later)
-  serviceId: String,  // Reference to provider's service subdocument
-  serviceName: {
-    type: String,
-    required: true
+  // Service details (snapshot at time of booking)
+  service: {
+    serviceId: String,
+    name: { type: String, required: true },
+    category: String,
+    duration: { type: Number, required: true }, // minutes
+    price: { type: Number, required: true }
   },
-  servicePrice: {
-    type: Number,
-    required: true
-  },
-  serviceDuration: {
-    type: Number,  // minutes
-    required: true
-  },
-  serviceCategory: String,
   
-  // Team member (if applicable)
-  teamMemberId: String,
-  teamMemberName: String,
-  
-  // Appointment Time
-  appointmentDate: {
-    type: Date,
-    required: true
+  // Team member (optional)
+  teamMember: {
+    memberId: String,
+    name: String
   },
-  appointmentEndDate: Date,
+  
+  // Appointment details
+  appointmentDate: { 
+    type: Date, 
+    required: true,
+    index: true
+  },
+  appointmentTime: { 
+    type: String, 
+    required: true  // "10:00 AM"
+  },
+  appointmentEndTime: String,
   timezone: {
     type: String,
     default: 'America/Denver'
@@ -47,184 +49,177 @@ const bookingSchema = new mongoose.Schema({
   // Status
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'],
-    default: 'pending'
+    enum: [
+      'pending',              // Awaiting provider confirmation (non-integrated)
+      'confirmed',            // Provider confirmed / instant booking
+      'completed',            // Service delivered
+      'cancelled_by_user',
+      'cancelled_by_provider',
+      'no_show',
+      'rescheduled',
+      'expired'               // Request timed out (48h no response)
+    ],
+    default: 'confirmed',
+    index: true
   },
   
   // Payment
-  paymentStatus: {
-    type: String,
-    enum: ['pending', 'authorized', 'paid', 'partially_refunded', 'refunded', 'failed'],
-    default: 'pending'
+  payment: {
+    method: {
+      type: String,
+      enum: ['card', 'apple_pay', 'google_pay'],
+      default: 'card'
+    },
+    
+    // Stripe IDs
+    stripeCustomerId: String,
+    stripePaymentMethodId: String,
+    stripePaymentIntentId: String,
+    
+    // Amounts (in dollars, not cents)
+    servicePrice: Number,       // Original service price
+    platformFee: Number,        // Our fee: MIN((price × 10%) + $1.50, $35)
+    stripeFee: Number,          // ~2.9% + $0.30
+    providerPayout: Number,     // What provider receives
+    
+    // What user paid
+    total: Number,              // = servicePrice (user pays service price only)
+    currency: { 
+      type: String, 
+      default: 'usd' 
+    },
+    
+    // Status
+    status: {
+      type: String,
+      enum: ['pending', 'authorized', 'captured', 'refunded', 'partially_refunded', 'failed', 'cancelled'],
+      default: 'pending'
+    },
+    
+    // Timestamps
+    authorizedAt: Date,
+    capturedAt: Date,
+    refundedAt: Date,
+    
+    // Adjustments (if provider changes amount after service)
+    adjustedAmount: Number,
+    adjustmentReason: String
   },
-  paymentAmount: Number,
-  serviceFee: {
-    type: Number,
-    default: 0
-  },
-  totalAmount: Number,  // servicePrice + serviceFee
   
-  // Stripe
-  stripePaymentIntentId: String,
-  stripeChargeId: String,
-  
-  // Cancellation
-  cancelledAt: Date,
-  cancelledBy: {
-    type: String,
-    enum: ['user', 'provider', 'system', 'admin']
-  },
-  cancellationReason: String,
-  refundAmount: Number,
-  refundedAt: Date,
-  // Cancellation Policy Details
-  cancellationPolicy: {
-    tierApplied: String,  // 'standard' or 'moderate'
+  // Cancellation details
+  cancellation: {
+    cancelledAt: Date,
+    cancelledBy: { 
+      type: String, 
+      enum: ['user', 'provider', 'system'] 
+    },
+    reason: String,
+    
+    // Fee calculation snapshot
+    policyTier: String,              // 'standard' or 'moderate'
     hoursBeforeAppointment: Number,
     feePercent: Number,
     feeAmount: Number,
-    feeWaived: {
-      type: Boolean,
-      default: false
-    },
-    feeWaivedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Provider'
-    },
+    
+    // Fee waiver (provider can waive)
+    feeWaived: { type: Boolean, default: false },
+    feeWaivedBy: mongoose.Schema.Types.ObjectId,
     feeWaivedReason: String,
-    feeWaivedAt: Date
+    
+    // Refund details
+    refundAmount: Number,
+    stripeRefundId: String
   },
   
-  // Stripe Payment Method (for authorize-then-capture)
-  stripeCustomerId: String,
-  stripePaymentMethodId: String,
+  // Reschedule tracking
+  rescheduledFrom: mongoose.Schema.Types.ObjectId,
+  rescheduledTo: mongoose.Schema.Types.ObjectId,
+  rescheduleCount: { type: Number, default: 0 },
+  
+  // User notes (optional message to provider)
+  notes: String,
+  
+  // For non-integrated providers (request flow)
+  bookingRequest: {
+    isRequest: { type: Boolean, default: false },
+    requestedAt: Date,
+    reminderSentAt: Date,         // 24h reminder
+    respondedAt: Date,
+    expiresAt: Date,              // 48h from request
+    
+    providerResponse: { 
+      type: String, 
+      enum: ['accepted', 'declined', 'counter_offered'] 
+    },
+    
+    // Counter offer details
+    counterOffer: {
+      date: Date,
+      time: String,
+      message: String,
+      expiresAt: Date,            // 24h to accept counter
+      userResponse: {
+        type: String,
+        enum: ['accepted', 'declined', 'expired']
+      },
+      userRespondedAt: Date
+    }
+  },
+  
+  // Confirmation details
+  confirmationCode: String,       // Human-readable code like "FH-ABC123"
+  
+  // Calendar integration
+  calendarEventId: String,
+  
+  // Reminders sent
+  reminders: {
+    dayBefore: { sent: Boolean, sentAt: Date },
+    hourBefore: { sent: Boolean, sentAt: Date }
+  }
 
-  // Rescheduling
-  isRescheduled: {
-    type: Boolean,
-    default: false
-  },
-  rescheduledFrom: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking'
-  },
-  rescheduledTo: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking'
-  },
-  
-  // Notes
-  userNotes: String,  // Special requests from user
-  providerNotes: String,  // Internal notes from provider
-  
-  // Confirmation
-  confirmationCode: String,
-  confirmedAt: Date,
-  
-  // Reminders
-  reminderSent24h: {
-    type: Boolean,
-    default: false
-  },
-  reminderSent1h: {
-    type: Boolean,
-    default: false
-  },
-  
-  // Review
-  hasReview: {
-    type: Boolean,
-    default: false
-  },
-  reviewId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Review'
-  },
-  
-  // Calendar sync
-  googleEventId: String,
-  appleEventId: String,
-  outlookEventId: String,
-  
-  // Metadata
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: Date,
-  completedAt: Date
+}, { 
+  timestamps: true  // Adds createdAt, updatedAt automatically
 });
 
-// Update timestamps
-bookingSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  
-  // Calculate end time if not set
-  if (this.appointmentDate && this.serviceDuration && !this.appointmentEndDate) {
-    this.appointmentEndDate = new Date(this.appointmentDate.getTime() + this.serviceDuration * 60000);
-  }
-  
-  // Calculate total if not set
-  if (this.servicePrice && !this.totalAmount) {
-    this.totalAmount = this.servicePrice + (this.serviceFee || 0);
-  }
-  
-  // Generate confirmation code if not set
+// Indexes for common queries
+BookingSchema.index({ user: 1, status: 1, appointmentDate: -1 });
+BookingSchema.index({ provider: 1, appointmentDate: 1, status: 1 });
+BookingSchema.index({ 'payment.stripePaymentIntentId': 1 });
+BookingSchema.index({ confirmationCode: 1 }, { unique: true, sparse: true });
+BookingSchema.index({ 'bookingRequest.expiresAt': 1 }, { sparse: true });
+
+// Generate confirmation code before save
+BookingSchema.pre('save', function(next) {
   if (!this.confirmationCode) {
-    this.confirmationCode = 'FH' + Date.now().toString(36).toUpperCase() + 
-      Math.random().toString(36).substring(2, 6).toUpperCase();
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding confusing chars
+    let code = 'FH-';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    this.confirmationCode = code;
   }
-  
   next();
 });
 
-// Virtual for formatted date
-bookingSchema.virtual('formattedDate').get(function() {
-  if (!this.appointmentDate) return '';
-  return this.appointmentDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+// Virtual: Is booking in the past?
+BookingSchema.virtual('isPast').get(function() {
+  return new Date(this.appointmentDate) < new Date();
 });
 
-// Virtual for formatted time
-bookingSchema.virtual('formattedTime').get(function() {
-  if (!this.appointmentDate) return '';
-  return this.appointmentDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  });
+// Virtual: Can be cancelled?
+BookingSchema.virtual('canCancel').get(function() {
+  return ['pending', 'confirmed'].includes(this.status) && !this.isPast;
 });
 
-// Virtual to check if booking can be cancelled
-bookingSchema.virtual('canCancel').get(function() {
-  if (['cancelled', 'completed', 'no_show'].includes(this.status)) return false;
-  // Can cancel up to 24 hours before
-  const now = new Date();
-  const hoursUntilAppointment = (this.appointmentDate - now) / (1000 * 60 * 60);
-  return hoursUntilAppointment > 24;
+// Virtual: Can be rescheduled?
+BookingSchema.virtual('canReschedule').get(function() {
+  return ['confirmed'].includes(this.status) && 
+         !this.isPast && 
+         this.rescheduleCount < 2; // Max 2 reschedules
 });
 
-// Virtual to check if booking can be rescheduled
-bookingSchema.virtual('canReschedule').get(function() {
-  if (['cancelled', 'completed', 'no_show', 'in_progress'].includes(this.status)) return false;
-  const now = new Date();
-  const hoursUntilAppointment = (this.appointmentDate - now) / (1000 * 60 * 60);
-  return hoursUntilAppointment > 24;
-});
+BookingSchema.set('toJSON', { virtuals: true });
+BookingSchema.set('toObject', { virtuals: true });
 
-// Include virtuals in JSON
-bookingSchema.set('toJSON', { virtuals: true });
-bookingSchema.set('toObject', { virtuals: true });
-
-// Indexes
-bookingSchema.index({ userId: 1, appointmentDate: -1 });  // User's bookings
-bookingSchema.index({ providerId: 1, appointmentDate: 1 });  // Provider's schedule
-bookingSchema.index({ status: 1, appointmentDate: 1 });  // Upcoming bookings
-bookingSchema.index({ confirmationCode: 1 }, { unique: true });  // Lookup by code
-bookingSchema.index({ stripePaymentIntentId: 1 }, { sparse: true });  // Payment lookup
-
-module.exports = mongoose.model('Booking', bookingSchema);
+module.exports = mongoose.model('Booking', BookingSchema);

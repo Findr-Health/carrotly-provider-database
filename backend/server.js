@@ -18,6 +18,9 @@ const inquiriesAdminRoutes = require('./routes/inquiriesAdmin');
 const emailRoutes = require('./routes/email');
 const cancellationRoutes = require('./routes/cancellation');
 const serviceTemplatesRoutes = require('./routes/serviceTemplates');
+const availabilityRoutes = require('./routes/availability');
+const paymentsRoutes = require('./routes/payments');
+const { scheduleCronJobs } = require('./cron/bookingCron');
 
 const app = express();
 
@@ -55,6 +58,11 @@ app.use('/api/admin/inquiries', inquiriesAdminRoutes);
 
 // User routes
 app.use('/api/users', userRoutes);
+// Availability routes
+app.use('/api/availability', availabilityRoutes);
+
+// Payments routes  
+app.use('/api/payments', paymentsRoutes);
 
 // Review routes  
 app.use('/api/reviews', reviewRoutes);
@@ -86,6 +94,8 @@ app.get('/health', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
+// Schedule booking cron jobs (reminders, expirations)
+scheduleCronJobs();
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

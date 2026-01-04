@@ -1,180 +1,289 @@
 /**
- * Cancellation Policy Utility Functions
- * Handles fee calculation and policy rules
+ * Findr Health Cancellation Policy Utility
+ * 
+ * Two tiers:
+ * - Standard (default): 24h free, 12-24h = 25%, <12h = 50%, no-show = 100%
+ * - Moderate: 48h free, 24-48h = 25%, <24h = 50%, no-show = 100%
+ * 
+ * Rules:
+ * - Provider cancels = Always full refund to user
+ * - Provider can waive fees
+ * - System auto-cancels expired requests (48h no response)
  */
 
-// Policy definitions
-const POLICIES = {
+const CANCELLATION_POLICIES = {
   standard: {
     name: 'Standard',
-    description: 'Free cancellation up to 24 hours before appointment',
-    rules: [
-      { hoursMin: 24, hoursMax: Infinity, feePercent: 0, label: '24+ hours: Free cancellation' },
-      { hoursMin: 12, hoursMax: 24, feePercent: 25, label: '12-24 hours: 25% fee' },
-      { hoursMin: 0, hoursMax: 12, feePercent: 50, label: 'Under 12 hours: 50% fee' },
-      { hoursMin: -Infinity, hoursMax: 0, feePercent: 100, label: 'No-show: Full charge' }
+    description: 'Free cancellation up to 24 hours before',
+    tiers: [
+      { hoursMin: 24, hoursMax: Infinity, feePercent: 0, label: 'Free cancellation' },
+      { hoursMin: 12, hoursMax: 24, feePercent: 25, label: '25% cancellation fee' },
+      { hoursMin: 0, hoursMax: 12, feePercent: 50, label: '50% cancellation fee' }
     ],
-    freeCancellationHours: 24
+    noShowPercent: 100,
+    details: [
+      'Cancel 24+ hours before: Full refund',
+      'Cancel 12-24 hours before: 25% fee',
+      'Cancel less than 12 hours: 50% fee',
+      'No-show: 100% charge'
+    ]
   },
   moderate: {
     name: 'Moderate',
-    description: 'Free cancellation up to 48 hours before appointment',
-    rules: [
-      { hoursMin: 48, hoursMax: Infinity, feePercent: 0, label: '48+ hours: Free cancellation' },
-      { hoursMin: 24, hoursMax: 48, feePercent: 25, label: '24-48 hours: 25% fee' },
-      { hoursMin: 0, hoursMax: 24, feePercent: 50, label: 'Under 24 hours: 50% fee' },
-      { hoursMin: -Infinity, hoursMax: 0, feePercent: 100, label: 'No-show: Full charge' }
+    description: 'Free cancellation up to 48 hours before',
+    tiers: [
+      { hoursMin: 48, hoursMax: Infinity, feePercent: 0, label: 'Free cancellation' },
+      { hoursMin: 24, hoursMax: 48, feePercent: 25, label: '25% cancellation fee' },
+      { hoursMin: 0, hoursMax: 24, feePercent: 50, label: '50% cancellation fee' }
     ],
-    freeCancellationHours: 48
+    noShowPercent: 100,
+    details: [
+      'Cancel 48+ hours before: Full refund',
+      'Cancel 24-48 hours before: 25% fee',
+      'Cancel less than 24 hours: 50% fee',
+      'No-show: 100% charge'
+    ]
   }
-};
-
-/**
- * Get policy details
- * @param {string} tier - 'standard' or 'moderate'
- * @returns {object} Policy details
- */
-const getPolicy = (tier = 'standard') => {
-  return POLICIES[tier] || POLICIES.standard;
-};
-
-/**
- * Calculate hours until appointment
- * @param {Date} appointmentDate
- * @returns {number} Hours until appointment (negative if past)
- */
-const hoursUntilAppointment = (appointmentDate) => {
-  const now = new Date();
-  const appointment = new Date(appointmentDate);
-  return (appointment - now) / (1000 * 60 * 60);
 };
 
 /**
  * Calculate cancellation fee
- * @param {object} params
- * @param {Date} params.appointmentDate - Appointment date/time
- * @param {number} params.amount - Booking amount in dollars
- * @param {string} params.policyTier - 'standard' or 'moderate'
- * @param {boolean} params.isNoShow - Is this a no-show?
- * @returns {object} Fee calculation result
+ * @param {Date} appointmentDate - The appointment date/time
+ * @param {number} totalAmount - The booking total in dollars
+ * @param {string} policyTier - 'standard' or 'moderate'
+ * @returns {Object} Fee calculation result
  */
-const calculateCancellationFee = ({ appointmentDate, amount, policyTier = 'standard', isNoShow = false }) => {
-  const policy = getPolicy(policyTier);
-  const hoursUntil = isNoShow ? -1 : hoursUntilAppointment(appointmentDate);
-  
-  // Find applicable rule
-  let applicableRule = policy.rules[policy.rules.length - 1]; // Default to last rule (no-show)
-  
-  for (const rule of policy.rules) {
-    if (hoursUntil >= rule.hoursMin && hoursUntil < rule.hoursMax) {
-      applicableRule = rule;
-      break;
-    }
-  }
-  
-  const feePercent = applicableRule.feePercent;
-  const feeAmount = Math.round(amount * (feePercent / 100) * 100) / 100; // Round to cents
-  const refundAmount = Math.round((amount - feeAmount) * 100) / 100;
-  
-  // Calculate free cancellation deadline
-  const appointmentTime = new Date(appointmentDate);
-  const freeCancellationDeadline = new Date(
-    appointmentTime.getTime() - (policy.freeCancellationHours * 60 * 60 * 1000)
-  );
-  
-  return {
-    policyTier,
-    policyName: policy.name,
-    hoursUntilAppointment: Math.max(0, Math.round(hoursUntil * 10) / 10),
-    feePercent,
-    feeAmount,
-    refundAmount,
-    totalAmount: amount,
-    ruleApplied: applicableRule.label,
-    freeCancellationDeadline,
-    isFreeCancellation: feePercent === 0,
-    isNoShow: hoursUntil < 0 || isNoShow
-  };
-};
-
-/**
- * Get user-friendly policy summary for display
- * @param {string} tier - Policy tier
- * @param {number} amount - Booking amount
- * @returns {object} Display-ready policy info
- */
-const getPolicySummary = (tier = 'standard', amount = 0) => {
-  const policy = getPolicy(tier);
-  
-  return {
-    name: policy.name,
-    description: policy.description,
-    freeCancellationHours: policy.freeCancellationHours,
-    rules: policy.rules.map(rule => ({
-      label: rule.label,
-      feePercent: rule.feePercent,
-      feeAmount: amount > 0 ? Math.round(amount * (rule.feePercent / 100) * 100) / 100 : null
-    })).filter(r => r.feePercent < 100) // Don't show no-show in summary
-  };
-};
-
-/**
- * Check if cancellation is free
- * @param {Date} appointmentDate
- * @param {string} policyTier
- * @returns {boolean}
- */
-const isFreeCancellation = (appointmentDate, policyTier = 'standard') => {
-  const policy = getPolicy(policyTier);
-  const hoursUntil = hoursUntilAppointment(appointmentDate);
-  return hoursUntil >= policy.freeCancellationHours;
-};
-
-/**
- * Get time remaining for free cancellation
- * @param {Date} appointmentDate
- * @param {string} policyTier
- * @returns {object} Time remaining info
- */
-const getFreeCancellationTimeRemaining = (appointmentDate, policyTier = 'standard') => {
-  const policy = getPolicy(policyTier);
-  const appointmentTime = new Date(appointmentDate);
-  const deadline = new Date(
-    appointmentTime.getTime() - (policy.freeCancellationHours * 60 * 60 * 1000)
-  );
-  
+function calculateCancellationFee(appointmentDate, totalAmount, policyTier = 'standard') {
   const now = new Date();
-  const msRemaining = deadline - now;
+  const appointment = new Date(appointmentDate);
+  const msUntil = appointment - now;
+  const hoursUntil = msUntil / (1000 * 60 * 60);
   
-  if (msRemaining <= 0) {
+  const policy = CANCELLATION_POLICIES[policyTier] || CANCELLATION_POLICIES.standard;
+  
+  // If appointment is in the past, it's a no-show scenario
+  if (hoursUntil <= 0) {
     return {
-      expired: true,
-      deadline,
-      hoursRemaining: 0,
-      minutesRemaining: 0
+      hoursBeforeAppointment: 0,
+      feePercent: policy.noShowPercent,
+      feeAmount: totalAmount,
+      refundAmount: 0,
+      label: 'No-show - Full charge',
+      isFree: false,
+      isNoShow: true,
+      policyTier
     };
   }
   
-  const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
-  const minutesRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+  // Find applicable tier
+  const tier = policy.tiers.find(t => 
+    hoursUntil >= t.hoursMin && hoursUntil < t.hoursMax
+  );
+  
+  if (!tier) {
+    // Fallback to highest fee if something goes wrong
+    return {
+      hoursBeforeAppointment: hoursUntil,
+      feePercent: 50,
+      feeAmount: Math.round(totalAmount * 0.5 * 100) / 100,
+      refundAmount: Math.round(totalAmount * 0.5 * 100) / 100,
+      label: '50% cancellation fee',
+      isFree: false,
+      isNoShow: false,
+      policyTier
+    };
+  }
+  
+  const feeAmount = Math.round(totalAmount * (tier.feePercent / 100) * 100) / 100;
+  const refundAmount = Math.round((totalAmount - feeAmount) * 100) / 100;
   
   return {
-    expired: false,
-    deadline,
-    hoursRemaining,
-    minutesRemaining,
-    displayText: hoursRemaining > 0 
-      ? `${hoursRemaining}h ${minutesRemaining}m remaining`
-      : `${minutesRemaining} minutes remaining`
+    hoursBeforeAppointment: Math.round(hoursUntil * 10) / 10,
+    feePercent: tier.feePercent,
+    feeAmount,
+    refundAmount,
+    label: tier.label,
+    isFree: tier.feePercent === 0,
+    isNoShow: false,
+    policyTier
   };
+}
+
+/**
+ * Get human-readable time until appointment
+ * @param {Date} appointmentDate - The appointment date/time
+ * @returns {string} Human-readable time string
+ */
+function getTimeUntilAppointment(appointmentDate) {
+  const now = new Date();
+  const appointment = new Date(appointmentDate);
+  const msUntil = appointment - now;
+  
+  if (msUntil <= 0) {
+    return 'Appointment has passed';
+  }
+  
+  const hours = Math.floor(msUntil / (1000 * 60 * 60));
+  const minutes = Math.floor((msUntil % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours >= 48) {
+    const days = Math.floor(hours / 24);
+    return `${days} day${days > 1 ? 's' : ''} away`;
+  } else if (hours >= 1) {
+    return `${hours} hour${hours > 1 ? 's' : ''} ${minutes > 0 ? `${minutes} min` : ''} away`;
+  } else {
+    return `${minutes} minutes away`;
+  }
+}
+
+/**
+ * Get cancellation policy text for display
+ * @param {string} policyTier - 'standard' or 'moderate'
+ * @returns {Object} Policy text and details
+ */
+function getCancellationPolicyText(policyTier = 'standard') {
+  const policy = CANCELLATION_POLICIES[policyTier] || CANCELLATION_POLICIES.standard;
+  
+  return {
+    name: policy.name,
+    summary: policy.description,
+    details: policy.details
+  };
+}
+
+/**
+ * Check if cancellation is free at current time
+ * @param {Date} appointmentDate - The appointment date/time
+ * @param {string} policyTier - 'standard' or 'moderate'
+ * @returns {boolean} True if cancellation would be free
+ */
+function isCancellationFree(appointmentDate, policyTier = 'standard') {
+  const fee = calculateCancellationFee(appointmentDate, 100, policyTier);
+  return fee.isFree;
+}
+
+/**
+ * Get the free cancellation deadline
+ * @param {Date} appointmentDate - The appointment date/time
+ * @param {string} policyTier - 'standard' or 'moderate'
+ * @returns {Date} Deadline for free cancellation
+ */
+function getFreeCancellationDeadline(appointmentDate, policyTier = 'standard') {
+  const policy = CANCELLATION_POLICIES[policyTier] || CANCELLATION_POLICIES.standard;
+  const freeTier = policy.tiers.find(t => t.feePercent === 0);
+  
+  if (!freeTier) return null;
+  
+  const appointment = new Date(appointmentDate);
+  const deadline = new Date(appointment.getTime() - (freeTier.hoursMin * 60 * 60 * 1000));
+  
+  return deadline;
+}
+
+/**
+ * Format deadline for display
+ * @param {Date} deadline - The deadline date
+ * @returns {string} Formatted deadline string
+ */
+function formatDeadline(deadline) {
+  const options = { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric', 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true
+  };
+  return new Date(deadline).toLocaleDateString('en-US', options);
+}
+
+/**
+ * Generate cancellation quote for user display
+ * @param {Date} appointmentDate - The appointment date/time
+ * @param {number} totalAmount - The booking total
+ * @param {string} policyTier - 'standard' or 'moderate'
+ * @returns {Object} Quote for display
+ */
+function getCancellationQuote(appointmentDate, totalAmount, policyTier = 'standard') {
+  const fee = calculateCancellationFee(appointmentDate, totalAmount, policyTier);
+  const timeUntil = getTimeUntilAppointment(appointmentDate);
+  const deadline = getFreeCancellationDeadline(appointmentDate, policyTier);
+  
+  return {
+    ...fee,
+    timeUntilAppointment: timeUntil,
+    appointmentDate: new Date(appointmentDate).toISOString(),
+    freeCancellationDeadline: deadline ? formatDeadline(deadline) : null,
+    isPastDeadline: !fee.isFree,
+    
+    // For display
+    display: {
+      feeAmount: fee.feeAmount > 0 ? `$${fee.feeAmount.toFixed(2)}` : 'Free',
+      refundAmount: `$${fee.refundAmount.toFixed(2)}`,
+      message: fee.isFree 
+        ? 'You can cancel for free!' 
+        : `A ${fee.feePercent}% cancellation fee ($${fee.feeAmount.toFixed(2)}) will apply.`
+    }
+  };
+}
+
+// Booking request timeout settings
+const REQUEST_TIMEOUTS = {
+  reminderAfterHours: 24,      // Send reminder after 24h
+  expireAfterHours: 48,        // Auto-cancel after 48h
+  counterOfferValidHours: 24   // Counter offer valid for 24h
 };
 
+/**
+ * Check if a booking request has expired
+ * @param {Date} requestedAt - When the request was made
+ * @returns {boolean} True if expired
+ */
+function isRequestExpired(requestedAt) {
+  const now = new Date();
+  const requested = new Date(requestedAt);
+  const hoursSince = (now - requested) / (1000 * 60 * 60);
+  
+  return hoursSince >= REQUEST_TIMEOUTS.expireAfterHours;
+}
+
+/**
+ * Check if reminder should be sent
+ * @param {Date} requestedAt - When the request was made
+ * @param {Date} reminderSentAt - When reminder was sent (null if not sent)
+ * @returns {boolean} True if reminder should be sent
+ */
+function shouldSendReminder(requestedAt, reminderSentAt) {
+  if (reminderSentAt) return false;
+  
+  const now = new Date();
+  const requested = new Date(requestedAt);
+  const hoursSince = (now - requested) / (1000 * 60 * 60);
+  
+  return hoursSince >= REQUEST_TIMEOUTS.reminderAfterHours && 
+         hoursSince < REQUEST_TIMEOUTS.expireAfterHours;
+}
+
+/**
+ * Get request expiration date
+ * @param {Date} requestedAt - When the request was made
+ * @returns {Date} Expiration date
+ */
+function getRequestExpirationDate(requestedAt) {
+  const requested = new Date(requestedAt);
+  return new Date(requested.getTime() + (REQUEST_TIMEOUTS.expireAfterHours * 60 * 60 * 1000));
+}
+
 module.exports = {
-  POLICIES,
-  getPolicy,
   calculateCancellationFee,
-  getPolicySummary,
-  isFreeCancellation,
-  getFreeCancellationTimeRemaining,
-  hoursUntilAppointment
+  getTimeUntilAppointment,
+  getCancellationPolicyText,
+  isCancellationFree,
+  getFreeCancellationDeadline,
+  getCancellationQuote,
+  isRequestExpired,
+  shouldSendReminder,
+  getRequestExpirationDate,
+  CANCELLATION_POLICIES,
+  REQUEST_TIMEOUTS
 };

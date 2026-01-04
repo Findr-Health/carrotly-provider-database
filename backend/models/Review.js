@@ -1,130 +1,188 @@
 const mongoose = require('mongoose');
 
-const reviewSchema = new mongoose.Schema({
+const ReviewSchema = new mongoose.Schema({
   // References
-  providerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Provider',
-    required: true
-  },
-  userId: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   },
-  bookingId: {
+  provider: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking'
+    ref: 'Provider',
+    required: true,
+    index: true
+  },
+  booking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking',
+    required: true,
+    unique: true  // One review per booking
   },
   
-  // Review Content
+  // Rating (1-5 stars)
   rating: {
     type: Number,
     required: true,
     min: 1,
     max: 5
   },
-  title: String,
-  comment: String,
   
-  // Optional photos
-  photos: [{
-    url: String,
-    caption: String,
-    uploadedAt: { type: Date, default: Date.now }
-  }],
-  
-  // Verification
-  isVerifiedBooking: {
-    type: Boolean,
-    default: false
+  // Review content
+  title: {
+    type: String,
+    maxlength: 100
+  },
+  content: {
+    type: String,
+    required: true,
+    minlength: 10,
+    maxlength: 2000
   },
   
-  // Provider Response
-  providerResponse: {
-    content: String,
-    respondedAt: Date
-  },
+  // Service reviewed
+  serviceName: String,
   
-  // Moderation
+  // Status
   status: {
     type: String,
-    enum: ['pending', 'approved', 'flagged', 'removed'],
-    default: 'approved'
+    enum: ['published', 'flagged', 'removed', 'hidden'],
+    default: 'published'
   },
-  flagReason: String,
-  moderatedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin'
-  },
-  moderatedAt: Date,
   
-  // Helpfulness votes
+  // Helpful votes
   helpfulCount: {
     type: Number,
     default: 0
   },
-  helpfulVotes: [{
-    userId: mongoose.Schema.Types.ObjectId,
-    votedAt: Date
+  helpfulVoters: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }],
   
-  // Metadata
-  createdAt: {
-    type: Date,
-    default: Date.now
+  // Provider response
+  providerResponse: {
+    content: {
+      type: String,
+      maxlength: 1000
+    },
+    respondedAt: Date,
+    editedAt: Date
   },
-  updatedAt: Date
+  
+  // Flagging/Moderation
+  flags: [{
+    flaggedBy: mongoose.Schema.Types.ObjectId,
+    reason: {
+      type: String,
+      enum: ['inappropriate', 'fake', 'spam', 'offensive', 'other']
+    },
+    details: String,
+    flaggedAt: { type: Date, default: Date.now }
+  }],
+  
+  // Moderation
+  moderation: {
+    reviewedBy: mongoose.Schema.Types.ObjectId,
+    reviewedAt: Date,
+    action: {
+      type: String,
+      enum: ['approved', 'removed', 'edited']
+    },
+    reason: String
+  },
+  
+  // Edit tracking
+  isEdited: { type: Boolean, default: false },
+  editedAt: Date,
+  editHistory: [{
+    content: String,
+    rating: Number,
+    editedAt: Date
+  }],
+  
+  // Edit window (7 days)
+  canEditUntil: Date,
+  
+  // Verification
+  isVerifiedBooking: { type: Boolean, default: true }
+
+}, {
+  timestamps: true
 });
 
-// Update timestamps
-reviewSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
+// Indexes
+ReviewSchema.index({ provider: 1, status: 1, createdAt: -1 });
+ReviewSchema.index({ provider: 1, rating: 1 });
+ReviewSchema.index({ user: 1, createdAt: -1 });
+
+// Set edit window on creation
+ReviewSchema.pre('save', function(next) {
+  if (this.isNew) {
+    const editWindow = new Date();
+    editWindow.setDate(editWindow.getDate() + 7);
+    this.canEditUntil = editWindow;
+  }
   next();
 });
 
-// After saving a review, update provider's rating
-reviewSchema.post('save', async function() {
-  await this.constructor.updateProviderRating(this.providerId);
+// Virtual: Can user still edit?
+ReviewSchema.virtual('canEdit').get(function() {
+  return this.status === 'published' && new Date() < this.canEditUntil;
 });
 
-// After removing a review, update provider's rating
-reviewSchema.post('remove', async function() {
-  await this.constructor.updateProviderRating(this.providerId);
+// Virtual: Flag count
+ReviewSchema.virtual('flagCount').get(function() {
+  return this.flags ? this.flags.length : 0;
 });
 
-// Static method to recalculate provider rating
-reviewSchema.statics.updateProviderRating = async function(providerId) {
-  const Provider = mongoose.model('Provider');
-  
-  const result = await this.aggregate([
-    { $match: { providerId: providerId, status: 'approved' } },
+// Static: Get provider stats
+ReviewSchema.statics.getProviderStats = async function(providerId) {
+  const stats = await this.aggregate([
     { 
+      $match: { 
+        provider: new mongoose.Types.ObjectId(providerId),
+        status: 'published'
+      }
+    },
+    {
       $group: {
-        _id: '$providerId',
-        avgRating: { $avg: '$rating' },
-        count: { $sum: 1 }
+        _id: null,
+        averageRating: { $avg: '$rating' },
+        totalReviews: { $sum: 1 },
+        fiveStars: { $sum: { $cond: [{ $eq: ['$rating', 5] }, 1, 0] } },
+        fourStars: { $sum: { $cond: [{ $eq: ['$rating', 4] }, 1, 0] } },
+        threeStars: { $sum: { $cond: [{ $eq: ['$rating', 3] }, 1, 0] } },
+        twoStars: { $sum: { $cond: [{ $eq: ['$rating', 2] }, 1, 0] } },
+        oneStar: { $sum: { $cond: [{ $eq: ['$rating', 1] }, 1, 0] } }
       }
     }
   ]);
   
-  if (result.length > 0) {
-    await Provider.findByIdAndUpdate(providerId, {
-      rating: Math.round(result[0].avgRating * 10) / 10,  // Round to 1 decimal
-      reviewCount: result[0].count
-    });
-  } else {
-    await Provider.findByIdAndUpdate(providerId, {
-      rating: 0,
-      reviewCount: 0
-    });
+  if (stats.length === 0) {
+    return {
+      averageRating: 0,
+      totalReviews: 0,
+      distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    };
   }
+  
+  const s = stats[0];
+  return {
+    averageRating: Math.round(s.averageRating * 10) / 10,
+    totalReviews: s.totalReviews,
+    distribution: {
+      5: s.fiveStars,
+      4: s.fourStars,
+      3: s.threeStars,
+      2: s.twoStars,
+      1: s.oneStar
+    }
+  };
 };
 
-// Indexes
-reviewSchema.index({ providerId: 1, createdAt: -1 });  // Provider's reviews
-reviewSchema.index({ userId: 1, createdAt: -1 });  // User's reviews
-reviewSchema.index({ providerId: 1, status: 1 });  // Approved reviews
-reviewSchema.index({ bookingId: 1 }, { unique: true, sparse: true });  // One review per booking
+ReviewSchema.set('toJSON', { virtuals: true });
+ReviewSchema.set('toObject', { virtuals: true });
 
-module.exports = mongoose.model('Review', reviewSchema);
+module.exports = mongoose.model('Review', ReviewSchema);
