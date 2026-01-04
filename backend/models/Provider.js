@@ -152,10 +152,10 @@ const providerSchema = new mongoose.Schema({
 
   // Cancellation Policy
   cancellationPolicy: {
-    type: String,
-    enum: ['flexible', 'standard', 'strict'],
-    default: 'standard'
-  },
+  type: String,
+  enum: ['flexible', 'standard', 'moderate', 'strict'],
+  default: 'standard'
+}
 
   // Step 10: Legal Agreement
   agreement: {
