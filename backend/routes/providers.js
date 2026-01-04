@@ -47,7 +47,10 @@ router.post('/', async (req, res) => {
       optionalInfo,
       teamMembers,
       agreement,
-      password  // NEW: password field
+      password,  // NEW: password field
+      calendar,
+      cancellationPolicy,
+      description
     } = req.body;
 
     // Validation
@@ -137,6 +140,14 @@ router.post('/', async (req, res) => {
         version: '2025'
       },
       status: hasSignature ? 'pending' : 'pending_agreement',
+      description,
+      calendar: calendar ? {
+        businessHours: calendar.businessHours
+      } : undefined,
+      cancellationPolicy: cancellationPolicy ? {
+        tier: cancellationPolicy.tier,
+        allowFeeWaiver: cancellationPolicy.allowFeeWaiver
+      } : undefined,
       visibility: 'hidden'
     });
 
