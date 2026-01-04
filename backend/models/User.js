@@ -70,7 +70,8 @@ const userSchema = new mongoose.Schema({
     deviceModel: String,
     addedAt: { type: Date, default: Date.now }
   }],
-  
+  // Stripe
+  stripeCustomerId: String,
   // Account Status
   status: {
     type: String,
