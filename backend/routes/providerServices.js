@@ -597,3 +597,164 @@ router.put('/:providerId/services/reorder', getProvider, async (req, res) => {
 });
 
 module.exports = router;
+
+// ============================================
+// TEAM-SERVICE LINKING ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/providers/:providerId/team/for-service/:serviceId
+ * Get team members who can perform a specific service
+ */
+router.get('/:providerId/team/for-service/:serviceId', getProvider, async (req, res) => {
+  try {
+    const serviceId = req.params.serviceId;
+    
+    // Filter team members who:
+    // 1. Accept bookings
+    // 2. Have this service in their serviceIds (or have no serviceIds = can do all)
+    const eligibleMembers = (req.provider.teamMembers || []).filter(member => {
+      if (!member.acceptsBookings) return false;
+      
+      // If member has no serviceIds, they can perform all services
+      if (!member.serviceIds || member.serviceIds.length === 0) {
+        return true;
+      }
+      
+      // Check if serviceId is in their list
+      return member.serviceIds.includes(serviceId);
+    });
+    
+    const formattedMembers = eligibleMembers.map(member => ({
+      id: member._id,
+      name: member.name,
+      title: member.title,
+      credentials: member.credentials,
+      photo: member.photo,
+      rating: member.rating || 0,
+      reviewCount: member.reviewCount || 0,
+      specialties: member.specialties || []
+    }));
+    
+    res.json({
+      success: true,
+      providerId: req.provider._id,
+      serviceId: serviceId,
+      teamMembers: formattedMembers,
+      totalCount: formattedMembers.length
+    });
+    
+  } catch (error) {
+    console.error('Get team for service error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
+ * GET /api/providers/:providerId/team/:memberId/services
+ * Get services a team member can perform
+ */
+router.get('/:providerId/team/:memberId/services', getProvider, async (req, res) => {
+  try {
+    const member = (req.provider.teamMembers || []).find(
+      m => m._id.toString() === req.params.memberId
+    );
+    
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Team member not found' });
+    }
+    
+    // Get the services this member can perform
+    let memberServices = [];
+    
+    if (!member.serviceIds || member.serviceIds.length === 0) {
+      // No specific services = can do all active services
+      memberServices = (req.provider.services || []).filter(s => s.isActive !== false);
+    } else {
+      // Get only specified services
+      memberServices = (req.provider.services || []).filter(s => 
+        s.isActive !== false && member.serviceIds.includes(s._id.toString())
+      );
+    }
+    
+    res.json({
+      success: true,
+      teamMemberId: member._id,
+      teamMemberName: member.name,
+      canPerformAllServices: !member.serviceIds || member.serviceIds.length === 0,
+      services: memberServices.map(s => ({
+        id: s._id,
+        name: s.name,
+        category: s.category,
+        duration: s.duration,
+        price: s.price
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Get team member services error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
+ * PUT /api/providers/:providerId/team/:memberId/services
+ * Update which services a team member can perform
+ */
+router.put('/:providerId/team/:memberId/services', getProvider, async (req, res) => {
+  try {
+    const { serviceIds } = req.body;
+    const db = mongoose.connection.db;
+    
+    if (!Array.isArray(serviceIds)) {
+      return res.status(400).json({ success: false, message: 'serviceIds must be an array' });
+    }
+    
+    // Find the team member index
+    const memberIndex = (req.provider.teamMembers || []).findIndex(
+      m => m._id.toString() === req.params.memberId
+    );
+    
+    if (memberIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Team member not found' });
+    }
+    
+    // Validate that all serviceIds exist in provider's services
+    const validServiceIds = (req.provider.services || []).map(s => s._id.toString());
+    const invalidIds = serviceIds.filter(id => !validServiceIds.includes(id));
+    
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid service IDs', 
+        invalidIds: invalidIds 
+      });
+    }
+    
+    // Update the team member's serviceIds
+    const updatePath = `teamMembers.${memberIndex}.serviceIds`;
+    
+    await db.collection('providers').updateOne(
+      { _id: req.provider._id },
+      { 
+        $set: { 
+          [updatePath]: serviceIds,
+          updatedAt: new Date()
+        } 
+      }
+    );
+    
+    res.json({
+      success: true,
+      teamMember: {
+        id: req.provider.teamMembers[memberIndex]._id,
+        name: req.provider.teamMembers[memberIndex].name,
+        serviceIds: serviceIds
+      }
+    });
+    
+  } catch (error) {
+    console.error('Update team member services error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});

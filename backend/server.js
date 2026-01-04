@@ -12,14 +12,13 @@ const reviewRoutes = require('./routes/reviews');
 const bookingRoutes = require('./routes/bookings');
 const searchRoutes = require('./routes/search');
 const providerAdminRoutes = require('./routes/providerAdmin');
-const reviewsAdminRoutes = require('./routes/reviewsAdmin');
-const bookingsAdminRoutes = require('./routes/bookingsAdmin');
 const inquiriesAdminRoutes = require('./routes/inquiriesAdmin');
 const emailRoutes = require('./routes/email');
 const cancellationRoutes = require('./routes/cancellation');
 const serviceTemplatesRoutes = require('./routes/serviceTemplates');
 const availabilityRoutes = require('./routes/availability');
 const paymentsRoutes = require('./routes/payments');
+const providerServicesRoutes = require('./routes/providerServices');
 const { scheduleCronJobs } = require('./cron/bookingCron');
 
 const app = express();
@@ -63,6 +62,7 @@ app.use('/api/availability', availabilityRoutes);
 
 // Payments routes  
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/providers', providerServicesRoutes);
 
 // Review routes  
 app.use('/api/reviews', reviewRoutes);
