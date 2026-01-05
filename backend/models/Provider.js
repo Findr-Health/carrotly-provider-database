@@ -155,7 +155,7 @@ const providerSchema = new mongoose.Schema({
   type: String,
   enum: ['flexible', 'standard', 'moderate', 'strict'],
   default: 'standard'
-}
+},   
 
   // Step 10: Legal Agreement
   agreement: {
