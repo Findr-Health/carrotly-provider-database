@@ -3,6 +3,13 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   // Authentication
+  authProvider: {
+    type: String,
+    enum: ['email', 'google', 'apple', 'facebook'],
+    default: 'email'
+  },
+  socialId: String,
+  
   email: {
     type: String,
     required: true,

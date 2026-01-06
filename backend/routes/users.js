@@ -330,3 +330,210 @@ router.delete('/devices/:token', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+// ============ SOCIAL AUTH ROUTES ============
+
+// Google Sign In
+router.post('/auth/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    
+    if (!idToken) {
+      return res.status(400).json({ error: 'ID token is required' });
+    }
+
+    // Verify Google token (in production, use google-auth-library)
+    // For now, decode the JWT payload (not secure for production)
+    const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
+    
+    const { email, given_name, family_name, sub: googleId, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email not found in token' });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      // Create new user
+      user = new User({
+        email: email.toLowerCase(),
+        firstName: given_name || 'User',
+        lastName: family_name || '',
+        password: require('crypto').randomBytes(32).toString('hex'), // Random password
+        authProvider: 'google',
+        socialId: googleId,
+        photoUrl: picture,
+        emailVerified: true
+      });
+      await user.save();
+    } else if (!user.socialId) {
+      // Link existing email user to Google
+      user.authProvider = 'google';
+      user.socialId = googleId;
+      if (picture && !user.photoUrl) user.photoUrl = picture;
+      await user.save();
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
+        authProvider: user.authProvider
+      }
+    });
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+// Apple Sign In
+router.post('/auth/apple', async (req, res) => {
+  try {
+    const { identityToken, email, firstName, lastName } = req.body;
+    
+    if (!identityToken) {
+      return res.status(400).json({ error: 'Identity token is required' });
+    }
+
+    // Decode Apple JWT (in production, verify with Apple's public keys)
+    const payload = JSON.parse(Buffer.from(identityToken.split('.')[1], 'base64').toString());
+    const { sub: appleId, email: tokenEmail } = payload;
+    
+    const userEmail = email || tokenEmail;
+    
+    if (!userEmail) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ 
+      $or: [
+        { email: userEmail.toLowerCase() },
+        { socialId: appleId, authProvider: 'apple' }
+      ]
+    });
+    
+    if (!user) {
+      user = new User({
+        email: userEmail.toLowerCase(),
+        firstName: firstName || 'Apple',
+        lastName: lastName || 'User',
+        password: require('crypto').randomBytes(32).toString('hex'),
+        authProvider: 'apple',
+        socialId: appleId,
+        emailVerified: true
+      });
+      await user.save();
+    } else if (!user.socialId) {
+      user.authProvider = 'apple';
+      user.socialId = appleId;
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
+        authProvider: user.authProvider
+      }
+    });
+  } catch (err) {
+    console.error('Apple auth error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+// Facebook Sign In
+router.post('/auth/facebook', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Access token is required' });
+    }
+
+    // Fetch user data from Facebook Graph API
+    const fetch = require('node-fetch');
+    const fbResponse = await fetch(
+      `https://graph.facebook.com/me?fields=id,email,first_name,last_name,picture&access_token=${accessToken}`
+    );
+    
+    if (!fbResponse.ok) {
+      return res.status(401).json({ error: 'Invalid Facebook token' });
+    }
+
+    const fbData = await fbResponse.json();
+    const { id: facebookId, email, first_name, last_name, picture } = fbData;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email permission is required' });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      user = new User({
+        email: email.toLowerCase(),
+        firstName: first_name || 'Facebook',
+        lastName: last_name || 'User',
+        password: require('crypto').randomBytes(32).toString('hex'),
+        authProvider: 'facebook',
+        socialId: facebookId,
+        photoUrl: picture?.data?.url,
+        emailVerified: true
+      });
+      await user.save();
+    } else if (!user.socialId) {
+      user.authProvider = 'facebook';
+      user.socialId = facebookId;
+      if (picture?.data?.url && !user.photoUrl) user.photoUrl = picture.data.url;
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
+        authProvider: user.authProvider
+      }
+    });
+  } catch (err) {
+    console.error('Facebook auth error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
