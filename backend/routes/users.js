@@ -35,7 +35,7 @@ const auth = async (req, res, next) => {
 // Register new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, firstName, lastName, phone } = req.body;
+    const { email, password, firstName, lastName, phone, agreedToTerms, termsVersion } = req.body;
     
     // Validation
     if (!email || !password || !firstName || !lastName) {
@@ -49,12 +49,23 @@ router.post('/register', async (req, res) => {
         error: 'Password must be at least 8 characters' 
       });
     }
+
+    // Terms acceptance is required
+    if (!agreedToTerms) {
+      return res.status(400).json({ 
+        error: 'You must agree to the Terms of Service to create an account' 
+      });
+    }
     
     // Check if user exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ error: 'Email already registered' });
     }
+
+    // Get client IP and user agent
+    const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
     
     // Create user
     const user = new User({
@@ -62,7 +73,14 @@ router.post('/register', async (req, res) => {
       password,
       firstName,
       lastName,
-      phone
+      phone,
+      agreement: {
+        signed: true,
+        version: termsVersion || '2.0',
+        signedAt: new Date(),
+        ipAddress: ipAddress,
+        userAgent: userAgent
+      }
     });
     
     await user.save();

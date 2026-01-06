@@ -9,6 +9,15 @@ const userSchema = new mongoose.Schema({
     default: 'email'
   },
   socialId: String,
+
+  // Terms of Service Agreement
+  agreement: {
+    signed: { type: Boolean, default: false },
+    version: { type: String },
+    signedAt: { type: Date },
+    ipAddress: { type: String },
+    userAgent: { type: String }
+  },
   
   email: {
     type: String,
