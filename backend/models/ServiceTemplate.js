@@ -77,16 +77,16 @@ serviceTemplateSchema.index({ providerType: 1, category: 1, sortOrder: 1 });
 // Static method to get categories for a provider type
 serviceTemplateSchema.statics.getCategoriesForProviderType = function(providerType) {
   const categoryMap = {
-    'Medical': ['Consultation', 'Preventive', 'Diagnostic', 'Treatment', 'Procedures'],
-    'Urgent Care': ['Walk-in Visit', 'Diagnostic', 'Treatment', 'Minor Procedures'],
-    'Dental': ['Preventive', 'Restorative', 'Cosmetic', 'Surgical'],
-    'Mental Health': ['Assessment', 'Individual Therapy', 'Couples/Family', 'Group', 'Psychiatry'],
-    'Skincare': ['Facials', 'Injectables', 'Acne Treatment', 'Body Treatment'],
+    'Medical': ['Consultation', 'Preventive', 'Diagnostic', 'Treatment', 'Procedures', 'Labs', 'Immunizations', 'Screenings', 'Wellness'],
+    'Urgent Care': ['Walk-in Visit', 'Diagnostic', 'Treatment', 'Minor Procedures', 'Labs', 'Rapid Tests', 'IV Therapy', 'Immunizations', 'Screenings'],
+    'Dental': ['Preventive', 'Restorative', 'Cosmetic', 'Surgical', 'Emergency'],
+    'Mental Health': ['Assessment', 'Individual Therapy', 'Couples/Family', 'Group', 'Psychiatry', 'Therapy', 'Virtual'],
+    'Skincare': ['Facials', 'Injectables', 'Acne Treatment', 'Body Treatment', 'IV Therapy', 'Laser', 'Cosmetic'],
     'Massage': ['Relaxation', 'Therapeutic', 'Sports', 'Specialty'],
-    'Fitness': ['Personal Training', 'Group Class', 'Assessment'],
-    'Yoga/Pilates': ['Group Class', 'Private Session', 'Workshop'],
-    'Nutrition': ['Consultation', 'Meal Planning', 'Program'],
-    'Pharmacy/Rx': ['Consultation', 'Compounding', 'Immunization', 'Weight Loss']
+    'Fitness': ['Personal Training', 'Group Class', 'Assessment', 'Coaching'],
+    'Yoga/Pilates': ['Group Class', 'Private Session', 'Workshop', 'Mindfulness'],
+    'Nutrition': ['Consultation', 'Meal Planning', 'Program', 'Coaching'],
+    'Pharmacy/Rx': ['Consultation', 'Compounding', 'Immunizations', 'Weight Loss']
   };
   return categoryMap[providerType] || [];
 };
