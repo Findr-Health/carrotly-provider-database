@@ -7,7 +7,15 @@ interface EditServiceModalProps {
   onSave: (service: Service) => void;
 }
 
-const categories = ['Preventive', 'Acute Care', 'Chronic Care', 'Diagnostic', 'Virtual'];
+const categories = [
+  "Acute Care", "Assessment", "Chiropractic", "Chronic Care", "Coaching",
+  "Compounding", "Consultation", "Cosmetic", "Diagnostic", "Emergency",
+  "Evaluation", "Facials", "Group", "Holistic", "IV Therapy", "Immunizations",
+  "Injectables", "Labs", "Laser", "Massage", "Mindfulness", "Minor Procedures",
+  "Nutrition", "Personal Training", "Physical Therapy", "Pilates", "Preventive",
+  "Psychiatry", "Rapid Tests", "Restorative", "Screenings", "Testing", "Therapy",
+  "Urgent Care", "Vaccinations", "Virtual", "Wellness", "Yoga"
+];
 
 export function EditServiceModal({ service, onClose, onSave }: EditServiceModalProps) {
   const [formData, setFormData] = useState({

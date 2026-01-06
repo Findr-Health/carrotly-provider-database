@@ -4,12 +4,13 @@ import { providersAPI } from '../utils/api';
 
 
 const SERVICE_CATEGORIES = [
-  "Preventive", "Acute Care", "Chronic Care", "Vaccinations", "Virtual",
-  "Urgent Care", "Minor Procedures", "Diagnostic", "Testing", "IV Therapy",
-  "Restorative", "Cosmetic", "Emergency", "Evaluation", "Therapy",
-  "Psychiatry", "Facials", "Injectables", "Laser", "Consultation",
-  "Massage", "Chiropractic", "Physical Therapy", "Personal Training",
-  "Group Fitness", "Wellness", "Nutrition", "Weight Management", "General"
+  "Acute Care", "Assessment", "Chiropractic", "Chronic Care", "Coaching",
+  "Compounding", "Consultation", "Cosmetic", "Diagnostic", "Emergency",
+  "Evaluation", "Facials", "Group", "Holistic", "IV Therapy", "Immunizations",
+  "Injectables", "Labs", "Laser", "Massage", "Mindfulness", "Minor Procedures",
+  "Nutrition", "Personal Training", "Physical Therapy", "Pilates", "Preventive",
+  "Psychiatry", "Rapid Tests", "Restorative", "Screenings", "Testing", "Therapy",
+  "Urgent Care", "Vaccinations", "Virtual", "Wellness", "Yoga"
 ];
 export default function ProviderDetail() {
   const { id } = useParams();

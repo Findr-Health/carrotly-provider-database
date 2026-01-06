@@ -6,7 +6,15 @@ interface AddServiceModalProps {
   onSave: (service: Omit<Service, 'id' | 'bookingsLast30Days'>) => void;
 }
 
-const categories = ['Preventive', 'Acute Care', 'Chronic Care', 'Diagnostic', 'Virtual'];
+const categories = [
+  "Acute Care", "Assessment", "Chiropractic", "Chronic Care", "Coaching",
+  "Compounding", "Consultation", "Cosmetic", "Diagnostic", "Emergency",
+  "Evaluation", "Facials", "Group", "Holistic", "IV Therapy", "Immunizations",
+  "Injectables", "Labs", "Laser", "Massage", "Mindfulness", "Minor Procedures",
+  "Nutrition", "Personal Training", "Physical Therapy", "Pilates", "Preventive",
+  "Psychiatry", "Rapid Tests", "Restorative", "Screenings", "Testing", "Therapy",
+  "Urgent Care", "Vaccinations", "Virtual", "Wellness", "Yoga"
+];
 
 export function AddServiceModal({ onClose, onSave }: AddServiceModalProps) {
   const [formData, setFormData] = useState({
