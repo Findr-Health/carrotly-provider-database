@@ -8,7 +8,7 @@ const providerSchema = new mongoose.Schema({
   },
   providerTypes: [{
     type: String,
-    enum: ['medical', 'dental', 'cosmetic', 'fitness', 'massage', 'mental-health', 'skincare', 'Medical', 'Dental', 'Cosmetic', 'Fitness', 'Massage', 'Mental Health', 'Skincare', 'nutrition', 'Nutrition', 'yoga', 'Yoga', 'pharmacy', 'Pharmacy', 'urgent-care', 'Urgent Care']
+    enum: ['medical', 'dental', 'cosmetic', 'fitness', 'massage', 'mental_health', 'mental-health', 'skincare', 'Medical', 'Dental', 'Cosmetic', 'Fitness', 'Massage', 'Mental Health', 'Skincare', 'nutrition', 'Nutrition', 'yoga', 'Yoga', 'pharmacy', 'Pharmacy', 'urgent_care', 'urgent-care', 'Urgent Care']
   }],
   
   // Description (for provider bio/about section)
