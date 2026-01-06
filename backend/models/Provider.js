@@ -102,7 +102,8 @@ const providerSchema = new mongoose.Schema({
     specialties: [String],
     yearsExperience: Number,
     rating: { type: Number, default: 0 },           // NEW: Average rating
-    reviewCount: { type: Number, default: 0 },      // NEW: Number of reviews
+    reviewCount: { type: Number, default: 0 },
+  bookingCount: { type: Number, default: 0 },      // NEW: Number of reviews
     acceptsBookings: { type: Boolean, default: true },
     calendarConnected: { type: Boolean, default: false },
     serviceIds: [String]                            // NEW: IDs of services this member can perform
@@ -180,6 +181,7 @@ const providerSchema = new mongoose.Schema({
   // Rating & Reviews (aggregated)
   rating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },
+  bookingCount: { type: Number, default: 0 },
 
   // Metadata
   createdAt: {

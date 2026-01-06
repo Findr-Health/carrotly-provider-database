@@ -9,7 +9,57 @@ const JWT_SECRET = process.env.JWT_SECRET || 'findr-health-secret-key-change-in-
 // Get all providers (for admin)
 router.get('/', async (req, res) => {
   try {
-    const providers = await Provider.find().sort({ createdAt: -1 });
+    const { 
+      latitude, 
+      longitude, 
+      sort, 
+      limit = 50,
+      type,
+      status 
+    } = req.query;
+
+    let query = { status: status || 'approved' };
+    
+    // Filter by provider type
+    if (type) {
+      query.providerTypes = type;
+    }
+
+    let sortOption = { createdAt: -1 };
+    
+    // Sort options
+    if (sort === '-rating') {
+      sortOption = { 'reviews.averageRating': -1, reviewCount: -1 };
+    } else if (sort === '-bookingCount' || sort === '-popular') {
+      sortOption = { bookingCount: -1, reviewCount: -1 };
+    } else if (sort === '-reviewCount') {
+      sortOption = { reviewCount: -1 };
+    }
+
+    let providers = await Provider.find(query)
+      .sort(sortOption)
+      .limit(parseInt(limit));
+
+    // If coordinates provided, calculate distance
+    if (latitude && longitude) {
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+      
+      providers = providers.map(p => {
+        const pLat = p.location?.coordinates?.[1] || 0;
+        const pLng = p.location?.coordinates?.[0] || 0;
+        const distance = Math.sqrt(
+          Math.pow(lat - pLat, 2) + Math.pow(lng - pLng, 2)
+        ) * 69; // Rough miles conversion
+        return { ...p.toObject(), distance };
+      });
+      
+      // Sort by distance if requested
+      if (sort === 'distance') {
+        providers.sort((a, b) => a.distance - b.distance);
+      }
+    }
+
     res.json(providers);
   } catch (error) {
     console.error('Get providers error:', error);
