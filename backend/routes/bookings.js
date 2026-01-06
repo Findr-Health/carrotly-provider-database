@@ -154,6 +154,9 @@ router.post('/', async (req, res) => {
 
     await booking.save();
 
+    // Increment provider bookingCount
+    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
+
     // Send notifications
     const providerEmail = provider.contactInfo?.email || provider.email;
     
@@ -387,6 +390,9 @@ router.post('/:id/cancel', async (req, res) => {
 
     await booking.save();
 
+    // Increment provider bookingCount
+    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
+
     // Send notifications
     const providerEmail = booking.provider?.contactInfo?.email;
     
@@ -481,6 +487,9 @@ router.post('/:id/reschedule', async (req, res) => {
     booking.rescheduledTo = newBooking._id;
     await booking.save();
 
+    // Increment provider bookingCount
+    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
+
     res.json({
       success: true,
       newBooking: {
@@ -521,6 +530,9 @@ router.post('/:id/confirm', async (req, res) => {
     booking.bookingRequest.providerResponse = 'accepted';
     
     await booking.save();
+
+    // Increment provider bookingCount
+    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     // Notify user
     await emailService.sendBookingConfirmed(booking.user.email, booking, booking.provider);
@@ -584,6 +596,9 @@ router.post('/:id/decline', async (req, res) => {
     booking.payment.status = 'cancelled';
     
     await booking.save();
+
+    // Increment provider bookingCount
+    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     // Notify user
     // TODO: Add counter offer email template
@@ -652,6 +667,9 @@ router.post('/:id/complete', async (req, res) => {
 
     await booking.save();
 
+    // Increment provider bookingCount
+    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
+
     res.json({ 
       success: true, 
       booking,
@@ -702,6 +720,9 @@ router.post('/:id/no-show', async (req, res) => {
     booking.payment.capturedAt = new Date();
 
     await booking.save();
+
+    // Increment provider bookingCount
+    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     // Notify user
     // TODO: Add no-show email template
@@ -754,6 +775,9 @@ router.post('/:id/waive-fee', async (req, res) => {
     booking.payment.status = 'refunded';
 
     await booking.save();
+
+    // Increment provider bookingCount
+    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     res.json({ 
       success: true, 
