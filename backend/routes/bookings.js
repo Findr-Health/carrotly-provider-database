@@ -157,6 +157,7 @@ router.post('/', async (req, res) => {
     // Increment provider bookingCount
     await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
+
     // Send notifications
     const providerEmail = provider.contactInfo?.email || provider.email;
     
@@ -390,8 +391,6 @@ router.post('/:id/cancel', async (req, res) => {
 
     await booking.save();
 
-    // Increment provider bookingCount
-    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     // Send notifications
     const providerEmail = booking.provider?.contactInfo?.email;
@@ -487,8 +486,6 @@ router.post('/:id/reschedule', async (req, res) => {
     booking.rescheduledTo = newBooking._id;
     await booking.save();
 
-    // Increment provider bookingCount
-    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     res.json({
       success: true,
@@ -531,8 +528,6 @@ router.post('/:id/confirm', async (req, res) => {
     
     await booking.save();
 
-    // Increment provider bookingCount
-    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     // Notify user
     await emailService.sendBookingConfirmed(booking.user.email, booking, booking.provider);
@@ -597,8 +592,6 @@ router.post('/:id/decline', async (req, res) => {
     
     await booking.save();
 
-    // Increment provider bookingCount
-    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     // Notify user
     // TODO: Add counter offer email template
@@ -667,8 +660,6 @@ router.post('/:id/complete', async (req, res) => {
 
     await booking.save();
 
-    // Increment provider bookingCount
-    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     res.json({ 
       success: true, 
@@ -721,8 +712,6 @@ router.post('/:id/no-show', async (req, res) => {
 
     await booking.save();
 
-    // Increment provider bookingCount
-    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     // Notify user
     // TODO: Add no-show email template
@@ -776,8 +765,6 @@ router.post('/:id/waive-fee', async (req, res) => {
 
     await booking.save();
 
-    // Increment provider bookingCount
-    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
     res.json({ 
       success: true, 
