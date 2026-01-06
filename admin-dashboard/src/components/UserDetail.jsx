@@ -136,6 +136,16 @@ export default function UserDetail({ user, onBack, onUpdate }) {
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const getAuthProviderInfo = (provider) => {
+    const config = {
+      google: { bg: 'bg-red-50 border-red-200', text: 'text-red-700', icon: '🔴', label: 'Google Account', desc: 'Signed up via Google OAuth' },
+      apple: { bg: 'bg-gray-100 border-gray-300', text: 'text-gray-800', icon: '🍎', label: 'Apple ID', desc: 'Signed up via Apple Sign-In' },
+      facebook: { bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700', icon: '🔵', label: 'Facebook', desc: 'Signed up via Facebook Login' },
+      email: { bg: 'bg-teal-50 border-teal-200', text: 'text-teal-700', icon: '✉️', label: 'Email & Password', desc: 'Traditional email registration' }
+    };
+    return config[provider] || config.email;
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'insurance', label: 'Insurance' },
@@ -389,6 +399,31 @@ export default function UserDetail({ user, onBack, onUpdate }) {
                 <p className="font-medium">{user.emailVerified ? 'Yes' : 'No'}</p>
               </div>
             </div>
+          </div>
+
+          {/* Authentication Method */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4">Authentication Method</h3>
+            {(() => {
+              const auth = getAuthProviderInfo(user.authProvider);
+              return (
+                <div className={`p-4 rounded-lg border ${auth.bg}`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">{auth.icon}</span>
+                    <div>
+                      <p className={`font-semibold ${auth.text}`}>{auth.label}</p>
+                      <p className="text-sm text-gray-600">{auth.desc}</p>
+                    </div>
+                  </div>
+                  {user.socialId && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <label className="block text-xs text-gray-500 mb-1">Social ID</label>
+                      <p className="text-sm font-mono text-gray-700">{user.socialId}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {editing && (

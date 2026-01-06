@@ -46,6 +46,16 @@ export default function UserList({ onSelectUser }) {
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const getAuthProviderBadge = (provider) => {
+    const config = {
+      google: { bg: 'bg-red-50', text: 'text-red-700', icon: '🔴', label: 'Google' },
+      apple: { bg: 'bg-gray-100', text: 'text-gray-800', icon: '🍎', label: 'Apple' },
+      facebook: { bg: 'bg-blue-50', text: 'text-blue-700', icon: '🔵', label: 'Facebook' },
+      email: { bg: 'bg-gray-50', text: 'text-gray-600', icon: '✉️', label: 'Email' }
+    };
+    return config[provider] || config.email;
+  };
+
   const formatDate = (date) => {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString();
@@ -65,7 +75,7 @@ export default function UserList({ onSelectUser }) {
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Users</h1>
         
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-5 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <p className="text-sm text-gray-600">Total Users</p>
             <p className="text-2xl font-bold text-gray-900">{users.length}</p>
@@ -86,6 +96,12 @@ export default function UserList({ onSelectUser }) {
             <p className="text-sm text-gray-600">Suspended</p>
             <p className="text-2xl font-bold text-red-600">
               {users.filter(u => u.status === 'suspended').length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <p className="text-sm text-gray-600">Social Login</p>
+            <p className="text-2xl font-bold text-purple-600">
+              {users.filter(u => u.authProvider && u.authProvider !== 'email').length}
             </p>
           </div>
         </div>
@@ -128,6 +144,9 @@ export default function UserList({ onSelectUser }) {
                 Location
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Auth
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -141,7 +160,7 @@ export default function UserList({ onSelectUser }) {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                   {users.length === 0 ? 'No users yet' : 'No users match your search'}
                 </td>
               </tr>
@@ -174,6 +193,16 @@ export default function UserList({ onSelectUser }) {
                       {user.address?.city}, {user.address?.state}
                     </div>
                     <div className="text-sm text-gray-500">{user.address?.zip}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {(() => {
+                      const auth = getAuthProviderBadge(user.authProvider);
+                      return (
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${auth.bg} ${auth.text}`}>
+                          {auth.icon} {auth.label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
