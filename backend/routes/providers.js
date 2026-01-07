@@ -15,7 +15,8 @@ router.get('/', async (req, res) => {
       sort, 
       limit = 50,
       type,
-      status 
+      status,
+      search 
     } = req.query;
 
     let query = { status: status || 'approved' };
