@@ -595,3 +595,39 @@ router.delete('/me', auth, async (req, res) => {
     res.status(500).json({ error: 'Failed to delete account' });
   }
 });
+
+// ============================================================
+// DELETE ACCOUNT
+// ============================================================
+router.delete('/me', auth, async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ error: 'Password required to delete account' });
+    }
+    
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+    
+    const Booking = require('../models/Booking');
+    await Booking.updateMany(
+      { user: user._id, status: 'pending' },
+      { status: 'cancelled', cancelledAt: new Date(), cancellationReason: 'Account deleted' }
+    );
+    
+    await User.findByIdAndDelete(user._id);
+    
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
