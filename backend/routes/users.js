@@ -555,3 +555,43 @@ router.post('/auth/facebook', async (req, res) => {
     res.status(500).json({ error: 'Authentication failed' });
   }
 });
+
+// ============================================================
+// DELETE ACCOUNT
+// ============================================================
+router.delete('/me', auth, async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ error: 'Password required to delete account' });
+    }
+    
+    // Get user with password
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Verify password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+    
+    // Cancel any pending bookings
+    const Booking = require('../models/Booking');
+    await Booking.updateMany(
+      { user: user._id, status: 'pending' },
+      { status: 'cancelled', cancelledAt: new Date(), cancellationReason: 'Account deleted' }
+    );
+    
+    // Delete the user
+    await User.findByIdAndDelete(user._id);
+    
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
