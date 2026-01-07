@@ -26,6 +26,19 @@ router.get('/', async (req, res) => {
       query.providerTypes = type;
     }
 
+    
+    // Text search across name, services, categories
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { practiceName: searchRegex },
+        { 'services.name': searchRegex },
+        { 'services.category': searchRegex },
+        { providerTypes: searchRegex },
+        { description: searchRegex }
+      ];
+    }
+    
     let sortOption = { createdAt: -1 };
     
     // Sort options
