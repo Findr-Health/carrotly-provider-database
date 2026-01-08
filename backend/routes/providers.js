@@ -258,19 +258,39 @@ router.put('/:id', async (req, res) => {
   try {
     const updateData = { ...req.body };
     delete updateData.password;
+    delete updateData._id; // Never update _id
     
     const currentProvider = await Provider.findById(req.params.id);
-    const oldStatus = currentProvider?.status;
+    if (!currentProvider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    const oldStatus = currentProvider.status;
+    
+    // Handle nested objects properly - merge instead of replace
+    // This prevents losing existing nested data when only updating part of it
+    const nestedFields = ['calendar', 'contactInfo', 'address', 'credentials', 'payment', 'agreement'];
+    
+    for (const field of nestedFields) {
+      if (updateData[field] && currentProvider[field]) {
+        const existingData = currentProvider[field].toObject ? currentProvider[field].toObject() : currentProvider[field];
+        updateData[field] = { ...existingData, ...updateData[field] };
+        
+        // Special handling for calendar.businessHours - merge each day
+        if (field === 'calendar' && updateData.calendar.businessHours && existingData.businessHours) {
+          const existingHours = existingData.businessHours.toObject ? existingData.businessHours.toObject() : existingData.businessHours;
+          updateData.calendar.businessHours = { ...existingHours, ...updateData.calendar.businessHours };
+        }
+      }
+    }
     
     const provider = await Provider.findByIdAndUpdate(
       req.params.id,
       { $set: updateData },
       { new: true, runValidators: true }
     );
-    if (!provider) {
-      return res.status(404).json({ error: 'Provider not found' });
-    }
     
+    // Send status change email if needed
     if (updateData.status && updateData.status !== oldStatus) {
       const email = provider.contactInfo?.email || provider.email;
       if (email && (updateData.status === 'approved' || updateData.status === 'rejected')) {
