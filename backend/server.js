@@ -22,6 +22,7 @@ const placesRoutes = require('./routes/places');
 const availabilityRoutes = require('./routes/availability');
 const paymentsRoutes = require('./routes/payments');
 const providerServicesRoutes = require('./routes/providerServices');
+const uploadRoutes = require('./routes/upload');
 const { scheduleCronJobs } = require('./cron/bookingCron');
 
 const app = express();
@@ -85,6 +86,7 @@ app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/admin', adminManagementRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/service-templates', serviceTemplatesRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/places', placesRoutes);
 
 // Health check with MongoDB status
