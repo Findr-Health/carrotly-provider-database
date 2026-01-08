@@ -295,6 +295,7 @@ export default function ProviderDetail() {
     { id: 'services', label: 'Services', icon: '💼' },
     { id: 'credentials', label: 'Credentials', icon: '📜' },
     { id: 'team', label: 'Team', icon: '👥' },
+    { id: 'hours', label: 'Hours', icon: '🕐' },
     { id: 'agreement', label: 'Agreement', icon: '✍️' }
   ];
 
@@ -1214,6 +1215,107 @@ export default function ProviderDetail() {
                 </button>
               )}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Hours Tab */}
+      {activeTab === 'hours' && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span>🕐</span> Hours of Operation
+          </h2>
+          <div className="grid gap-4">
+            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+              const hours = provider.calendar?.businessHours?.[day];
+              const isOpen = hours?.isOpen ?? false;
+              return (
+                <div key={day} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                  <span className="font-medium text-gray-900 capitalize w-32">{day}</span>
+                  {editMode ? (
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isOpen}
+                          onChange={(e) => {
+                            setProvider(prev => ({
+                              ...prev,
+                              calendar: {
+                                ...prev.calendar,
+                                businessHours: {
+                                  ...prev.calendar?.businessHours,
+                                  [day]: {
+                                    ...prev.calendar?.businessHours?.[day],
+                                    isOpen: e.target.checked
+                                  }
+                                }
+                              }
+                            }));
+                          }}
+                          className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                        />
+                        <span className="text-sm text-gray-600">Open</span>
+                      </label>
+                      {isOpen && (
+                        <>
+                          <input
+                            type="time"
+                            value={hours?.open || '09:00'}
+                            onChange={(e) => {
+                              setProvider(prev => ({
+                                ...prev,
+                                calendar: {
+                                  ...prev.calendar,
+                                  businessHours: {
+                                    ...prev.calendar?.businessHours,
+                                    [day]: {
+                                      ...prev.calendar?.businessHours?.[day],
+                                      open: e.target.value
+                                    }
+                                  }
+                                }
+                              }));
+                            }}
+                            className="px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                          <span className="text-gray-500">to</span>
+                          <input
+                            type="time"
+                            value={hours?.close || '17:00'}
+                            onChange={(e) => {
+                              setProvider(prev => ({
+                                ...prev,
+                                calendar: {
+                                  ...prev.calendar,
+                                  businessHours: {
+                                    ...prev.calendar?.businessHours,
+                                    [day]: {
+                                      ...prev.calendar?.businessHours?.[day],
+                                      close: e.target.value
+                                    }
+                                  }
+                                }
+                              }));
+                            }}
+                            className="px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <span className={`text-sm ${isOpen ? 'text-gray-600' : 'text-red-500 font-medium'}`}>
+                      {isOpen ? `${hours?.open || '9:00'} - ${hours?.close || '17:00'}` : 'Closed'}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {!editMode && (
+            <p className="mt-4 text-sm text-gray-500">
+              Click "Edit Provider" to modify hours of operation.
+            </p>
           )}
         </div>
       )}
