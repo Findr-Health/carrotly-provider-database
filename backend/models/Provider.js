@@ -176,7 +176,6 @@ const providerSchema = new mongoose.Schema({
   isFeatured: { type: Boolean, default: false },
   featuredOrder: { type: Number, default: 0 },
   verifiedAt: Date,
-  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
 
   // Provider Status
   status: {

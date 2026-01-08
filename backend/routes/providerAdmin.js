@@ -40,10 +40,8 @@ router.patch('/:providerId/verified', adminAuth, async (req, res) => {
     
     if (isVerified) {
       provider.verifiedAt = new Date();
-      provider.verifiedBy = req.adminId;
     } else {
       provider.verifiedAt = undefined;
-      provider.verifiedBy = undefined;
     }
     
     await provider.save();
