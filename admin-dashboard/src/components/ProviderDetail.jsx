@@ -22,6 +22,7 @@ export default function ProviderDetail() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     fetchProvider();
@@ -68,6 +69,56 @@ export default function ProviderDetail() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    for (const file of Array.from(files)) {
+      if ((provider.photos || []).length >= 5) {
+        alert('Maximum 5 photos allowed');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File exceeds 10MB limit');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        alert('Only image files are allowed');
+        return;
+      }
+      
+      setUploadingPhoto(true);
+      
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const API_URL = import.meta.env.VITE_API_URL || 'https://fearless-achievement-production.up.railway.app/api';
+        const response = await fetch(`${API_URL}/upload/image`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) throw new Error('Upload failed');
+        
+        const result = await response.json();
+        
+        if (result.success && result.url) {
+          const newPhoto = { url: result.url, isPrimary: (provider.photos || []).length === 0 };
+          updateField('photos', [...(provider.photos || []), newPhoto]);
+        } else {
+          throw new Error('No URL returned');
+        }
+      } catch (error) {
+        console.error('Photo upload error:', error);
+        alert('Failed to upload photo. Please try again.');
+      } finally {
+        setUploadingPhoto(false);
+      }
+    }
+    e.target.value = ''; // Reset input
   };
 
   const updateField = (field, value) => {
@@ -760,6 +811,18 @@ export default function ProviderDetail() {
             </h2>
             {editMode && (provider.photos || []).length < 5 && (
               <div className="flex gap-2">
+                <label className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 cursor-pointer flex items-center gap-2">
+                  <span>📤</span> {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handlePhotoUpload}
+                    disabled={uploadingPhoto}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-gray-400 self-center">or</span>
                 <input
                   type="text"
                   placeholder="Paste image URL..."
@@ -771,7 +834,6 @@ export default function ProviderDetail() {
                     }
                   }}
                 />
-                <span className="text-sm text-gray-500 self-center">Press Enter to add</span>
               </div>
             )}
           </div>
@@ -828,7 +890,7 @@ export default function ProviderDetail() {
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <span className="text-4xl mb-2 block">📷</span>
               <p className="text-gray-500">No photos uploaded</p>
-              {editMode && <p className="text-sm text-gray-400 mt-1">Paste an image URL above to add photos</p>}
+              {editMode && <p className="text-sm text-gray-400 mt-1">Click "Upload Photo" or paste an image URL above</p>}
             </div>
           )}
         </div>
