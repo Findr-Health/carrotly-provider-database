@@ -171,6 +171,13 @@ const providerSchema = new mongoose.Schema({
     version: String
   },
 
+  // Verification & Feature Flags
+  isVerified: { type: Boolean, default: false },
+  isFeatured: { type: Boolean, default: false },
+  featuredOrder: { type: Number, default: 0 },
+  verifiedAt: Date,
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+
   // Provider Status
   status: {
     type: String,

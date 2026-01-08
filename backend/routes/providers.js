@@ -16,7 +16,9 @@ router.get('/', async (req, res) => {
       limit = 50,
       type,
       status,
-      search 
+      search,
+      verified,
+      featured
     } = req.query;
 
     let query = { status: status || 'approved' };
