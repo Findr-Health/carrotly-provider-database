@@ -67,7 +67,7 @@ const BookingSchema = new mongoose.Schema({
   payment: {
     method: {
       type: String,
-      enum: ['card', 'apple_pay', 'google_pay'],
+      enum: ['card', 'apple_pay', 'google_pay', 'at_visit', 'cash'],
       default: 'card'
     },
     
@@ -94,6 +94,13 @@ const BookingSchema = new mongoose.Schema({
       type: String,
       enum: ['pending', 'authorized', 'captured', 'refunded', 'partially_refunded', 'failed', 'cancelled'],
       default: 'pending'
+    },
+    
+    // Charge type
+    chargeType: {
+      type: String,
+      enum: ['prepay', 'at_visit', 'card_on_file'],
+      default: 'card_on_file'
     },
     
     // Timestamps
