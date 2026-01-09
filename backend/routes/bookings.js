@@ -85,39 +85,39 @@ router.post('/', async (req, res) => {
     if (chargeType === 'prepay' || (chargeType === 'card_on_file' && paymentMethodId)) {
       // Get or create Stripe customer
       stripeCustomerId = user.stripeCustomerId;
-    if (!stripeCustomerId) {
-      const customer = await stripeService.createCustomer({
-        email: user.email,
-        name: `${user.firstName} ${user.lastName}`,
-        phone: user.phone,
-        metadata: { userId: userId.toString() }
-      });
-      stripeCustomerId = customer.id;
-      
-      // Save to user
-      await User.findByIdAndUpdate(userId, { stripeCustomerId });
-    }
-
-    // Attach payment method if not already attached
-    try {
-      await stripeService.attachPaymentMethod(paymentMethodId, stripeCustomerId);
-    } catch (err) {
-      // Payment method might already be attached, that's ok
-      if (!err.message.includes('already been attached')) {
-        throw err;
+      if (!stripeCustomerId) {
+        const customer = await stripeService.createCustomer({
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+          phone: user.phone,
+          metadata: { userId: userId.toString() }
+        });
+        stripeCustomerId = customer.id;
+        
+        // Save to user
+        await User.findByIdAndUpdate(userId, { stripeCustomerId });
       }
-    }
-
-    // Create payment intent (authorize only, don't capture)
-    const paymentIntent = await stripeService.createPaymentIntent({
-      amount: fees.userTotal,  // User pays service price only
-      customerId: stripeCustomerId,
-      paymentMethodId,
-      providerId,
-      serviceName: service.name
-    });
-
-    // Check if payment needs additional action (3DS)
+      
+      // Attach payment method if not already attached
+      try {
+        await stripeService.attachPaymentMethod(paymentMethodId, stripeCustomerId);
+      } catch (err) {
+        // Payment method might already be attached, that's ok
+        if (!err.message.includes('already been attached')) {
+          throw err;
+        }
+      }
+      
+      // Create payment intent (authorize only, don't capture)
+      paymentIntent = await stripeService.createPaymentIntent({
+        amount: fees.userTotal,
+        customerId: stripeCustomerId,
+        paymentMethodId,
+        providerId,
+        serviceName: service.name
+      });
+      
+      // Check if payment needs additional action (3DS)
       if (paymentIntent.requiresAction) {
         return res.status(200).json({
           requiresAction: true,
