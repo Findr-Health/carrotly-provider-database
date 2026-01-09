@@ -76,7 +76,9 @@ router.post('/', async (req, res) => {
                                    ['google', 'microsoft', 'apple'].includes(provider.calendar.provider);
 
     // Calculate fees
+    console.log("[BOOKING DEBUG] Calculating fees for price:", service.price);
     const fees = calculateFees(service.price);
+    console.log("[BOOKING DEBUG] Fees calculated:", fees);
 
     // Handle payment based on chargeType
     let stripeCustomerId = null;
@@ -176,12 +178,15 @@ router.post('/', async (req, res) => {
       }
     });
 
+    console.log("[BOOKING DEBUG] About to save booking...");
     await booking.save();
+    console.log("[BOOKING DEBUG] Booking saved successfully:", booking._id);
 
     // Increment provider bookingCount
     await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
 
 
+    console.log("[BOOKING DEBUG] About to send notifications...");
     // Send notifications
     const providerEmail = provider.contactInfo?.email || provider.email;
     
@@ -413,9 +418,12 @@ router.post('/:id/cancel', async (req, res) => {
       booking.payment.refundedAt = new Date();
     }
 
+    console.log("[BOOKING DEBUG] About to save booking...");
     await booking.save();
+    console.log("[BOOKING DEBUG] Booking saved successfully:", booking._id);
 
 
+    console.log("[BOOKING DEBUG] About to send notifications...");
     // Send notifications
     const providerEmail = booking.provider?.contactInfo?.email;
     
@@ -508,7 +516,9 @@ router.post('/:id/reschedule', async (req, res) => {
     // Update old booking
     booking.status = 'rescheduled';
     booking.rescheduledTo = newBooking._id;
+    console.log("[BOOKING DEBUG] About to save booking...");
     await booking.save();
+    console.log("[BOOKING DEBUG] Booking saved successfully:", booking._id);
 
 
     res.json({
@@ -550,7 +560,9 @@ router.post('/:id/confirm', async (req, res) => {
     booking.bookingRequest.respondedAt = new Date();
     booking.bookingRequest.providerResponse = 'accepted';
     
+    console.log("[BOOKING DEBUG] About to save booking...");
     await booking.save();
+    console.log("[BOOKING DEBUG] Booking saved successfully:", booking._id);
 
 
     // Notify user
@@ -614,7 +626,9 @@ router.post('/:id/decline', async (req, res) => {
     };
     booking.payment.status = 'cancelled';
     
+    console.log("[BOOKING DEBUG] About to save booking...");
     await booking.save();
+    console.log("[BOOKING DEBUG] Booking saved successfully:", booking._id);
 
 
     // Notify user
@@ -682,7 +696,9 @@ router.post('/:id/complete', async (req, res) => {
       booking.payment.providerPayout = newFees.providerPayout;
     }
 
+    console.log("[BOOKING DEBUG] About to save booking...");
     await booking.save();
+    console.log("[BOOKING DEBUG] Booking saved successfully:", booking._id);
 
 
     res.json({ 
@@ -734,7 +750,9 @@ router.post('/:id/no-show', async (req, res) => {
     booking.payment.status = 'captured';
     booking.payment.capturedAt = new Date();
 
+    console.log("[BOOKING DEBUG] About to save booking...");
     await booking.save();
+    console.log("[BOOKING DEBUG] Booking saved successfully:", booking._id);
 
 
     // Notify user
@@ -787,7 +805,9 @@ router.post('/:id/waive-fee', async (req, res) => {
     booking.cancellation.refundAmount = booking.payment.total; // Full refund now
     booking.payment.status = 'refunded';
 
+    console.log("[BOOKING DEBUG] About to save booking...");
     await booking.save();
+    console.log("[BOOKING DEBUG] Booking saved successfully:", booking._id);
 
 
     res.json({ 
