@@ -36,14 +36,22 @@ router.post('/', async (req, res) => {
       appointmentDate,
       appointmentTime,
       paymentMethodId,
+      chargeType = 'card_on_file',  // 'prepay', 'at_visit', 'card_on_file'
       notes
     } = req.body;
 
     // Validate required fields
-    if (!userId || !providerId || !service || !appointmentDate || !appointmentTime || !paymentMethodId) {
+    const requiresPayment = chargeType === 'prepay';
+    if (!userId || !providerId || !service || !appointmentDate || !appointmentTime) {
       return res.status(400).json({ 
         error: 'Missing required fields',
-        required: ['userId', 'providerId', 'service', 'appointmentDate', 'appointmentTime', 'paymentMethodId']
+        required: ['userId', 'providerId', 'service', 'appointmentDate', 'appointmentTime']
+      });
+    }
+    if (requiresPayment && !paymentMethodId) {
+      return res.status(400).json({ 
+        error: 'Payment method required for prepay bookings',
+        required: ['paymentMethodId']
       });
     }
 
@@ -70,8 +78,13 @@ router.post('/', async (req, res) => {
     // Calculate fees
     const fees = calculateFees(service.price);
 
-    // Get or create Stripe customer
-    let stripeCustomerId = user.stripeCustomerId;
+    // Handle payment based on chargeType
+    let stripeCustomerId = null;
+    let paymentIntent = null;
+    
+    if (chargeType === 'prepay' || (chargeType === 'card_on_file' && paymentMethodId)) {
+      // Get or create Stripe customer
+      stripeCustomerId = user.stripeCustomerId;
     if (!stripeCustomerId) {
       const customer = await stripeService.createCustomer({
         email: user.email,
@@ -105,13 +118,14 @@ router.post('/', async (req, res) => {
     });
 
     // Check if payment needs additional action (3DS)
-    if (paymentIntent.requiresAction) {
-      return res.status(200).json({
-        requiresAction: true,
-        clientSecret: paymentIntent.clientSecret,
-        nextActionUrl: paymentIntent.nextActionUrl
-      });
-    }
+      if (paymentIntent.requiresAction) {
+        return res.status(200).json({
+          requiresAction: true,
+          clientSecret: paymentIntent.clientSecret,
+          nextActionUrl: paymentIntent.nextActionUrl
+        });
+      }
+    } // End of payment processing block
 
     // Create booking
     const booking = new Booking({
@@ -131,18 +145,28 @@ router.post('/', async (req, res) => {
       appointmentDate: new Date(appointmentDate),
       appointmentTime,
       status: hasCalendarIntegration ? 'confirmed' : 'pending',
-      payment: {
-        method: 'card',
-        stripeCustomerId,
-        stripePaymentMethodId: paymentMethodId,
-        stripePaymentIntentId: paymentIntent.id,
+      payment: chargeType === 'at_visit' ? {
+        method: 'at_visit',
         servicePrice: fees.servicePrice,
         platformFee: fees.platformFee,
         stripeFee: fees.stripeFee,
         providerPayout: fees.providerPayout,
         total: fees.userTotal,
-        status: 'authorized',
-        authorizedAt: new Date()
+        status: 'pending',
+        chargeType: 'at_visit'
+      } : {
+        method: 'card',
+        stripeCustomerId,
+        stripePaymentMethodId: paymentMethodId,
+        stripePaymentIntentId: paymentIntent?.id,
+        servicePrice: fees.servicePrice,
+        platformFee: fees.platformFee,
+        stripeFee: fees.stripeFee,
+        providerPayout: fees.providerPayout,
+        total: fees.userTotal,
+        status: paymentIntent ? 'authorized' : 'pending',
+        authorizedAt: paymentIntent ? new Date() : undefined,
+        chargeType: chargeType
       },
       notes,
       bookingRequest: hasCalendarIntegration ? undefined : {
