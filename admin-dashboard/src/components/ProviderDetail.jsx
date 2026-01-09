@@ -4,13 +4,18 @@ import { providersAPI } from '../utils/api';
 
 
 const SERVICE_CATEGORIES = [
-  "Acute Care", "Assessment", "Chiropractic", "Chronic Care", "Coaching",
-  "Compounding", "Consultation", "Cosmetic", "Diagnostic", "Emergency",
-  "Evaluation", "Facials", "Group", "Holistic", "IV Therapy", "Immunizations",
-  "Injectables", "Labs", "Laser", "Massage", "Mindfulness", "Minor Procedures",
-  "Nutrition", "Personal Training", "Physical Therapy", "Pilates", "Preventive",
-  "Psychiatry", "Rapid Tests", "Restorative", "Screenings", "Testing", "Therapy",
-  "Urgent Care", "Vaccinations", "Virtual", "Wellness", "Yoga"
+  "Acne Treatment", "Acute Care", "Assessment", "Body Treatment", "Chiropractic",
+  "Chronic Care", "Coaching", "Compounding", "Consultation", "Cosmetic",
+  "Couples/Family", "Diagnostic", "Emergency", "Evaluation", "Facials",
+  "Group", "Group Class", "Holistic", "Immunization", "Immunizations",
+  "Individual Therapy", "Injectables", "IV Therapy", "Labs", "Laser",
+  "Massage", "Meal Planning", "Mindfulness", "Minor Procedures", "Nutrition",
+  "Personal Training", "Physical Therapy", "Pilates", "Preventive", "Private Session",
+  "Procedures", "Program", "Psychiatry", "Rapid Tests", "Relaxation",
+  "Restorative", "Screenings", "Specialty", "Sports", "Surgical",
+  "Testing", "Therapeutic", "Therapy", "Treatment", "Urgent Care",
+  "Vaccinations", "Virtual", "Walk-in Visit", "Weight Loss", "Wellness",
+  "Workshop", "Yoga"
 ];
 export default function ProviderDetail() {
   const { id } = useParams();
@@ -571,7 +576,7 @@ export default function ProviderDetail() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Provider Types</label>
                 {editMode ? (
                   <div className="flex flex-wrap gap-2">
-                    {['Medical', 'Urgent Care', 'Dental', 'Mental Health', 'Skincare/Aesthetics', 'Massage/Bodywork', 'Fitness/Training', 'Yoga/Pilates', 'Nutrition/Wellness', 'Pharmacy/RX'].map((type) => (
+                    {['Medical', 'Urgent Care', 'Dental', 'Mental Health', 'Skincare', 'Massage', 'Fitness', 'Yoga', 'Nutrition', 'Pharmacy'].map((type) => (
                       <label key={type} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                         (provider.providerTypes || []).includes(type) 
                           ? 'bg-blue-100 border-blue-500 text-blue-800' 
