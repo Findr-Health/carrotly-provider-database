@@ -2,3 +2,10 @@ node_modules/
 agent/.env
 .env
 *.env
+
+# Environment files - NEVER commit
+.env
+*.env
+.env.*
+*/.env
+**/.env

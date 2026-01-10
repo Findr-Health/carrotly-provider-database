@@ -3,7 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 
 // Google Places API Key - stored securely on server
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || 'AIzaSyBNcg9u0nPypQXFOupFA5lD6FmJ-KCAekQ';
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || 'AIzaSyDVPtdzwiQ1-vttq53Ijb2k3DWIB9gLdCU';
 const GOOGLE_PLACES_BASE_URL = 'https://maps.googleapis.com/maps/api/place';
 
 // Simple in-memory cache (consider Redis for production)
