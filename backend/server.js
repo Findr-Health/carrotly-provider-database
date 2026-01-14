@@ -23,6 +23,7 @@ const availabilityRoutes = require('./routes/availability');
 const paymentsRoutes = require('./routes/payments');
 const providerServicesRoutes = require('./routes/providerServices');
 const stripeConnectRoutes = require('./routes/stripeConnect');
+const calendarRoutes = require('./routes/calendar');
 const uploadRoutes = require('./routes/upload');
 const { scheduleCronJobs } = require('./cron/bookingCron');
 
@@ -68,6 +69,7 @@ app.use('/api/availability', availabilityRoutes);
 // Payments routes  
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/connect', stripeConnectRoutes);
+app.use('/api/calendar', calendarRoutes);
 app.use('/api/providers', providerServicesRoutes);
 
 // Review routes  
