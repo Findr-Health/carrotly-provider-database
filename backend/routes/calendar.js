@@ -50,7 +50,7 @@ router.get('/google/callback', async (req, res) => {
   const { code, state: providerId } = req.query;
   
   if (!code || !providerId) {
-    return res.redirect('https://findrhealth-provider.vercel.app/dashboard?calendar=error&reason=missing_params');
+    return res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=error&reason=missing_params');
   }
   
   try {
@@ -80,11 +80,10 @@ router.get('/google/callback', async (req, res) => {
       calendarConnected: true
     });
     
-    res.redirect('https://findrhealth-provider.vercel.app/dashboard?calendar=success');
+    res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=success');
   } catch (error) {
     console.error('Google OAuth callback error:', error);
-    res.redirect(`https://findrhealth-provider.vercel.app/dashboard?calendar=error&reason=${encodeURIComponent(error.message)}`);
-  }
+    res.redirect(`https://findrhealth-provider.vercel.app/calendar?calendar=error&reason=${encodeURIComponent(error.message)}`);  }
 });
 
 /**
