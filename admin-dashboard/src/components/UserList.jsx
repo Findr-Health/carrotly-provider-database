@@ -16,7 +16,7 @@ export default function UserList({ onSelectUser }) {
     try {
       const response = await fetch(`${API_URL}/users`);
       const data = await response.json();
-      setUsers(data);
+      setUsers(data.users || []);
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {

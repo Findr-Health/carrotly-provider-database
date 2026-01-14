@@ -32,7 +32,8 @@ export default function Dashboard() {
       let users = [];
       try {
         const userResponse = await fetch(`${API_URL}/users`);
-        users = await userResponse.json();
+        const userData = await userResponse.json();
+        users = userData.users || [];
       } catch (e) { console.log('No users yet'); }
       
       // Calculate user stats
