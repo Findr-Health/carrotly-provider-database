@@ -21,6 +21,7 @@ const oauth2Client = new google.auth.OAuth2(
 
 // Scopes for calendar access
 const SCOPES = [
+  'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/calendar.events'
 ];
