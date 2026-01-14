@@ -352,7 +352,9 @@ export default function ProviderDetail() {
     { id: 'credentials', label: 'Credentials', icon: '📜' },
     { id: 'team', label: 'Team', icon: '👥' },
     { id: 'hours', label: 'Hours', icon: '🕐' },
-    { id: 'agreement', label: 'Agreement', icon: '✍️' }
+    { id: 'agreement', label: 'Agreement', icon: '✍️' },
+    { id: 'policies', label: 'Policies', icon: '📋' },
+    { id: 'payments', label: 'Payments', icon: '💳' }
   ];
 
   return (
@@ -1451,6 +1453,115 @@ export default function ProviderDetail() {
               <p className="text-yellow-600 text-sm mt-1">Provider has not completed the legal agreement yet.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Policies Tab */}
+      {activeTab === 'policies' && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span>📋</span> Policies
+          </h2>
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cancellation Policy</label>
+              {editMode ? (
+                <select
+                  value={provider.cancellationPolicy || 'standard'}
+                  onChange={(e) => setProvider({...provider, cancellationPolicy: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="flexible">Flexible - Free cancellation up to 24 hours before</option>
+                  <option value="standard">Standard - Free cancellation up to 48 hours before</option>
+                  <option value="moderate">Moderate - 50% refund if cancelled 24+ hours before</option>
+                  <option value="strict">Strict - No refunds for cancellations</option>
+                </select>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    provider.cancellationPolicy === 'flexible' ? 'bg-green-100 text-green-800' :
+                    provider.cancellationPolicy === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                    provider.cancellationPolicy === 'strict' ? 'bg-red-100 text-red-800' :
+                    'bg-blue-100 text-blue-800'
+                  }`}>
+                    {provider.cancellationPolicy === 'flexible' ? '🟢 Flexible' :
+                     provider.cancellationPolicy === 'moderate' ? '🟡 Moderate' :
+                     provider.cancellationPolicy === 'strict' ? '🔴 Strict' :
+                     '🔵 Standard'}
+                  </span>
+                  <p className="text-gray-600 text-sm mt-2">
+                    {provider.cancellationPolicy === 'flexible' ? 'Free cancellation up to 24 hours before appointment' :
+                     provider.cancellationPolicy === 'moderate' ? '50% refund if cancelled 24+ hours before appointment' :
+                     provider.cancellationPolicy === 'strict' ? 'No refunds for cancellations' :
+                     'Free cancellation up to 48 hours before appointment'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payments Tab */}
+      {activeTab === 'payments' && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span>💳</span> Payment Settings
+          </h2>
+          <div className="space-y-6">
+            {/* Stripe Connect Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Stripe Connect Status</label>
+              {provider.payment?.stripeAccountId ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-green-700 font-medium mb-2">
+                    <span>✓</span> Connected
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">Account ID:</span>
+                      <p className="font-mono text-gray-900">{provider.payment.stripeAccountId}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Onboarding:</span>
+                      <p className={provider.payment.stripeOnboardingComplete ? 'text-green-600' : 'text-yellow-600'}>
+                        {provider.payment.stripeOnboardingComplete ? '✓ Complete' : '⚠ Incomplete'}
+                      </p>
+                    </div>
+                    {provider.payment.stripeEmail && (
+                      <div>
+                        <span className="text-gray-500">Email:</span>
+                        <p className="text-gray-900">{provider.payment.stripeEmail}</p>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-gray-500">Payout Schedule:</span>
+                      <p className="text-gray-900 capitalize">{provider.payment.payoutSchedule || 'Weekly'}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-yellow-700 font-medium">
+                    <span>⚠</span> Not Connected
+                  </div>
+                  <p className="text-yellow-600 text-sm mt-1">Provider has not connected their Stripe account yet.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Payment Method Preference */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+              <p className="text-gray-900 capitalize">{provider.payment?.method || 'Not set'}</p>
+            </div>
+
+            {/* Platform Fee Info */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-medium text-gray-900 mb-2">Platform Fee Structure</h3>
+              <p className="text-gray-600 text-sm">10% + $1.50 per booking (max $35)</p>
+            </div>
+          </div>
         </div>
       )}
 
