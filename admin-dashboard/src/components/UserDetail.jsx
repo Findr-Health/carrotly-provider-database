@@ -2,6 +2,121 @@ import React, { useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fearless-achievement-production.up.railway.app/api';
 
+// Payment Methods Tab - Fetches from Stripe
+function PaymentMethodsTab({ userId, stripeCustomerId }) {
+  const [loading, setLoading] = React.useState(true);
+  const [paymentData, setPaymentData] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_URL}/users/${userId}/payment-methods`);
+        if (!response.ok) throw new Error('Failed to fetch');
+        const data = await response.json();
+        setPaymentData(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPaymentMethods();
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <p className="text-gray-500">Loading payment methods...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <p className="text-red-500">Error: {error}</p>
+      </div>
+    );
+  }
+
+  const brandIcons = {
+    visa: '💳',
+    mastercard: '💳',
+    amex: '💳',
+    discover: '💳'
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stripe Customer Status */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold mb-4">Stripe Customer</h3>
+        {paymentData?.hasStripeCustomer ? (
+          <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
+            <span className="text-green-600 text-xl">✓</span>
+            <div>
+              <p className="font-medium text-green-800">Connected</p>
+              <p className="text-sm text-green-600 font-mono">{paymentData.customerId}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+            <span className="text-gray-400 text-xl">○</span>
+            <p className="text-gray-600">No Stripe customer created yet</p>
+          </div>
+        )}
+      </div>
+
+      {/* Payment Methods */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold mb-4">Saved Payment Methods</h3>
+        {paymentData?.methods?.length > 0 ? (
+          <div className="space-y-3">
+            {paymentData.methods.map((method) => (
+              <div key={method.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center text-lg">
+                    {brandIcons[method.brand] || '💳'}
+                  </div>
+                  <div>
+                    <p className="font-medium capitalize">{method.brand} •••• {method.last4}</p>
+                    <p className="text-sm text-gray-500">
+                      Expires {method.expMonth}/{method.expYear}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {method.isDefault && (
+                    <span className="px-2 py-1 bg-teal-100 text-teal-800 text-xs rounded-full font-medium">
+                      Default
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-gray-50 rounded-lg">
+            <span className="text-4xl mb-2 block">💳</span>
+            <p className="text-gray-500">No payment methods saved</p>
+            <p className="text-gray-400 text-sm mt-1">User has not added any cards yet</p>
+          </div>
+        )}
+      </div>
+
+      {/* Info Box */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-800">
+          <strong>Note:</strong> Payment method details are stored securely by Stripe. 
+          Only the card brand and last 4 digits are visible here for reference.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function UserDetail({ user, onBack, onUpdate }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [editing, setEditing] = useState(false);
@@ -469,35 +584,7 @@ export default function UserDetail({ user, onBack, onUpdate }) {
       )}
 
       {activeTab === 'payment' && (
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold mb-4">Payment Methods</h3>
-          {user.paymentMethods?.length > 0 ? (
-            <div className="space-y-4">
-              {user.paymentMethods.map((method, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
-                      💳
-                    </div>
-                    <div>
-                      <p className="font-medium capitalize">{method.type} •••• {method.lastFour}</p>
-                      <p className="text-sm text-gray-500">
-                        {method.nickname || `Expires ${method.expiryMonth}/${method.expiryYear}`}
-                      </p>
-                    </div>
-                  </div>
-                  {method.isDefault && (
-                    <span className="px-2 py-1 bg-teal-100 text-teal-800 text-xs rounded-full">
-                      Default
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No payment methods on file</p>
-          )}
-        </div>
+        <PaymentMethodsTab userId={user._id} stripeCustomerId={user.stripeCustomerId} />
       )}
 
       {activeTab === 'security' && (

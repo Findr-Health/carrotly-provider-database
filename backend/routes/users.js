@@ -33,6 +33,151 @@ const auth = async (req, res, next) => {
 // ==================== AUTH ROUTES ====================
 
 // Register new user
+
+// =============================================================================
+// ADMIN: List all users
+// =============================================================================
+
+/**
+ * GET /api/users
+ * Admin route to list all users
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { status, search, limit = 50, skip = 0 } = req.query;
+    
+    let query = {};
+    
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+    
+    if (search) {
+      query.$or = [
+        { email: { $regex: search, $options: 'i' } },
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    const users = await User.find(query)
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(skip));
+    
+    const total = await User.countDocuments(query);
+    
+    res.json({ users, total });
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({ error: 'Failed to list users' });
+  }
+});
+
+/**
+ * GET /api/users/:id
+ * Admin route to get single user
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+/**
+ * PUT /api/users/:id
+ * Admin route to update user
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const updates = req.body;
+    delete updates.password; // Don't allow password update via this route
+    
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true }
+    ).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+/**
+ * PATCH /api/users/:id/status
+ * Admin route to update user status
+ */
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    ).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Update status error:', error);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+/**
+ * POST /api/users/:id/admin-reset-password
+ * Admin route to reset user password
+ */
+router.post('/:id/admin-reset-password', async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { password: hashedPassword },
+      { new: true }
+    ).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
 router.post('/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone, agreedToTerms, termsVersion } = req.body;
@@ -631,3 +776,61 @@ router.delete('/me', auth, async (req, res) => {
     res.status(500).json({ error: 'Failed to delete account' });
   }
 });
+
+// =============================================================================
+// ADMIN: Get user payment methods (Stripe)
+// =============================================================================
+
+/**
+ * GET /api/users/:id/payment-methods
+ * Admin route to view user's saved payment methods from Stripe
+ */
+router.get('/:id/payment-methods', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (!user.stripeCustomerId) {
+      return res.json({ 
+        hasStripeCustomer: false,
+        methods: [] 
+      });
+    }
+    
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    
+    // Get payment methods from Stripe
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: user.stripeCustomerId,
+      type: 'card',
+    });
+    
+    // Get default payment method
+    const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+    const defaultPaymentMethod = customer.invoice_settings?.default_payment_method;
+    
+    const methods = paymentMethods.data.map(pm => ({
+      id: pm.id,
+      brand: pm.card.brand,
+      last4: pm.card.last4,
+      expMonth: pm.card.exp_month,
+      expYear: pm.card.exp_year,
+      isDefault: pm.id === defaultPaymentMethod
+    }));
+    
+    res.json({
+      hasStripeCustomer: true,
+      customerId: user.stripeCustomerId,
+      methods: methods
+    });
+  } catch (error) {
+    console.error('Get payment methods error:', error);
+    res.status(500).json({ error: 'Failed to get payment methods' });
+  }
+});
+
+module.exports = router;
