@@ -113,7 +113,7 @@ router.get('/microsoft/auth/:providerId', (req, res) => {
     });
   }
   
-  const authUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?' +
+  const authUrl = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?' +
     'client_id=' + encodeURIComponent(MICROSOFT_CLIENT_ID) +
     '&response_type=code' +
     '&redirect_uri=' + encodeURIComponent(MICROSOFT_REDIRECT_URI) +
@@ -137,7 +137,7 @@ router.get('/microsoft/callback', async (req, res) => {
   }
   
   try {
-    const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+    const tokenResponse = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -271,7 +271,7 @@ async function refreshGoogleToken(provider) {
 }
 
 async function refreshMicrosoftToken(provider) {
-  const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+  const tokenResponse = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
