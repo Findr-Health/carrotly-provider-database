@@ -1,3 +1,11 @@
+#!/bin/bash
+
+# Update ProviderDetail.jsx with Calendar, Policies, and Payments tabs
+# Run from: ~/Development/findr-health/carrotly-provider-database
+
+TARGET="admin-dashboard/src/components/ProviderDetail.jsx"
+
+cat > "$TARGET" << 'ENDOFFILE'
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { providersAPI } from '../utils/api';
@@ -1191,3 +1199,7 @@ export default function ProviderDetail() {
     </div>
   );
 }
+ENDOFFILE
+
+echo "✅ ProviderDetail.jsx updated successfully!"
+echo "Lines: $(wc -l < "$TARGET")"
