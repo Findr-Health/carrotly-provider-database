@@ -78,6 +78,7 @@ router.get('/google/callback', async (req, res) => {
       'calendar.calendarId': primaryCalendar?.id || 'primary',
       'calendar.syncDirection': 'two-way',
       'calendar.syncBusyOnly': true,
+      'calendar.connectedAt': new Date(),
       calendarConnected: true
     });
     
