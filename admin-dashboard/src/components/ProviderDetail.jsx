@@ -2,21 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { providersAPI } from '../utils/api';
 
-
-const SERVICE_CATEGORIES = [
-  "Acne Treatment", "Acute Care", "Assessment", "Body Treatment", "Chiropractic",
-  "Chronic Care", "Coaching", "Compounding", "Consultation", "Cosmetic",
-  "Couples/Family", "Diagnostic", "Emergency", "Evaluation", "Facials",
-  "Group", "Group Class", "Holistic", "Immunization", "Immunizations",
-  "Individual Therapy", "Injectables", "IV Therapy", "Labs", "Laser",
-  "Massage", "Meal Planning", "Mindfulness", "Minor Procedures", "Nutrition",
-  "Personal Training", "Physical Therapy", "Pilates", "Preventive", "Private Session",
-  "Procedures", "Program", "Psychiatry", "Rapid Tests", "Relaxation",
-  "Restorative", "Screenings", "Specialty", "Sports", "Surgical",
-  "Testing", "Therapeutic", "Therapy", "Treatment", "Urgent Care",
-  "Vaccinations", "Virtual", "Walk-in Visit", "Weight Loss", "Wellness",
-  "Workshop", "Yoga"
-];
 export default function ProviderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -26,8 +11,6 @@ export default function ProviderDetail() {
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     fetchProvider();
@@ -46,15 +29,6 @@ export default function ProviderDetail() {
   };
 
   const handleStatusChange = async (newStatus) => {
-    const confirmMessage = newStatus === 'approved' 
-      ? `Are you sure you want to APPROVE this provider? An email will be sent to notify them.`
-      : newStatus === 'rejected'
-      ? `Are you sure you want to REJECT this provider? An email will be sent to notify them.`
-      : `Are you sure you want to change status to ${newStatus}?`;
-    
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
     try {
       await providersAPI.updateStatus(id, newStatus);
       setProvider({ ...provider, status: newStatus });
@@ -74,56 +48,6 @@ export default function ProviderDetail() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handlePhotoUpload = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    for (const file of Array.from(files)) {
-      if ((provider.photos || []).length >= 5) {
-        alert('Maximum 5 photos allowed');
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        alert('File exceeds 10MB limit');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        alert('Only image files are allowed');
-        return;
-      }
-      
-      setUploadingPhoto(true);
-      
-      try {
-        const formData = new FormData();
-        formData.append('image', file);
-        
-        const API_URL = import.meta.env.VITE_API_URL || 'https://fearless-achievement-production.up.railway.app/api';
-        const response = await fetch(`${API_URL}/upload/image`, {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (!response.ok) throw new Error('Upload failed');
-        
-        const result = await response.json();
-        
-        if (result.success && result.url) {
-          const newPhoto = { url: result.url, isPrimary: (provider.photos || []).length === 0 };
-          updateField('photos', [...(provider.photos || []), newPhoto]);
-        } else {
-          throw new Error('No URL returned');
-        }
-      } catch (error) {
-        console.error('Photo upload error:', error);
-        alert('Failed to upload photo. Please try again.');
-      } finally {
-        setUploadingPhoto(false);
-      }
-    }
-    e.target.value = ''; // Reset input
   };
 
   const updateField = (field, value) => {
@@ -156,7 +80,7 @@ export default function ProviderDetail() {
       price: 0,
       description: ''
     };
-    setProvider({ ...provider, services: [newService, ...(provider.services || [])] });
+    setProvider({ ...provider, services: [...(provider.services || []), newService] });
   };
 
   const addTeamMember = () => {
@@ -351,10 +275,7 @@ export default function ProviderDetail() {
     { id: 'services', label: 'Services', icon: '💼' },
     { id: 'credentials', label: 'Credentials', icon: '📜' },
     { id: 'team', label: 'Team', icon: '👥' },
-    { id: 'hours', label: 'Hours', icon: '🕐' },
-    { id: 'agreement', label: 'Agreement', icon: '✍️' },
-    { id: 'policies', label: 'Policies', icon: '📋' },
-    { id: 'payments', label: 'Payments', icon: '💳' }
+    { id: 'agreement', label: 'Agreement', icon: '✍️' }
   ];
 
   return (
@@ -377,35 +298,26 @@ export default function ProviderDetail() {
         </div>
         <div className="flex gap-2">
           {/* Export Dropdown */}
-        {/* Export Dropdown */}
-        <div className="relative">
-          <button 
-            onClick={() => setShowExportMenu(!showExportMenu)}
-            onBlur={() => setTimeout(() => setShowExportMenu(false), 150)}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
-          >
-            📥 Export
-            <span className="text-xs">▼</span>
-          </button>
-          {showExportMenu && (
-            <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border z-10">
+          <div className="relative group">
+            <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
+              📥 Export
+              <span className="text-xs">▼</span>
+            </button>
+            <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border hidden group-hover:block z-10">
               <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => { exportProvider(); setShowExportMenu(false); }}
+                onClick={exportProvider}
                 className="w-full px-4 py-2 text-left hover:bg-gray-100 rounded-t-lg"
               >
                 📄 Export as JSON
               </button>
               <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => { exportCSV(); setShowExportMenu(false); }}
+                onClick={exportCSV}
                 className="w-full px-4 py-2 text-left hover:bg-gray-100 rounded-b-lg"
               >
                 📊 Export as CSV
               </button>
             </div>
-          )}
-        </div>
+          </div>
           
           {editMode ? (
             <>
@@ -436,9 +348,8 @@ export default function ProviderDetail() {
 
       {/* Status Actions */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Status Buttons */}
-          <span className="text-gray-700 font-medium">Status:</span>
+        <div className="flex items-center gap-4">
+          <span className="text-gray-700 font-medium">Change Status:</span>
           <button
             onClick={() => handleStatusChange('approved')}
             disabled={provider.status === 'approved'}
@@ -460,75 +371,6 @@ export default function ProviderDetail() {
           >
             ✗ Reject
           </button>
-          
-          {/* Divider */}
-          <div className="h-8 w-px bg-gray-300 mx-2"></div>
-          
-          {/* Verified Badge Toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={provider.isVerified || false}
-              disabled={!editMode}
-              onChange={async (e) => {
-                const newValue = e.target.checked;
-                console.log('Checkbox clicked!', newValue);
-                try {
-                  console.log('Calling API...');
-                  await providersAPI.toggleVerified(id, newValue);
-                  console.log('API success');
-                  setProvider(prev => ({ ...prev, isVerified: newValue }));
-                } catch (err) {
-                  console.error('Error:', err);
-                  alert('Failed to update verified status: ' + err.message);
-                }
-              }}
-              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-gray-700 font-medium flex items-center gap-1">
-              <span className="text-blue-500">✓</span> Verified Badge
-            </span>
-          </label>
-          
-          {/* Featured Toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={provider.isFeatured || false}
-              disabled={!editMode}
-              onChange={async (e) => {
-                const newValue = e.target.checked;
-                console.log('Featured clicked!', newValue);
-                try {
-                  console.log('Calling API...');
-                  await providersAPI.toggleFeatured(id, newValue);
-                  console.log('API success');
-                  setProvider(prev => ({ ...prev, isFeatured: newValue }));
-                } catch (err) {
-                  console.error('Error:', err);
-                  alert('Failed to update featured status: ' + err.message);
-                }
-              }}
-              className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
-            />
-            <span className="text-gray-700 font-medium flex items-center gap-1">
-              <span className="text-yellow-500">⭐</span> Featured
-            </span>
-          </label>
-        </div>
-        
-        {/* Badges Display */}
-        <div className="flex gap-2 mt-3">
-          {provider.isVerified && (
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium flex items-center gap-1">
-              ✓ Verified Provider
-            </span>
-          )}
-          {provider.isFeatured && (
-            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium flex items-center gap-1">
-              ⭐ Featured
-            </span>
-          )}
         </div>
       </div>
 
@@ -576,44 +418,17 @@ export default function ProviderDetail() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Provider Types</label>
-                {editMode ? (
-                  <div className="flex flex-wrap gap-2">
-                    {['Medical', 'Urgent Care', 'Dental', 'Mental Health', 'Skincare', 'Massage', 'Fitness', 'Yoga', 'Nutrition', 'Pharmacy'].map((type) => (
-                      <label key={type} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
-                        (provider.providerTypes || []).includes(type) 
-                          ? 'bg-blue-100 border-blue-500 text-blue-800' 
-                          : 'bg-white border-gray-300 hover:border-gray-400'
-                      }`}>
-                        <input
-                          type="checkbox"
-                          checked={(provider.providerTypes || []).includes(type)}
-                          onChange={(e) => {
-                            const current = provider.providerTypes || [];
-                            if (e.target.checked) {
-                              updateField('providerTypes', [...current, type]);
-                            } else {
-                              updateField('providerTypes', current.filter(t => t !== type));
-                            }
-                          }}
-                          className="hidden"
-                        />
+                <div className="flex flex-wrap gap-2">
+                  {(provider.providerTypes || []).length > 0 ? (
+                    provider.providerTypes.map((type, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
                         {type}
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {(provider.providerTypes || []).length > 0 ? (
-                      provider.providerTypes.map((type, idx) => (
-                        <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                          {type}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-500">No types specified</span>
-                    )}
-                  </div>
-                )}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-500">No types specified</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -818,18 +633,6 @@ export default function ProviderDetail() {
             </h2>
             {editMode && (provider.photos || []).length < 5 && (
               <div className="flex gap-2">
-                <label className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 cursor-pointer flex items-center gap-2">
-                  <span>📤</span> {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handlePhotoUpload}
-                    disabled={uploadingPhoto}
-                    className="hidden"
-                  />
-                </label>
-                <span className="text-gray-400 self-center">or</span>
                 <input
                   type="text"
                   placeholder="Paste image URL..."
@@ -841,6 +644,7 @@ export default function ProviderDetail() {
                     }
                   }}
                 />
+                <span className="text-sm text-gray-500 self-center">Press Enter to add</span>
               </div>
             )}
           </div>
@@ -897,7 +701,7 @@ export default function ProviderDetail() {
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <span className="text-4xl mb-2 block">📷</span>
               <p className="text-gray-500">No photos uploaded</p>
-              {editMode && <p className="text-sm text-gray-400 mt-1">Click "Upload Photo" or paste an image URL above</p>}
+              {editMode && <p className="text-sm text-gray-400 mt-1">Paste an image URL above to add photos</p>}
             </div>
           )}
         </div>
@@ -935,16 +739,12 @@ export default function ProviderDetail() {
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
-                          <select
+                          <input
+                            type="text"
                             value={service.category || ''}
                             onChange={(e) => updateService(idx, 'category', e.target.value)}
                             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select category...</option>
-                            {SERVICE_CATEGORIES.map(cat => (
-                              <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                          </select>
+                          />
                         </div>
                         <div className="flex gap-2">
                           <div className="flex-1">
@@ -1288,107 +1088,6 @@ export default function ProviderDetail() {
         </div>
       )}
 
-      {/* Hours Tab */}
-      {activeTab === 'hours' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <span>🕐</span> Hours of Operation
-          </h2>
-          <div className="grid gap-4">
-            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
-              const hours = provider.calendar?.businessHours?.[day];
-              const isOpen = hours?.isOpen ?? false;
-              return (
-                <div key={day} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                  <span className="font-medium text-gray-900 capitalize w-32">{day}</span>
-                  {editMode ? (
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={isOpen}
-                          onChange={(e) => {
-                            setProvider(prev => ({
-                              ...prev,
-                              calendar: {
-                                ...prev.calendar,
-                                businessHours: {
-                                  ...prev.calendar?.businessHours,
-                                  [day]: {
-                                    ...prev.calendar?.businessHours?.[day],
-                                    isOpen: e.target.checked
-                                  }
-                                }
-                              }
-                            }));
-                          }}
-                          className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                        />
-                        <span className="text-sm text-gray-600">Open</span>
-                      </label>
-                      {isOpen && (
-                        <>
-                          <input
-                            type="time"
-                            value={hours?.open || '09:00'}
-                            onChange={(e) => {
-                              setProvider(prev => ({
-                                ...prev,
-                                calendar: {
-                                  ...prev.calendar,
-                                  businessHours: {
-                                    ...prev.calendar?.businessHours,
-                                    [day]: {
-                                      ...prev.calendar?.businessHours?.[day],
-                                      open: e.target.value
-                                    }
-                                  }
-                                }
-                              }));
-                            }}
-                            className="px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                          <span className="text-gray-500">to</span>
-                          <input
-                            type="time"
-                            value={hours?.close || '17:00'}
-                            onChange={(e) => {
-                              setProvider(prev => ({
-                                ...prev,
-                                calendar: {
-                                  ...prev.calendar,
-                                  businessHours: {
-                                    ...prev.calendar?.businessHours,
-                                    [day]: {
-                                      ...prev.calendar?.businessHours?.[day],
-                                      close: e.target.value
-                                    }
-                                  }
-                                }
-                              }));
-                            }}
-                            className="px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <span className={`text-sm ${isOpen ? 'text-gray-600' : 'text-red-500 font-medium'}`}>
-                      {isOpen ? `${hours?.open || '9:00'} - ${hours?.close || '17:00'}` : 'Closed'}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {!editMode && (
-            <p className="mt-4 text-sm text-gray-500">
-              Click "Edit Provider" to modify hours of operation.
-            </p>
-          )}
-        </div>
-      )}
-
       {/* Agreement Tab */}
       {activeTab === 'agreement' && (
         <div className="bg-white rounded-lg shadow p-6">
@@ -1453,115 +1152,6 @@ export default function ProviderDetail() {
               <p className="text-yellow-600 text-sm mt-1">Provider has not completed the legal agreement yet.</p>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Policies Tab */}
-      {activeTab === 'policies' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <span>📋</span> Policies
-          </h2>
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cancellation Policy</label>
-              {editMode ? (
-                <select
-                  value={provider.cancellationPolicy || 'standard'}
-                  onChange={(e) => setProvider({...provider, cancellationPolicy: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                >
-                  <option value="flexible">Flexible - Free cancellation up to 24 hours before</option>
-                  <option value="standard">Standard - Free cancellation up to 48 hours before</option>
-                  <option value="moderate">Moderate - 50% refund if cancelled 24+ hours before</option>
-                  <option value="strict">Strict - No refunds for cancellations</option>
-                </select>
-              ) : (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    provider.cancellationPolicy === 'flexible' ? 'bg-green-100 text-green-800' :
-                    provider.cancellationPolicy === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
-                    provider.cancellationPolicy === 'strict' ? 'bg-red-100 text-red-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
-                    {provider.cancellationPolicy === 'flexible' ? '🟢 Flexible' :
-                     provider.cancellationPolicy === 'moderate' ? '🟡 Moderate' :
-                     provider.cancellationPolicy === 'strict' ? '🔴 Strict' :
-                     '🔵 Standard'}
-                  </span>
-                  <p className="text-gray-600 text-sm mt-2">
-                    {provider.cancellationPolicy === 'flexible' ? 'Free cancellation up to 24 hours before appointment' :
-                     provider.cancellationPolicy === 'moderate' ? '50% refund if cancelled 24+ hours before appointment' :
-                     provider.cancellationPolicy === 'strict' ? 'No refunds for cancellations' :
-                     'Free cancellation up to 48 hours before appointment'}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Payments Tab */}
-      {activeTab === 'payments' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <span>💳</span> Payment Settings
-          </h2>
-          <div className="space-y-6">
-            {/* Stripe Connect Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Stripe Connect Status</label>
-              {provider.payment?.stripeAccountId ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-green-700 font-medium mb-2">
-                    <span>✓</span> Connected
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500">Account ID:</span>
-                      <p className="font-mono text-gray-900">{provider.payment.stripeAccountId}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Onboarding:</span>
-                      <p className={provider.payment.stripeOnboardingComplete ? 'text-green-600' : 'text-yellow-600'}>
-                        {provider.payment.stripeOnboardingComplete ? '✓ Complete' : '⚠ Incomplete'}
-                      </p>
-                    </div>
-                    {provider.payment.stripeEmail && (
-                      <div>
-                        <span className="text-gray-500">Email:</span>
-                        <p className="text-gray-900">{provider.payment.stripeEmail}</p>
-                      </div>
-                    )}
-                    <div>
-                      <span className="text-gray-500">Payout Schedule:</span>
-                      <p className="text-gray-900 capitalize">{provider.payment.payoutSchedule || 'Weekly'}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-yellow-700 font-medium">
-                    <span>⚠</span> Not Connected
-                  </div>
-                  <p className="text-yellow-600 text-sm mt-1">Provider has not connected their Stripe account yet.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Payment Method Preference */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-              <p className="text-gray-900 capitalize">{provider.payment?.method || 'Not set'}</p>
-            </div>
-
-            {/* Platform Fee Info */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-medium text-gray-900 mb-2">Platform Fee Structure</h3>
-              <p className="text-gray-600 text-sm">10% + $1.50 per booking (max $35)</p>
-            </div>
-          </div>
         </div>
       )}
 

@@ -8,11 +8,8 @@ const providerSchema = new mongoose.Schema({
   },
   providerTypes: [{
     type: String,
-    enum: ['medical', 'dental', 'cosmetic', 'fitness', 'massage', 'mental_health', 'mental-health', 'skincare', 'Medical', 'Dental', 'Cosmetic', 'Fitness', 'Massage', 'Mental Health', 'Skincare', 'nutrition', 'Nutrition', 'yoga', 'Yoga', 'pharmacy', 'Pharmacy', 'urgent_care', 'urgent-care', 'Urgent Care']
+    enum: ['medical', 'dental', 'cosmetic', 'fitness', 'massage', 'mental-health', 'skincare', 'Medical', 'Dental', 'Cosmetic', 'Fitness', 'Massage', 'Mental Health', 'Skincare']
   }],
-  
-  // Description (for provider bio/about section)
-  description: String,
   
   // Contact Info (can be nested or flat)
   contactInfo: {
@@ -33,19 +30,6 @@ const providerSchema = new mongoose.Schema({
     state: String,
     zip: String
   },
-  
-  // Geolocation for distance calculations
-  location: {
-    type: {
-      type: String,
-      enum: ['Point'],
-      default: 'Point'
-    },
-    coordinates: {
-      type: [Number], // [longitude, latitude]
-      default: [0, 0]
-    }
-  },
 
   // Step 3: Photos
   photos: [{
@@ -55,25 +39,14 @@ const providerSchema = new mongoose.Schema({
     uploadedAt: { type: Date, default: Date.now }
   }],
 
-  // Step 4: Services (UPDATED with variants support)
+  // Step 4: Services
   services: [{
     name: { type: String, required: true },
     category: String,
+    duration: Number, // in minutes
+    price: Number,
     description: String,
-    shortDescription: String,        // Max 100 chars for tiles
-    duration: Number,                // Base duration in minutes
-    price: Number,                   // Base price (for simple services)
-    basePrice: Number,               // Starting price (for "from $X" display)
-    hasVariants: { type: Boolean, default: false },
-    variants: [{
-      name: String,
-      description: String,
-      price: Number,
-      duration: Number,
-      isDefault: { type: Boolean, default: false }
-    }],
-    isActive: { type: Boolean, default: true },
-    sortOrder: { type: Number, default: 0 }
+    isActive: { type: Boolean, default: true }
   }],
 
   // Step 5: Optional Details - Credentials
@@ -92,7 +65,7 @@ const providerSchema = new mongoose.Schema({
   // Step 5: Optional Details - Languages
   languagesSpoken: [String],
 
-  // Step 8: Team Members (UPDATED with service linking)
+  // Step 8: Team Members
   teamMembers: [{
     name: { type: String, required: true },
     title: String,
@@ -101,20 +74,15 @@ const providerSchema = new mongoose.Schema({
     photo: String,
     specialties: [String],
     yearsExperience: Number,
-    rating: { type: Number, default: 0 },           // NEW: Average rating
-    reviewCount: { type: Number, default: 0 },
-  bookingCount: { type: Number, default: 0 },      // NEW: Number of reviews
     acceptsBookings: { type: Boolean, default: true },
-    calendarConnected: { type: Boolean, default: false },
-    serviceIds: [String]                            // NEW: IDs of services this member can perform
+    calendarConnected: { type: Boolean, default: false }
   }],
 
-  // Step 6: Payment & Payout
+  // Step 6: Payment & Payout (Future)
   payment: {
     method: { type: String, enum: ['stripe', 'bank'] },
     stripeAccountId: String,
     stripeEmail: String,
-    stripeOnboardingComplete: { type: Boolean, default: false },
     bankDetails: {
       bankName: String,
       accountHolder: String,
@@ -129,34 +97,24 @@ const providerSchema = new mongoose.Schema({
     }
   },
 
-  // Step 7: Calendar & Availability
+  // Step 7: Calendar & Availability (Future)
   calendar: {
     provider: { type: String, enum: ['google', 'microsoft', 'apple', 'manual'] },
     calendarId: String,
     calendarEmail: String,
-    accessToken: String,
-    refreshToken: String,
-    tokenExpiry: Date,
     syncDirection: { type: String, enum: ['two-way', 'one-way'] },
     syncBusyOnly: Boolean,
-    bufferMinutes: { type: Number, default: 0 },
+    bufferMinutes: Number,
     businessHours: {
-      monday: { isOpen: { type: Boolean, default: false }, open: String, close: String },
-      tuesday: { isOpen: { type: Boolean, default: false }, open: String, close: String },
-      wednesday: { isOpen: { type: Boolean, default: false }, open: String, close: String },
-      thursday: { isOpen: { type: Boolean, default: false }, open: String, close: String },
-      friday: { isOpen: { type: Boolean, default: false }, open: String, close: String },
-      saturday: { isOpen: { type: Boolean, default: false }, open: String, close: String },
-      sunday: { isOpen: { type: Boolean, default: false }, open: String, close: String }
+      monday: { enabled: Boolean, start: String, end: String },
+      tuesday: { enabled: Boolean, start: String, end: String },
+      wednesday: { enabled: Boolean, start: String, end: String },
+      thursday: { enabled: Boolean, start: String, end: String },
+      friday: { enabled: Boolean, start: String, end: String },
+      saturday: { enabled: Boolean, start: String, end: String },
+      sunday: { enabled: Boolean, start: String, end: String }
     }
   },
-
-  // Cancellation Policy
-  cancellationPolicy: {
-  type: String,
-  enum: ['flexible', 'standard', 'moderate', 'strict'],
-  default: 'standard'
-},   
 
   // Step 10: Legal Agreement
   agreement: {
@@ -171,23 +129,12 @@ const providerSchema = new mongoose.Schema({
     version: String
   },
 
-  // Verification & Feature Flags
-  isVerified: { type: Boolean, default: false },
-  isFeatured: { type: Boolean, default: false },
-  featuredOrder: { type: Number, default: 0 },
-  verifiedAt: Date,
-
   // Provider Status
   status: {
     type: String,
     enum: ['draft', 'pending', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
-  
-  // Rating & Reviews (aggregated)
-  rating: { type: Number, default: 0 },
-  reviewCount: { type: Number, default: 0 },
-  bookingCount: { type: Number, default: 0 },
 
   // Metadata
   createdAt: {
@@ -215,17 +162,8 @@ const providerSchema = new mongoose.Schema({
   },
 
   // Notes (for admin use)
-  adminNotes: String,
-  
-  // Password for provider login
-  password: String
+  adminNotes: String
 });
-
-// Index for geospatial queries
-providerSchema.index({ location: '2dsphere' });
-
-// Index for search
-providerSchema.index({ practiceName: 'text', description: 'text' });
 
 // Update the updatedAt field on save
 providerSchema.pre('save', function(next) {
@@ -257,12 +195,6 @@ providerSchema.virtual('primaryPhoto').get(function() {
 providerSchema.virtual('activeServicesCount').get(function() {
   if (!this.services) return 0;
   return this.services.filter(s => s.isActive !== false).length;
-});
-
-// Virtual for bookable team members count
-providerSchema.virtual('bookableTeamCount').get(function() {
-  if (!this.teamMembers) return 0;
-  return this.teamMembers.filter(m => m.acceptsBookings !== false).length;
 });
 
 // Ensure virtuals are included in JSON output
