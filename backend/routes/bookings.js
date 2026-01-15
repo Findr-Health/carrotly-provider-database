@@ -1,809 +1,1098 @@
 /**
- * Findr Health Booking Routes
+ * Booking Routes - Calendar-Optional Booking Flow
+ * Findr Health
+ * Created: January 15, 2026
  * 
  * Endpoints:
- * POST   /api/bookings                    - Create booking
- * GET    /api/bookings/user/:userId       - Get user's bookings
- * GET    /api/bookings/:id                - Get booking detail
- * GET    /api/bookings/:id/cancellation-quote - Get cancellation fee quote
- * POST   /api/bookings/:id/cancel         - Cancel booking
- * POST   /api/bookings/:id/reschedule     - Reschedule booking
- * POST   /api/bookings/:id/confirm        - Provider confirms request
- * POST   /api/bookings/:id/decline        - Provider declines request
- * POST   /api/bookings/:id/complete       - Mark as completed
- * POST   /api/bookings/:id/no-show        - Mark as no-show
+ * - POST /api/bookings/reserve-slot     - Reserve a slot (5 min hold)
+ * - POST /api/bookings                  - Create booking (instant or request)
+ * - GET  /api/bookings/:id              - Get booking details
+ * - GET  /api/bookings/patient          - Patient's bookings
+ * - GET  /api/bookings/provider         - Provider's bookings
+ * - GET  /api/bookings/provider/pending - Provider's pending confirmations
+ * - POST /api/bookings/:id/confirm      - Provider confirms
+ * - POST /api/bookings/:id/decline      - Provider declines
+ * - POST /api/bookings/:id/reschedule   - Provider proposes new time
+ * - POST /api/bookings/:id/accept-reschedule  - Patient accepts
+ * - POST /api/bookings/:id/decline-reschedule - Patient declines
+ * - POST /api/bookings/:id/cancel       - Cancel booking
  */
 
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
+const BookingEvent = require('../models/BookingEvent');
+const SlotReservation = require('../models/SlotReservation');
 const Provider = require('../models/Provider');
 const User = require('../models/User');
-const { calculateFees, toCents } = require('../utils/feeCalculation');
-const { calculateCancellationFee, getCancellationQuote, getRequestExpirationDate } = require('../utils/cancellation');
-const stripeService = require('../services/stripeService');
-const emailService = require('../services/emailService');
+const StateMachine = require('../services/BookingStateMachine');
+const FeatureFlags = require('../services/FeatureFlags');
+
+// Import Stripe if available
+let stripe;
+try {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+} catch (e) {
+  console.log('Stripe not configured');
+}
+
+// ==================== MIDDLEWARE ====================
+
+/**
+ * Extract user from auth token
+ */
+const authenticateUser = async (req, res, next) => {
+  try {
+    // Your existing auth middleware logic
+    // For now, check for userId in headers or token
+    const userId = req.headers['x-user-id'] || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    req.userId = userId;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid authentication' });
+  }
+};
+
+/**
+ * Verify provider owns the resource
+ */
+const authenticateProvider = async (req, res, next) => {
+  try {
+    const providerId = req.headers['x-provider-id'] || req.provider?.id;
+    if (!providerId) {
+      return res.status(401).json({ error: 'Provider authentication required' });
+    }
+    req.providerId = providerId;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid provider authentication' });
+  }
+};
+
+/**
+ * Log booking event helper
+ */
+const logEvent = async (booking, eventType, data = {}, actor = { type: 'system' }, context = {}) => {
+  try {
+    await BookingEvent.create({
+      booking: booking._id,
+      bookingNumber: booking.bookingNumber,
+      eventType,
+      previousStatus: data.previousStatus,
+      newStatus: data.newStatus || booking.status,
+      data,
+      actor,
+      context,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Failed to log booking event:', error);
+    // Don't throw - logging shouldn't break the flow
+  }
+};
+
+// ==================== SLOT RESERVATION ====================
+
+/**
+ * POST /api/bookings/reserve-slot
+ * Reserve a time slot for 5 minutes while patient completes checkout
+ */
+router.post('/reserve-slot', async (req, res) => {
+  try {
+    const { providerId, serviceId, startTime, endTime, duration } = req.body;
+    
+    // Validate required fields
+    if (!providerId || !startTime) {
+      return res.status(400).json({ error: 'providerId and startTime are required' });
+    }
+    
+    // Check if slot reservation is enabled
+    const isEnabled = await FeatureFlags.isEnabled('booking.slot_reservation_enabled', { providerId });
+    if (!isEnabled) {
+      // Skip reservation, return dummy success
+      return res.status(200).json({
+        success: true,
+        reservationId: null,
+        message: 'Slot reservation disabled, proceeding directly'
+      });
+    }
+    
+    // Calculate end time if not provided
+    const start = new Date(startTime);
+    const end = endTime ? new Date(endTime) : new Date(start.getTime() + (duration || 30) * 60 * 1000);
+    
+    // Try to reserve the slot
+    const reservation = await SlotReservation.reserveSlot({
+      provider: providerId,
+      startTime: start,
+      endTime: end,
+      serviceId: serviceId || 'default',
+      duration: duration || 30,
+      patient: req.userId || null,
+      sessionId: req.headers['x-session-id'] || null,
+      metadata: {
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        source: req.headers['x-source'] || 'app'
+      }
+    });
+    
+    if (!reservation) {
+      return res.status(409).json({ 
+        error: 'Slot not available',
+        message: 'This time slot is currently being booked by another user. Please select a different time.'
+      });
+    }
+    
+    res.status(201).json({
+      success: true,
+      reservationId: reservation._id,
+      expiresAt: reservation.expiresAt,
+      remainingSeconds: reservation.getRemainingSeconds()
+    });
+    
+  } catch (error) {
+    console.error('Reserve slot error:', error);
+    res.status(500).json({ error: 'Failed to reserve slot' });
+  }
+});
+
+/**
+ * DELETE /api/bookings/reserve-slot/:id
+ * Release a slot reservation
+ */
+router.delete('/reserve-slot/:id', async (req, res) => {
+  try {
+    const reservation = await SlotReservation.releaseReservation(
+      req.params.id, 
+      'user_cancelled'
+    );
+    
+    if (!reservation) {
+      return res.status(404).json({ error: 'Reservation not found' });
+    }
+    
+    res.json({ success: true, message: 'Reservation released' });
+    
+  } catch (error) {
+    console.error('Release reservation error:', error);
+    res.status(500).json({ error: 'Failed to release reservation' });
+  }
+});
 
 // ==================== CREATE BOOKING ====================
 
+/**
+ * POST /api/bookings
+ * Create a new booking (instant or request based on provider's calendar status)
+ */
 router.post('/', async (req, res) => {
   try {
     const {
-      userId,
       providerId,
-      service,
-      teamMember,
-      appointmentDate,
-      appointmentTime,
+      serviceId,
+      serviceName,
+      servicePrice,
+      serviceDuration,
+      serviceCategory,
+      startTime,
+      endTime,
+      patientId,
+      patientNotes,
       paymentMethodId,
-      chargeType = 'card_on_file',  // 'prepay', 'at_visit', 'card_on_file'
-      notes
+      reservationId,
+      locationType,
+      idempotencyKey
     } = req.body;
-
+    
+    // Check idempotency
+    if (idempotencyKey) {
+      const existing = await Booking.findOne({ idempotencyKey });
+      if (existing) {
+        return res.status(200).json({
+          success: true,
+          booking: existing,
+          message: 'Booking already created (idempotent)'
+        });
+      }
+    }
+    
     // Validate required fields
-    const requiresPayment = chargeType === 'prepay';
-    if (!userId || !providerId || !service || !appointmentDate || !appointmentTime) {
+    if (!providerId || !startTime || !patientId) {
       return res.status(400).json({ 
-        error: 'Missing required fields',
-        required: ['userId', 'providerId', 'service', 'appointmentDate', 'appointmentTime']
+        error: 'providerId, startTime, and patientId are required' 
       });
     }
-    if (requiresPayment && !paymentMethodId) {
-      return res.status(400).json({ 
-        error: 'Payment method required for prepay bookings',
-        required: ['paymentMethodId']
-      });
-    }
-
-    // Get provider
+    
+    // Get provider to determine booking mode
     const provider = await Provider.findById(providerId);
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
-
-    if (provider.status !== 'approved') {
-      return res.status(400).json({ error: 'Provider is not accepting bookings' });
-    }
-
-    // Get user
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Check if provider has calendar integration (instant booking vs request)
-    const hasCalendarIntegration = provider.calendar?.provider && 
-                                   ['google', 'microsoft', 'apple'].includes(provider.calendar.provider);
-
-    // Calculate fees
-    const fees = calculateFees(service.price);
-
-    // Handle payment based on chargeType
-    let stripeCustomerId = null;
-    let paymentIntent = null;
     
-    if (chargeType === 'prepay' || (chargeType === 'card_on_file' && paymentMethodId)) {
-      // Get or create Stripe customer
-      stripeCustomerId = user.stripeCustomerId;
-      if (!stripeCustomerId) {
-        const customer = await stripeService.createCustomer({
-          email: user.email,
-          name: `${user.firstName} ${user.lastName}`,
-          phone: user.phone,
-          metadata: { userId: userId.toString() }
-        });
-        stripeCustomerId = customer.id;
-        
-        // Save to user
-        await User.findByIdAndUpdate(userId, { stripeCustomerId });
-      }
-      
-      // Attach payment method if not already attached
-      try {
-        await stripeService.attachPaymentMethod(paymentMethodId, stripeCustomerId);
-      } catch (err) {
-        // Payment method might already be attached, that's ok
-        if (!err.message.includes('already been attached')) {
-          throw err;
-        }
-      }
-      
-      // Create payment intent (authorize only, don't capture)
-      paymentIntent = await stripeService.createPaymentIntent({
-        amount: fees.userTotal,
-        customerId: stripeCustomerId,
-        paymentMethodId,
-        providerId,
-        serviceName: service.name
-      });
-      
-      // Check if payment needs additional action (3DS)
-      if (paymentIntent.requiresAction) {
-        return res.status(200).json({
-          requiresAction: true,
-          clientSecret: paymentIntent.clientSecret,
-          nextActionUrl: paymentIntent.nextActionUrl
-        });
-      }
-    } // End of payment processing block
-
-    // Create booking
+    // Determine booking type based on calendar connection
+    const bookingType = provider.calendarConnected ? 'instant' : 'request';
+    const paymentMode = bookingType === 'request' ? 'hold' : 'prepay';
+    
+    // Calculate times
+    const requestedStart = new Date(startTime);
+    const requestedEnd = endTime 
+      ? new Date(endTime) 
+      : new Date(requestedStart.getTime() + (serviceDuration || 30) * 60 * 1000);
+    
+    // Create booking object
     const booking = new Booking({
-      user: userId,
+      patient: patientId,
       provider: providerId,
+      bookingType,
+      status: 'pending_payment',
+      
       service: {
-        serviceId: service.serviceId || service._id,
-        name: service.name,
-        category: service.category,
-        duration: service.duration,
-        price: service.price
+        serviceId: serviceId || `svc_${Date.now()}`,
+        name: serviceName || 'Consultation',
+        category: serviceCategory || provider.providerTypes?.[0] || 'Medical',
+        duration: serviceDuration || 30,
+        price: servicePrice || 0,
+        description: ''
       },
-      teamMember: teamMember ? {
-        memberId: teamMember.memberId || teamMember._id,
-        name: teamMember.name
-      } : undefined,
-      appointmentDate: new Date(appointmentDate),
-      appointmentTime,
-      status: hasCalendarIntegration ? 'confirmed' : 'pending',
-      payment: chargeType === 'at_visit' ? {
-        method: 'at_visit',
-        servicePrice: fees.servicePrice,
-        platformFee: fees.platformFee,
-        stripeFee: fees.stripeFee,
-        providerPayout: fees.providerPayout,
-        total: fees.userTotal,
+      
+      dateTime: {
+        requestedStart,
+        requestedEnd,
+        providerTimezone: provider.timezone || 'America/Denver',
+        patientTimezone: req.headers['x-timezone'] || 'America/Denver',
+        bufferMinutes: provider.bookingSettings?.bufferMinutes || 15
+      },
+      
+      confirmation: {
+        required: bookingType === 'request',
+        requestedAt: bookingType === 'request' ? new Date() : null,
+        expiresAt: bookingType === 'request' 
+          ? new Date(Date.now() + (provider.bookingSettings?.confirmationDeadlineHours || 24) * 60 * 60 * 1000)
+          : null
+      },
+      
+      payment: {
+        mode: paymentMode,
         status: 'pending',
-        chargeType: 'at_visit'
-      } : {
-        method: 'card',
-        stripeCustomerId,
-        stripePaymentMethodId: paymentMethodId,
-        stripePaymentIntentId: paymentIntent?.id,
-        servicePrice: fees.servicePrice,
-        platformFee: fees.platformFee,
-        stripeFee: fees.stripeFee,
-        providerPayout: fees.providerPayout,
-        total: fees.userTotal,
-        status: paymentIntent ? 'authorized' : 'pending',
-        authorizedAt: paymentIntent ? new Date() : undefined,
-        chargeType: chargeType
+        originalAmount: servicePrice || 0
       },
-      notes,
-      bookingRequest: hasCalendarIntegration ? undefined : {
-        isRequest: true,
-        requestedAt: new Date(),
-        expiresAt: getRequestExpirationDate(new Date())
-      }
+      
+      location: {
+        type: locationType || 'in_person'
+      },
+      
+      notes: {
+        patientNotes: patientNotes || ''
+      },
+      
+      metadata: {
+        source: req.headers['x-source'] || 'app',
+        appVersion: req.headers['x-app-version'],
+        ipAddress: req.ip
+      },
+      
+      idempotencyKey
     });
-
-    await booking.save();
-
-    // Increment provider bookingCount
-    await Provider.findByIdAndUpdate(providerId, { $inc: { bookingCount: 1 } });
-
-
-    // Send notifications (non-blocking - don't let email failure block booking)
-    const providerEmail = provider.contactInfo?.email || provider.email;
     
-    // Fire and forget - don't await emails
-    (async () => {
+    // Generate booking number
+    await booking.generateBookingNumber();
+    
+    // Process payment
+    if (stripe && paymentMethodId && servicePrice > 0) {
       try {
-        if (hasCalendarIntegration) {
-          await emailService.sendBookingConfirmed(user.email, booking, provider);
-          if (providerEmail) {
-            await emailService.sendProviderNewBooking(providerEmail, booking, user);
+        const paymentIntentParams = {
+          amount: servicePrice,
+          currency: 'usd',
+          payment_method: paymentMethodId,
+          confirm: true,
+          metadata: {
+            bookingId: booking._id.toString(),
+            bookingNumber: booking.bookingNumber,
+            providerId: providerId,
+            patientId: patientId
           }
-        } else {
-          await emailService.sendBookingRequest(user.email, booking, provider);
-          if (providerEmail) {
-            await emailService.sendProviderBookingRequest(providerEmail, booking, user);
-          }
+        };
+        
+        // For request bookings, use manual capture (hold)
+        if (bookingType === 'request') {
+          paymentIntentParams.capture_method = 'manual';
         }
-              } catch (emailErr) {
-        console.error('Email notification failed (non-blocking):', emailErr.message);
+        
+        const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+        
+        booking.payment.paymentIntentId = paymentIntent.id;
+        booking.payment.status = bookingType === 'request' ? 'held' : 'captured';
+        
+        if (bookingType === 'request') {
+          booking.payment.hold = {
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+          };
+        }
+        
+      } catch (paymentError) {
+        console.error('Payment error:', paymentError);
+        booking.status = 'payment_failed';
+        booking.payment.status = 'failed';
+        await booking.save();
+        
+        // Log event
+        await logEvent(booking, 'payment_failed', { 
+          error: paymentError.message 
+        });
+        
+        return res.status(400).json({
+          error: 'Payment failed',
+          message: paymentError.message
+        });
       }
-    })();
-
+    }
+    
+    // Set final status
+    if (bookingType === 'instant') {
+      booking.status = 'confirmed';
+      booking.dateTime.confirmedStart = requestedStart;
+      booking.dateTime.confirmedEnd = requestedEnd;
+    } else {
+      booking.status = 'pending_confirmation';
+    }
+    
+    // Convert slot reservation if exists
+    if (reservationId) {
+      await SlotReservation.convertToBooking(reservationId, booking._id);
+      booking.slotReservation = {
+        reservationId,
+        reservedAt: new Date(),
+        released: true,
+        releasedAt: new Date(),
+        releasedReason: 'converted'
+      };
+    }
+    
+    // Save booking
+    await booking.save();
+    
+    // Log creation event
+    await logEvent(booking, 'created', {
+      bookingType,
+      newStatus: booking.status
+    }, {
+      type: 'patient',
+      userId: patientId
+    });
+    
+    // TODO: Send notifications
+    // - If instant: Send confirmation to patient, notify provider
+    // - If request: Send request notification to provider
+    
     res.status(201).json({
       success: true,
       booking: {
         _id: booking._id,
-        confirmationCode: booking.confirmationCode,
+        bookingNumber: booking.bookingNumber,
+        bookingType: booking.bookingType,
         status: booking.status,
-        appointmentDate: booking.appointmentDate,
-        appointmentTime: booking.appointmentTime,
         service: booking.service,
-        provider: {
-          _id: provider._id,
-          practiceName: provider.practiceName,
-          address: provider.address
-        },
+        dateTime: booking.dateTime,
+        confirmation: booking.confirmation,
         payment: {
-          total: booking.payment.total,
-          status: booking.payment.status
+          mode: booking.payment.mode,
+          status: booking.payment.status,
+          amount: booking.payment.originalAmount
         }
-      },
-      isRequest: !hasCalendarIntegration,
-      message: hasCalendarIntegration 
-        ? 'Booking confirmed!' 
-        : 'Booking request sent. Provider will confirm within 48 hours.'
-    });
-
-  } catch (error) {
-    console.error('Create booking error:', error);
-    
-    // Handle Stripe errors gracefully
-    if (error.type === 'StripeCardError') {
-      return res.status(400).json({ 
-        error: 'Payment failed', 
-        message: error.message 
-      });
-    }
-    
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== GET USER'S BOOKINGS ====================
-
-router.get('/user/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { status, limit = 20, page = 1 } = req.query;
-
-    const query = { user: userId };
-    
-    // Filter by status tab
-    if (status === 'upcoming') {
-      query.status = { $in: ['pending', 'confirmed'] };
-      query.appointmentDate = { $gte: new Date() };
-    } else if (status === 'completed') {
-      query.status = 'completed';
-    } else if (status === 'cancelled') {
-      query.status = { $in: ['cancelled_by_user', 'cancelled_by_provider', 'expired', 'no_show'] };
-    }
-
-    const bookings = await Booking.find(query)
-      .populate('provider', 'practiceName address photos rating contactInfo')
-      .sort({ appointmentDate: status === 'upcoming' ? 1 : -1 })
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
-
-    const total = await Booking.countDocuments(query);
-
-    res.json({
-      success: true,
-      bookings,
-      pagination: {
-        total,
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit)),
-        limit: parseInt(limit)
       }
     });
-
+    
   } catch (error) {
-    console.error('Get user bookings error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Create booking error:', error);
+    res.status(500).json({ error: 'Failed to create booking' });
   }
 });
 
-// ==================== GET BOOKING DETAIL ====================
+// ==================== GET BOOKINGS ====================
 
+/**
+ * GET /api/bookings/:id
+ * Get booking details
+ */
 router.get('/:id', async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('provider', 'practiceName address photos contactInfo cancellationPolicy calendar')
-      .populate('user', 'firstName lastName email phone');
-
+      .populate('patient', 'firstName lastName email phone')
+      .populate('provider', 'practiceName email phone address photos');
+    
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-
+    
     res.json({ success: true, booking });
-
+    
   } catch (error) {
     console.error('Get booking error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to get booking' });
   }
 });
 
-// ==================== GET CANCELLATION QUOTE ====================
-
-router.get('/:id/cancellation-quote', async (req, res) => {
+/**
+ * GET /api/bookings/patient/:patientId
+ * Get patient's bookings
+ */
+router.get('/patient/:patientId', async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('provider', 'cancellationPolicy');
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    if (!['pending', 'confirmed'].includes(booking.status)) {
-      return res.status(400).json({ error: 'Booking cannot be cancelled' });
-    }
-
-    const policyTier = booking.provider?.cancellationPolicy?.tier || 'standard';
-    const quote = getCancellationQuote(
-      booking.appointmentDate,
-      booking.payment.total,
-      policyTier
-    );
-
-    res.json({
-      success: true,
-      quote
-    });
-
-  } catch (error) {
-    console.error('Get cancellation quote error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== CANCEL BOOKING ====================
-
-router.post('/:id/cancel', async (req, res) => {
-  try {
-    const { cancelledBy = 'user', reason } = req.body;
+    const { status, limit = 20, skip = 0 } = req.query;
     
-    const booking = await Booking.findById(req.params.id)
-      .populate('provider', 'cancellationPolicy contactInfo practiceName')
-      .populate('user', 'email firstName lastName');
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
+    const query = { patient: req.params.patientId };
+    if (status) {
+      query.status = status;
     }
-
-    if (!['pending', 'confirmed'].includes(booking.status)) {
-      return res.status(400).json({ error: 'Booking cannot be cancelled' });
-    }
-
-    // Calculate fee
-    const policyTier = booking.provider?.cancellationPolicy?.tier || 'standard';
-    const fee = calculateCancellationFee(
-      booking.appointmentDate,
-      booking.payment.total,
-      policyTier
-    );
-
-    // Provider cancels = full refund always
-    const isByProvider = cancelledBy === 'provider';
-    const actualFee = isByProvider ? 0 : fee.feeAmount;
-    const refundAmount = booking.payment.total - actualFee;
-
-    // Process Stripe
-    let refundResult = null;
-    if (booking.payment.stripePaymentIntentId) {
-      if (refundAmount > 0) {
-        // If payment was captured, refund it
-        // If only authorized, cancel the intent
-        const paymentIntent = await stripeService.getPaymentIntent(booking.payment.stripePaymentIntentId);
-        
-        if (paymentIntent.status === 'requires_capture') {
-          // Cancel the authorization
-          await stripeService.cancelPaymentIntent(booking.payment.stripePaymentIntentId);
-        } else if (paymentIntent.status === 'succeeded') {
-          // Refund the captured payment
-          refundResult = await stripeService.createRefund(
-            booking.payment.stripePaymentIntentId,
-            refundAmount,
-            isByProvider ? 'requested_by_customer' : 'requested_by_customer'
-          );
-        }
-      } else if (actualFee > 0) {
-        // Capture only the fee amount
-        await stripeService.capturePaymentIntent(
-          booking.payment.stripePaymentIntentId,
-          actualFee
-        );
-      }
-    }
-
-    // Update booking
-    booking.status = isByProvider ? 'cancelled_by_provider' : 'cancelled_by_user';
-    booking.cancellation = {
-      cancelledAt: new Date(),
-      cancelledBy,
-      reason,
-      policyTier,
-      hoursBeforeAppointment: fee.hoursBeforeAppointment,
-      feePercent: fee.feePercent,
-      feeAmount: actualFee,
-      refundAmount,
-      stripeRefundId: refundResult?.id
-    };
-    booking.payment.status = refundAmount > 0 ? 'refunded' : 'captured';
-    if (refundResult) {
-      booking.payment.refundedAt = new Date();
-    }
-
-    await booking.save();
-
-
-    // Send notifications
-    const providerEmail = booking.provider?.contactInfo?.email;
     
-    if (isByProvider) {
-      await emailService.sendUserBookingCancelledByProvider(
-        booking.user.email,
-        booking,
-        booking.provider
-      );
-    } else {
-      await emailService.sendUserBookingCancelledByUser(
-        booking.user.email,
-        booking,
-        booking.provider
-      );
-      if (providerEmail) {
-        await emailService.sendProviderBookingCancelled(
-          providerEmail,
-          booking,
-          booking.user
-        );
-      }
-    }
-
-    res.json({
-      success: true,
-      booking: {
-        _id: booking._id,
-        status: booking.status,
-        cancellation: booking.cancellation
-      },
-      message: refundAmount > 0 
-        ? `Booking cancelled. $${refundAmount.toFixed(2)} will be refunded.`
-        : actualFee > 0 
-          ? `Booking cancelled. A $${actualFee.toFixed(2)} cancellation fee was charged.`
-          : 'Booking cancelled.'
-    });
-
-  } catch (error) {
-    console.error('Cancel booking error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== RESCHEDULE BOOKING ====================
-
-router.post('/:id/reschedule', async (req, res) => {
-  try {
-    const { newDate, newTime } = req.body;
+    const bookings = await Booking.find(query)
+      .populate('provider', 'practiceName address photos')
+      .sort({ 'dateTime.requestedStart': -1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(skip));
     
-    if (!newDate || !newTime) {
-      return res.status(400).json({ error: 'New date and time required' });
-    }
-
-    const booking = await Booking.findById(req.params.id)
-      .populate('provider', 'practiceName')
-      .populate('user', 'email firstName');
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    if (booking.status !== 'confirmed') {
-      return res.status(400).json({ error: 'Only confirmed bookings can be rescheduled' });
-    }
-
-    if (booking.rescheduleCount >= 2) {
-      return res.status(400).json({ error: 'Maximum reschedule limit reached (2)' });
-    }
-
-    // Create new booking with same details but new date/time
-    const newBooking = new Booking({
-      user: booking.user._id,
-      provider: booking.provider._id,
-      service: booking.service,
-      teamMember: booking.teamMember,
-      appointmentDate: new Date(newDate),
-      appointmentTime: newTime,
-      status: 'confirmed',
-      payment: { ...booking.payment.toObject() },
-      notes: booking.notes,
-      rescheduledFrom: booking._id,
-      rescheduleCount: booking.rescheduleCount + 1
-    });
-
-    // Generate new confirmation code
-    newBooking.confirmationCode = undefined;
-    await newBooking.save();
-
-    // Update old booking
-    booking.status = 'rescheduled';
-    booking.rescheduledTo = newBooking._id;
-    await booking.save();
-
-
-    res.json({
-      success: true,
-      newBooking: {
-        _id: newBooking._id,
-        confirmationCode: newBooking.confirmationCode,
-        appointmentDate: newBooking.appointmentDate,
-        appointmentTime: newBooking.appointmentTime,
-        status: newBooking.status
-      },
-      message: 'Booking rescheduled successfully'
-    });
-
-  } catch (error) {
-    console.error('Reschedule booking error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== PROVIDER: CONFIRM REQUEST ====================
-
-router.post('/:id/confirm', async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('provider', 'practiceName')
-      .populate('user', 'email firstName lastName');
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    if (booking.status !== 'pending') {
-      return res.status(400).json({ error: 'Booking is not pending' });
-    }
-
-    // Update booking
-    booking.status = 'confirmed';
-    booking.bookingRequest.respondedAt = new Date();
-    booking.bookingRequest.providerResponse = 'accepted';
+    const total = await Booking.countDocuments(query);
     
-    await booking.save();
-
-
-    // Notify user
-    await emailService.sendBookingConfirmed(booking.user.email, booking, booking.provider);
-
     res.json({ 
       success: true, 
-      booking,
-      message: 'Booking confirmed'
+      bookings,
+      pagination: { total, limit: parseInt(limit), skip: parseInt(skip) }
     });
-
+    
   } catch (error) {
-    console.error('Confirm booking error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Get patient bookings error:', error);
+    res.status(500).json({ error: 'Failed to get bookings' });
   }
 });
 
-// ==================== PROVIDER: DECLINE REQUEST ====================
-
-router.post('/:id/decline', async (req, res) => {
+/**
+ * GET /api/bookings/provider/:providerId
+ * Get provider's bookings
+ */
+router.get('/provider/:providerId', async (req, res) => {
   try {
-    const { reason, counterOffer } = req.body;
+    const { status, startDate, endDate, limit = 50, skip = 0 } = req.query;
     
-    const booking = await Booking.findById(req.params.id)
-      .populate('provider', 'practiceName')
-      .populate('user', 'email firstName');
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    if (booking.status !== 'pending') {
-      return res.status(400).json({ error: 'Booking is not pending' });
-    }
-
-    // Release the authorized payment
-    if (booking.payment.stripePaymentIntentId) {
-      await stripeService.cancelPaymentIntent(booking.payment.stripePaymentIntentId);
-    }
-
-    // Update booking
-    booking.status = 'cancelled_by_provider';
-    booking.bookingRequest.respondedAt = new Date();
-    booking.bookingRequest.providerResponse = counterOffer ? 'counter_offered' : 'declined';
+    const query = { provider: req.params.providerId };
     
-    if (counterOffer) {
-      booking.bookingRequest.counterOffer = {
-        date: new Date(counterOffer.date),
-        time: counterOffer.time,
-        message: counterOffer.message,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    if (status) {
+      if (status === 'upcoming') {
+        query.status = { $in: ['confirmed', 'pending_confirmation'] };
+        query['dateTime.requestedStart'] = { $gte: new Date() };
+      } else if (status === 'past') {
+        query.status = 'completed';
+      } else {
+        query.status = status;
+      }
+    }
+    
+    if (startDate) {
+      query['dateTime.requestedStart'] = { 
+        ...query['dateTime.requestedStart'],
+        $gte: new Date(startDate) 
       };
     }
     
-    booking.cancellation = {
-      cancelledAt: new Date(),
-      cancelledBy: 'provider',
-      reason,
-      feeAmount: 0,
-      refundAmount: booking.payment.total
-    };
-    booking.payment.status = 'cancelled';
+    if (endDate) {
+      query['dateTime.requestedStart'] = { 
+        ...query['dateTime.requestedStart'],
+        $lte: new Date(endDate) 
+      };
+    }
     
-    await booking.save();
-
-
-    // Notify user
-    // TODO: Add counter offer email template
-    await emailService.sendUserBookingCancelledByProvider(
-      booking.user.email,
-      booking,
-      booking.provider
-    );
-
+    const bookings = await Booking.find(query)
+      .populate('patient', 'firstName lastName email phone')
+      .sort({ 'dateTime.requestedStart': 1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(skip));
+    
+    const total = await Booking.countDocuments(query);
+    
     res.json({ 
       success: true, 
-      booking,
-      message: counterOffer 
-        ? 'Booking declined with counter offer sent'
-        : 'Booking declined'
+      bookings,
+      pagination: { total, limit: parseInt(limit), skip: parseInt(skip) }
     });
+    
+  } catch (error) {
+    console.error('Get provider bookings error:', error);
+    res.status(500).json({ error: 'Failed to get bookings' });
+  }
+});
 
+/**
+ * GET /api/bookings/provider/:providerId/pending
+ * Get provider's pending confirmation requests
+ */
+router.get('/provider/:providerId/pending', async (req, res) => {
+  try {
+    const bookings = await Booking.find({
+      provider: req.params.providerId,
+      status: 'pending_confirmation'
+    })
+    .populate('patient', 'firstName lastName email phone')
+    .sort({ 'confirmation.expiresAt': 1 }); // Soonest expiring first
+    
+    // Calculate urgency
+    const now = new Date();
+    const enrichedBookings = bookings.map(b => {
+      const booking = b.toObject();
+      const expiresAt = new Date(booking.confirmation.expiresAt);
+      const hoursUntilExpiry = (expiresAt - now) / (1000 * 60 * 60);
+      
+      booking.urgency = hoursUntilExpiry < 4 ? 'high' : hoursUntilExpiry < 12 ? 'medium' : 'low';
+      booking.hoursUntilExpiry = Math.max(0, hoursUntilExpiry).toFixed(1);
+      
+      return booking;
+    });
+    
+    res.json({ 
+      success: true, 
+      bookings: enrichedBookings,
+      count: enrichedBookings.length
+    });
+    
+  } catch (error) {
+    console.error('Get pending bookings error:', error);
+    res.status(500).json({ error: 'Failed to get pending bookings' });
+  }
+});
+
+// ==================== PROVIDER ACTIONS ====================
+
+/**
+ * POST /api/bookings/:id/confirm
+ * Provider confirms a request booking
+ */
+router.post('/:id/confirm', authenticateProvider, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Verify provider owns this booking
+    if (booking.provider.toString() !== req.providerId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    // Validate state transition
+    if (!StateMachine.canTransition(booking.status, 'confirmed')) {
+      return res.status(400).json({ 
+        error: 'Invalid status transition',
+        currentStatus: booking.status,
+        allowedTransitions: StateMachine.getValidTransitions(booking.status)
+      });
+    }
+    
+    const previousStatus = booking.status;
+    
+    // Capture payment if held
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+      try {
+        await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
+        booking.payment.status = 'captured';
+        booking.payment.hold.capturedAt = new Date();
+      } catch (captureError) {
+        console.error('Payment capture error:', captureError);
+        return res.status(400).json({
+          error: 'Payment capture failed',
+          message: captureError.message
+        });
+      }
+    }
+    
+    // Update booking
+    booking.status = 'confirmed';
+    booking.confirmation.respondedAt = new Date();
+    booking.confirmation.responseType = 'confirmed';
+    booking.dateTime.confirmedStart = booking.dateTime.requestedStart;
+    booking.dateTime.confirmedEnd = booking.dateTime.requestedEnd;
+    
+    await booking.save();
+    
+    // Log event
+    await logEvent(booking, 'confirmed', {
+      previousStatus,
+      newStatus: 'confirmed'
+    }, {
+      type: 'provider',
+      userId: req.providerId
+    });
+    
+    // Update provider stats
+    await Provider.findByIdAndUpdate(req.providerId, {
+      $inc: { 'bookingStats.totalConfirmed': 1 },
+      $set: { 'bookingStats.lastBookingAt': new Date() }
+    });
+    
+    // TODO: Send confirmation notification to patient
+    // TODO: Create calendar event if provider has calendar connected
+    
+    res.json({
+      success: true,
+      message: 'Booking confirmed',
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status,
+        dateTime: booking.dateTime
+      }
+    });
+    
+  } catch (error) {
+    console.error('Confirm booking error:', error);
+    res.status(500).json({ error: 'Failed to confirm booking' });
+  }
+});
+
+/**
+ * POST /api/bookings/:id/decline
+ * Provider declines a request booking
+ */
+router.post('/:id/decline', authenticateProvider, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Verify provider owns this booking
+    if (booking.provider.toString() !== req.providerId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    // Validate state transition
+    if (!StateMachine.canTransition(booking.status, 'cancelled_provider')) {
+      return res.status(400).json({ 
+        error: 'Invalid status transition',
+        currentStatus: booking.status
+      });
+    }
+    
+    const previousStatus = booking.status;
+    
+    // Cancel payment hold if exists
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+      try {
+        await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
+        booking.payment.status = 'cancelled';
+        booking.payment.hold.cancelledAt = new Date();
+        booking.payment.hold.cancelReason = 'Provider declined';
+      } catch (cancelError) {
+        console.error('Payment cancel error:', cancelError);
+        // Continue anyway - payment will expire
+      }
+    }
+    
+    // Update booking
+    booking.status = 'cancelled_provider';
+    booking.confirmation.respondedAt = new Date();
+    booking.confirmation.responseType = 'declined';
+    booking.confirmation.declineReason = reason;
+    booking.notes.cancellationReason = reason;
+    
+    await booking.save();
+    
+    // Log event
+    await logEvent(booking, 'declined', {
+      previousStatus,
+      newStatus: 'cancelled_provider',
+      reason
+    }, {
+      type: 'provider',
+      userId: req.providerId
+    });
+    
+    // TODO: Notify patient of decline
+    
+    res.json({
+      success: true,
+      message: 'Booking declined',
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status
+      }
+    });
+    
   } catch (error) {
     console.error('Decline booking error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to decline booking' });
   }
 });
 
-// ==================== PROVIDER: MARK COMPLETED ====================
-
-router.post('/:id/complete', async (req, res) => {
+/**
+ * POST /api/bookings/:id/reschedule
+ * Provider proposes a new time
+ */
+router.post('/:id/reschedule', authenticateProvider, async (req, res) => {
   try {
-    const { adjustedAmount, adjustmentReason } = req.body;
+    const { proposedStart, proposedEnd, message } = req.body;
+    
+    if (!proposedStart) {
+      return res.status(400).json({ error: 'proposedStart is required' });
+    }
     
     const booking = await Booking.findById(req.params.id);
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-
-    if (booking.status !== 'confirmed') {
-      return res.status(400).json({ error: 'Only confirmed bookings can be completed' });
-    }
-
-    // Determine capture amount
-    const captureAmount = adjustedAmount || booking.payment.total;
     
-    // Capture the payment
-    if (booking.payment.stripePaymentIntentId && booking.payment.status === 'authorized') {
-      await stripeService.capturePaymentIntent(
-        booking.payment.stripePaymentIntentId,
-        captureAmount
-      );
+    // Verify provider owns this booking
+    if (booking.provider.toString() !== req.providerId) {
+      return res.status(403).json({ error: 'Not authorized' });
     }
-
-    // Update booking
-    booking.status = 'completed';
-    booking.payment.status = 'captured';
-    booking.payment.capturedAt = new Date();
     
-    if (adjustedAmount && adjustedAmount !== booking.payment.total) {
-      booking.payment.adjustedAmount = adjustedAmount;
-      booking.payment.adjustmentReason = adjustmentReason;
-      
-      // Recalculate fees for adjusted amount
-      const newFees = calculateFees(adjustedAmount);
-      booking.payment.platformFee = newFees.platformFee;
-      booking.payment.stripeFee = newFees.stripeFee;
-      booking.payment.providerPayout = newFees.providerPayout;
+    // Check reschedule limit
+    if (!booking.canReschedule) {
+      return res.status(400).json({ 
+        error: 'Reschedule limit reached',
+        message: `Maximum ${booking.reschedule.maxAttempts} reschedule attempts allowed`
+      });
     }
-
-    await booking.save();
-
-
-    res.json({ 
-      success: true, 
-      booking,
-      message: 'Booking marked as completed'
-    });
-
-  } catch (error) {
-    console.error('Complete booking error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== PROVIDER: MARK NO-SHOW ====================
-
-router.post('/:id/no-show', async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('provider', 'cancellationPolicy')
-      .populate('user', 'email firstName');
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
+    
+    // Validate state transition
+    if (!StateMachine.canTransition(booking.status, 'reschedule_proposed')) {
+      return res.status(400).json({ 
+        error: 'Invalid status transition',
+        currentStatus: booking.status
+      });
     }
-
-    if (booking.status !== 'confirmed') {
-      return res.status(400).json({ error: 'Only confirmed bookings can be marked as no-show' });
-    }
-
-    // Capture full amount (100% no-show fee)
-    if (booking.payment.stripePaymentIntentId && booking.payment.status === 'authorized') {
-      await stripeService.capturePaymentIntent(
-        booking.payment.stripePaymentIntentId,
-        booking.payment.total
-      );
-    }
-
+    
+    const previousStatus = booking.status;
+    const provider = await Provider.findById(req.providerId);
+    
+    // Calculate proposed end if not provided
+    const start = new Date(proposedStart);
+    const end = proposedEnd 
+      ? new Date(proposedEnd) 
+      : new Date(start.getTime() + booking.service.duration * 60 * 1000);
+    
     // Update booking
-    booking.status = 'no_show';
-    booking.cancellation = {
-      cancelledAt: new Date(),
-      cancelledBy: 'system',
-      reason: 'Patient did not show up',
-      feePercent: 100,
-      feeAmount: booking.payment.total,
-      refundAmount: 0
+    booking.status = 'reschedule_proposed';
+    booking.reschedule.count += 1;
+    booking.reschedule.current = {
+      proposedBy: 'provider',
+      proposedAt: new Date(),
+      proposedStart: start,
+      proposedEnd: end,
+      responseDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      message: message || ''
     };
-    booking.payment.status = 'captured';
-    booking.payment.capturedAt = new Date();
-
-    await booking.save();
-
-
-    // Notify user
-    // TODO: Add no-show email template
-
-    res.json({ 
-      success: true, 
-      booking,
-      message: 'Booking marked as no-show. Full amount captured.'
+    
+    // Add to history
+    booking.reschedule.history.push({
+      attemptNumber: booking.reschedule.count,
+      fromStart: booking.dateTime.requestedStart,
+      fromEnd: booking.dateTime.requestedEnd,
+      toStart: start,
+      toEnd: end,
+      proposedBy: 'provider',
+      proposedAt: new Date(),
+      message
     });
-
+    
+    await booking.save();
+    
+    // Log event
+    await logEvent(booking, 'reschedule_proposed', {
+      previousStatus,
+      newStatus: 'reschedule_proposed',
+      proposedStart: start,
+      proposedEnd: end,
+      attemptNumber: booking.reschedule.count
+    }, {
+      type: 'provider',
+      userId: req.providerId
+    });
+    
+    // TODO: Notify patient of reschedule proposal
+    
+    res.json({
+      success: true,
+      message: 'Reschedule proposed',
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status,
+        reschedule: booking.reschedule
+      }
+    });
+    
   } catch (error) {
-    console.error('No-show booking error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Reschedule booking error:', error);
+    res.status(500).json({ error: 'Failed to propose reschedule' });
   }
 });
 
-// ==================== PROVIDER: WAIVE FEE ====================
+// ==================== PATIENT ACTIONS ====================
 
-router.post('/:id/waive-fee', async (req, res) => {
+/**
+ * POST /api/bookings/:id/accept-reschedule
+ * Patient accepts the proposed reschedule
+ */
+router.post('/:id/accept-reschedule', async (req, res) => {
   try {
-    const { reason, waivedBy } = req.body;
-    
     const booking = await Booking.findById(req.params.id);
-
+    
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-
-    if (!booking.cancellation || booking.cancellation.feeAmount === 0) {
-      return res.status(400).json({ error: 'No fee to waive' });
+    
+    if (booking.status !== 'reschedule_proposed') {
+      return res.status(400).json({ 
+        error: 'No pending reschedule',
+        currentStatus: booking.status
+      });
     }
-
-    if (booking.cancellation.feeWaived) {
-      return res.status(400).json({ error: 'Fee already waived' });
+    
+    const previousStatus = booking.status;
+    
+    // Update booking with new times
+    booking.status = 'confirmed';
+    booking.dateTime.confirmedStart = booking.reschedule.current.proposedStart;
+    booking.dateTime.confirmedEnd = booking.reschedule.current.proposedEnd;
+    
+    // Update history
+    const lastHistoryIndex = booking.reschedule.history.length - 1;
+    if (lastHistoryIndex >= 0) {
+      booking.reschedule.history[lastHistoryIndex].respondedAt = new Date();
+      booking.reschedule.history[lastHistoryIndex].accepted = true;
     }
-
-    // Refund the fee if it was already captured
-    if (booking.payment.status === 'captured' && booking.cancellation.feeAmount > 0) {
-      await stripeService.createRefund(
-        booking.payment.stripePaymentIntentId,
-        booking.cancellation.feeAmount
-      );
+    
+    // Clear current proposal
+    booking.reschedule.current = null;
+    
+    // Capture payment if still held
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+      try {
+        await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
+        booking.payment.status = 'captured';
+        booking.payment.hold.capturedAt = new Date();
+      } catch (captureError) {
+        console.error('Payment capture error:', captureError);
+        return res.status(400).json({
+          error: 'Payment capture failed',
+          message: captureError.message
+        });
+      }
     }
-
-    // Update booking
-    booking.cancellation.feeWaived = true;
-    booking.cancellation.feeWaivedBy = waivedBy;
-    booking.cancellation.feeWaivedReason = reason;
-    booking.cancellation.refundAmount = booking.payment.total; // Full refund now
-    booking.payment.status = 'refunded';
-
+    
     await booking.save();
-
-
-    res.json({ 
-      success: true, 
-      booking,
-      message: 'Cancellation fee waived'
+    
+    // Log event
+    await logEvent(booking, 'reschedule_accepted', {
+      previousStatus,
+      newStatus: 'confirmed',
+      newStart: booking.dateTime.confirmedStart,
+      newEnd: booking.dateTime.confirmedEnd
+    }, {
+      type: 'patient',
+      userId: booking.patient
     });
-
+    
+    // TODO: Notify provider
+    
+    res.json({
+      success: true,
+      message: 'Reschedule accepted',
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status,
+        dateTime: booking.dateTime
+      }
+    });
+    
   } catch (error) {
-    console.error('Waive fee error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Accept reschedule error:', error);
+    res.status(500).json({ error: 'Failed to accept reschedule' });
+  }
+});
+
+/**
+ * POST /api/bookings/:id/decline-reschedule
+ * Patient declines the proposed reschedule (cancels booking)
+ */
+router.post('/:id/decline-reschedule', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    if (booking.status !== 'reschedule_proposed') {
+      return res.status(400).json({ 
+        error: 'No pending reschedule',
+        currentStatus: booking.status
+      });
+    }
+    
+    const previousStatus = booking.status;
+    
+    // Cancel payment hold
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+      try {
+        await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
+        booking.payment.status = 'cancelled';
+        booking.payment.hold.cancelledAt = new Date();
+        booking.payment.hold.cancelReason = 'Patient declined reschedule';
+      } catch (cancelError) {
+        console.error('Payment cancel error:', cancelError);
+      }
+    }
+    
+    // Update booking
+    booking.status = 'cancelled_patient';
+    booking.notes.cancellationReason = 'Patient declined reschedule';
+    
+    // Update history
+    const lastHistoryIndex = booking.reschedule.history.length - 1;
+    if (lastHistoryIndex >= 0) {
+      booking.reschedule.history[lastHistoryIndex].respondedAt = new Date();
+      booking.reschedule.history[lastHistoryIndex].accepted = false;
+    }
+    
+    await booking.save();
+    
+    // Log event
+    await logEvent(booking, 'reschedule_declined', {
+      previousStatus,
+      newStatus: 'cancelled_patient'
+    }, {
+      type: 'patient',
+      userId: booking.patient
+    });
+    
+    // TODO: Notify provider
+    
+    res.json({
+      success: true,
+      message: 'Reschedule declined, booking cancelled',
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status
+      }
+    });
+    
+  } catch (error) {
+    console.error('Decline reschedule error:', error);
+    res.status(500).json({ error: 'Failed to decline reschedule' });
+  }
+});
+
+/**
+ * POST /api/bookings/:id/cancel
+ * Cancel a booking (patient or provider)
+ */
+router.post('/:id/cancel', async (req, res) => {
+  try {
+    const { reason, cancelledBy } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Check if cancellation is allowed
+    const cancellerType = cancelledBy || 'patient';
+    const newStatus = cancellerType === 'provider' ? 'cancelled_provider' : 'cancelled_patient';
+    
+    if (!StateMachine.canTransition(booking.status, newStatus)) {
+      return res.status(400).json({ 
+        error: 'Cannot cancel booking in current status',
+        currentStatus: booking.status
+      });
+    }
+    
+    const previousStatus = booking.status;
+    
+    // Handle payment
+    if (stripe && booking.payment.paymentIntentId) {
+      if (booking.payment.status === 'held') {
+        // Release hold
+        try {
+          await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
+          booking.payment.status = 'cancelled';
+          booking.payment.hold.cancelledAt = new Date();
+          booking.payment.hold.cancelReason = reason || 'Booking cancelled';
+        } catch (e) {
+          console.error('Failed to cancel payment hold:', e);
+        }
+      } else if (booking.payment.status === 'captured') {
+        // TODO: Handle refund based on cancellation policy
+        // For now, just mark as needing refund
+        console.log('TODO: Process refund for captured payment');
+      }
+    }
+    
+    // Update booking
+    booking.status = newStatus;
+    booking.notes.cancellationReason = reason;
+    
+    await booking.save();
+    
+    // Log event
+    await logEvent(booking, 'cancelled', {
+      previousStatus,
+      newStatus,
+      reason,
+      cancelledBy: cancellerType
+    }, {
+      type: cancellerType,
+      userId: cancellerType === 'provider' ? booking.provider : booking.patient
+    });
+    
+    // Update provider stats
+    await Provider.findByIdAndUpdate(booking.provider, {
+      $inc: { 'bookingStats.totalCancelled': 1 }
+    });
+    
+    res.json({
+      success: true,
+      message: 'Booking cancelled',
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status
+      }
+    });
+    
+  } catch (error) {
+    console.error('Cancel booking error:', error);
+    res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
+// ==================== BOOKING HISTORY ====================
+
+/**
+ * GET /api/bookings/:id/history
+ * Get booking event history
+ */
+router.get('/:id/history', async (req, res) => {
+  try {
+    const events = await BookingEvent.find({ booking: req.params.id })
+      .sort({ timestamp: 1 });
+    
+    res.json({ success: true, events });
+    
+  } catch (error) {
+    console.error('Get booking history error:', error);
+    res.status(500).json({ error: 'Failed to get booking history' });
   }
 });
 
