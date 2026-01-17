@@ -1,6 +1,7 @@
 // backend/services/NotificationService.js
 // Findr Health Notification Service - Handles email, push, and SMS notifications
 
+const Notification = require('../models/Notification');
 const nodemailer = require('nodemailer');
 
 /**
@@ -62,6 +63,32 @@ class NotificationService {
       }
     }
     
+
+    // Create in-app notification record
+    try {
+      if (recipient.id && recipient.type) {
+        const pushConfig = this.getPushConfig(template, data);
+        await Notification.createNotification({
+          recipientId: recipient.id,
+          recipientType: recipient.type === "user" ? "User" : "Provider",
+          type: template,
+          title: pushConfig?.title || "Findr Health",
+          body: pushConfig?.body || "You have a new notification",
+          data: {
+            bookingId: data.bookingId,
+            providerId: data.providerId,
+            actionUrl: data.actionUrl || `/bookings/${data.bookingId}`,
+            actionLabel: data.actionLabel || "View Details"
+          },
+          priority: data.priority || "normal"
+        });
+        results.push({ channel: "in-app", success: true });
+      }
+    } catch (inAppError) {
+      console.error("[NotificationService] Failed to create in-app notification:", inAppError.message);
+      results.push({ channel: "in-app", success: false, error: inAppError.message });
+    }
+
     return results;
   }
 

@@ -57,6 +57,8 @@ router.post('/booking-created', authenticateToken, async (req, res) => {
     // Notify patient
     await NotificationService.send({
       recipient: {
+        id: booking.user._id,
+        type: 'user',
         email: booking.user.email,
         name: booking.user.name,
         fcmToken: booking.user.fcmToken
@@ -80,7 +82,9 @@ router.post('/booking-created', authenticateToken, async (req, res) => {
       
       await NotificationService.send({
         recipient: {
-          email: booking.provider.email,
+        id: booking.provider._id,
+        type: 'provider',
+        email: booking.provider.email,
           name: booking.provider.practiceName,
           fcmToken: booking.provider.fcmToken
         },
@@ -125,6 +129,8 @@ router.post('/booking-confirmed', authenticateToken, async (req, res) => {
     // Notify patient
     await NotificationService.send({
       recipient: {
+        id: booking.user._id,
+        type: 'user',
         email: booking.user.email,
         name: booking.user.name,
         fcmToken: booking.user.fcmToken
@@ -169,6 +175,8 @@ router.post('/booking-declined', authenticateToken, async (req, res) => {
     // Notify patient
     await NotificationService.send({
       recipient: {
+        id: booking.user._id,
+        type: 'user',
         email: booking.user.email,
         name: booking.user.name,
         fcmToken: booking.user.fcmToken
@@ -211,6 +219,8 @@ router.post('/reschedule-proposed', authenticateToken, async (req, res) => {
     // Notify patient
     await NotificationService.send({
       recipient: {
+        id: booking.user._id,
+        type: 'user',
         email: booking.user.email,
         name: booking.user.name,
         fcmToken: booking.user.fcmToken
@@ -256,6 +266,8 @@ router.post('/reschedule-accepted', authenticateToken, async (req, res) => {
     // Notify provider
     await NotificationService.send({
       recipient: {
+        id: booking.provider._id,
+        type: 'provider',
         email: booking.provider.email,
         name: booking.provider.practiceName,
         fcmToken: booking.provider.fcmToken
@@ -275,6 +287,8 @@ router.post('/reschedule-accepted', authenticateToken, async (req, res) => {
     // Also send confirmation to patient
     await NotificationService.send({
       recipient: {
+        id: booking.user._id,
+        type: 'user',
         email: booking.user.email,
         name: booking.user.name,
         fcmToken: booking.user.fcmToken
@@ -318,6 +332,8 @@ router.post('/reschedule-declined', authenticateToken, async (req, res) => {
     // Notify provider
     await NotificationService.send({
       recipient: {
+        id: booking.provider._id,
+        type: 'provider',
         email: booking.provider.email,
         name: booking.provider.practiceName,
         fcmToken: booking.provider.fcmToken
@@ -335,6 +351,8 @@ router.post('/reschedule-declined', authenticateToken, async (req, res) => {
     // Notify patient of cancellation
     await NotificationService.send({
       recipient: {
+        id: booking.user._id,
+        type: 'user',
         email: booking.user.email,
         name: booking.user.name,
         fcmToken: booking.user.fcmToken
@@ -377,7 +395,9 @@ router.post('/booking-cancelled', authenticateToken, async (req, res) => {
     if (cancelledBy === 'patient') {
       await NotificationService.send({
         recipient: {
-          email: booking.provider.email,
+        id: booking.provider._id,
+        type: 'provider',
+        email: booking.provider.email,
           name: booking.provider.practiceName,
           fcmToken: booking.provider.fcmToken
         },
@@ -395,7 +415,9 @@ router.post('/booking-cancelled', authenticateToken, async (req, res) => {
     } else {
       await NotificationService.send({
         recipient: {
-          email: booking.user.email,
+        id: booking.user._id,
+        type: 'user',
+        email: booking.user.email,
           name: booking.user.name,
           fcmToken: booking.user.fcmToken
         },
@@ -439,6 +461,8 @@ router.post('/booking-expired', authenticateToken, async (req, res) => {
     // Notify patient
     await NotificationService.send({
       recipient: {
+        id: booking.user._id,
+        type: 'user',
         email: booking.user.email,
         name: booking.user.name,
         fcmToken: booking.user.fcmToken
@@ -456,6 +480,8 @@ router.post('/booking-expired', authenticateToken, async (req, res) => {
     // Notify provider
     await NotificationService.send({
       recipient: {
+        id: booking.provider._id,
+        type: 'provider',
         email: booking.provider.email,
         name: booking.provider.practiceName
       },
@@ -498,6 +524,8 @@ router.post('/expiring-reminder', authenticateToken, async (req, res) => {
     // Notify provider only
     await NotificationService.send({
       recipient: {
+        id: booking.provider._id,
+        type: 'provider',
         email: booking.provider.email,
         name: booking.provider.practiceName,
         fcmToken: booking.provider.fcmToken
@@ -523,3 +551,175 @@ router.post('/expiring-reminder', authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
+
+// ============================================================================
+// IN-APP NOTIFICATION CENTER ENDPOINTS
+// ============================================================================
+
+const Notification = require('../models/Notification');
+
+/**
+ * GET /api/notifications/user/:userId
+ * Get all notifications for a user
+ */
+router.get('/user/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 50, offset = 0, unreadOnly = false } = req.query;
+    
+    const query = { 
+      recipientId: userId, 
+      recipientType: 'User' 
+    };
+    
+    if (unreadOnly === 'true') {
+      query.read = false;
+    }
+    
+    const notifications = await Notification.find(query)
+      .sort({ createdAt: -1 })
+      .skip(parseInt(offset))
+      .limit(parseInt(limit))
+      .lean();
+    
+    const total = await Notification.countDocuments(query);
+    const unreadCount = await Notification.getUnreadCount(userId, 'User');
+    
+    res.json({
+      notifications,
+      total,
+      unreadCount,
+      hasMore: parseInt(offset) + notifications.length < total
+    });
+  } catch (error) {
+    console.error('[Notifications] Error fetching user notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+/**
+ * GET /api/notifications/provider/:providerId
+ * Get all notifications for a provider
+ */
+router.get('/provider/:providerId', authenticateToken, async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const { limit = 50, offset = 0, unreadOnly = false } = req.query;
+    
+    const query = { 
+      recipientId: providerId, 
+      recipientType: 'Provider' 
+    };
+    
+    if (unreadOnly === 'true') {
+      query.read = false;
+    }
+    
+    const notifications = await Notification.find(query)
+      .sort({ createdAt: -1 })
+      .skip(parseInt(offset))
+      .limit(parseInt(limit))
+      .lean();
+    
+    const total = await Notification.countDocuments(query);
+    const unreadCount = await Notification.getUnreadCount(providerId, 'Provider');
+    
+    res.json({
+      notifications,
+      total,
+      unreadCount,
+      hasMore: parseInt(offset) + notifications.length < total
+    });
+  } catch (error) {
+    console.error('[Notifications] Error fetching provider notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+/**
+ * GET /api/notifications/unread-count/:recipientType/:recipientId
+ * Get unread notification count (for badge)
+ */
+router.get('/unread-count/:recipientType/:recipientId', authenticateToken, async (req, res) => {
+  try {
+    const { recipientType, recipientId } = req.params;
+    const type = recipientType === 'user' ? 'User' : 'Provider';
+    
+    const count = await Notification.getUnreadCount(recipientId, type);
+    
+    res.json({ unreadCount: count });
+  } catch (error) {
+    console.error('[Notifications] Error fetching unread count:', error);
+    res.status(500).json({ error: 'Failed to fetch unread count' });
+  }
+});
+
+/**
+ * PATCH /api/notifications/:id/read
+ * Mark a single notification as read
+ */
+router.patch('/:id/read', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const notification = await Notification.findByIdAndUpdate(
+      id,
+      { read: true, readAt: new Date() },
+      { new: true }
+    );
+    
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+    
+    res.json({ success: true, notification });
+  } catch (error) {
+    console.error('[Notifications] Error marking as read:', error);
+    res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+});
+
+/**
+ * PATCH /api/notifications/read-all/:recipientType/:recipientId
+ * Mark all notifications as read for a recipient
+ */
+router.patch('/read-all/:recipientType/:recipientId', authenticateToken, async (req, res) => {
+  try {
+    const { recipientType, recipientId } = req.params;
+    const type = recipientType === 'user' ? 'User' : 'Provider';
+    
+    const result = await Notification.updateMany(
+      { recipientId, recipientType: type, read: false },
+      { read: true, readAt: new Date() }
+    );
+    
+    res.json({ 
+      success: true, 
+      markedAsRead: result.modifiedCount 
+    });
+  } catch (error) {
+    console.error('[Notifications] Error marking all as read:', error);
+    res.status(500).json({ error: 'Failed to mark notifications as read' });
+  }
+});
+
+/**
+ * DELETE /api/notifications/:id
+ * Delete a notification
+ */
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const notification = await Notification.findByIdAndDelete(id);
+    
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Notifications] Error deleting notification:', error);
+    res.status(500).json({ error: 'Failed to delete notification' });
+  }
+});
