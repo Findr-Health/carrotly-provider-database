@@ -77,7 +77,7 @@ class NotificationService {
           data: {
             bookingId: data.bookingId,
             providerId: data.providerId,
-            actionUrl: data.actionUrl || `/bookings/${data.bookingId}`,
+            actionUrl: data.actionUrl || `/booking/${data.bookingId}`,
             actionLabel: data.actionLabel || "View Details"
           },
           priority: data.priority || "normal"
