@@ -22,6 +22,7 @@ const placesRoutes = require('./routes/places');
 const availabilityRoutes = require('./routes/availability');
 const paymentsRoutes = require('./routes/payments');
 const providerServicesRoutes = require('./routes/providerServices');
+const notificationRoutes = require('./routes/notifications');
 const stripeConnectRoutes = require('./routes/stripeConnect');
 const calendarRoutes = require('./routes/calendar');
 const uploadRoutes = require('./routes/upload');
@@ -78,6 +79,7 @@ app.use('/api/reviews', reviewRoutes);
 // Booking routes
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/bookings', cancellationRoutes);  // ADD THIS LINE
+app.use('/api/notifications', notificationRoutes);
 
 // Search routes (enhanced with geo)
 app.use('/api/search', searchRoutes);
