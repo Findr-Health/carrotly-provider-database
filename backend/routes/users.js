@@ -82,7 +82,17 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    // Handle 'me' as current user
+    let userId = req.params.id;
+    if (userId === 'me') {
+      // Requires authentication - get from JWT token
+      if (!req.user || !req.user.userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+      userId = req.user.userId;
+    }
+    
+    const user = await User.findById(userId).select('-password');
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
