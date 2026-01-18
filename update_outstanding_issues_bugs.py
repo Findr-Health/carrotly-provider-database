@@ -1,4 +1,7 @@
-# FINDR HEALTH - OUTSTANDING ISSUES
+#!/usr/bin/env python3
+"""Update OUTSTANDING_ISSUES with TestFlight bugs"""
+
+OUTSTANDING_ISSUES_V25 = """# FINDR HEALTH - OUTSTANDING ISSUES
 ## Version 25 | Updated: January 18, 2026 (TestFlight Testing - Critical Bugs Found)
 
 **Document Purpose:** Accurate tracking of all outstanding issues and tasks  
@@ -202,3 +205,22 @@
 *Status: TestFlight Build 2 - Critical Bugs Found*  
 *Next: Fix P0 blockers before external testing*  
 *Mission: Enable providers and users with transparency and ease in navigating healthcare*
+"""
+
+with open('OUTSTANDING_ISSUES.md', 'w') as f:
+    f.write(OUTSTANDING_ISSUES_V25)
+
+print("✅ Updated OUTSTANDING_ISSUES.md to v25")
+print()
+print("📋 Documented 6 critical bugs:")
+print("   P0 BLOCKERS:")
+print("   - Bug #1: My Bookings error")
+print("   - Bug #2: Booking submission fails")
+print("   - Bug #3: Biometric login broken")
+print("   P2 MEDIUM:")
+print("   - Bug #4: Search shows wrong results")
+print("   - Bug #5: Location search UI issues")
+print("   - Bug #6: Category page 404")
+print()
+print("⚠️  Build 2 marked as NOT READY for external testing")
+print()
