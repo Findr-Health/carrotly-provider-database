@@ -465,12 +465,24 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
     
     let query = { patient: userId };
     
-    if (status) {
+    // Handle special status filters
+    if (status === 'upcoming') {
+      // Upcoming includes all active statuses
+      query.status = { 
+        $in: ['pending_confirmation', 'confirmed', 'pending_payment'] 
+      };
+      query['dateTime.requestedStart'] = { $gte: new Date() };
+    } else if (status === 'completed') {
+      query.status = { $in: ['completed', 'no_show'] };
+    } else if (status === 'cancelled') {
+      query.status = { $in: ['cancelled', 'declined', 'expired'] };
+    } else if (status) {
+      // Exact status match
       query.status = status;
     }
     
-    if (upcoming === 'true') {
-      query.appointmentDate = { $gte: new Date() };
+    if (upcoming === 'true' && !status) {
+      query['dateTime.requestedStart'] = { $gte: new Date() };
     }
 
     const bookings = await Booking.find(query)
