@@ -444,10 +444,18 @@ router.get('/:id', async (req, res) => {
  * Get patient's bookings
  */
 // Get current authenticated user's bookings
-router.get('/user', authenticateToken, async (req, res) => {
+router.get('/user/:userId', authenticateToken, async (req, res) => {
   try {
     // Get user ID from JWT token
-    const userId = req.user.userId;
+    const userId = req.params.userId;
+    
+    // Security: Verify authenticated user matches requested user
+    if (userId !== req.user.userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Unauthorized: Cannot access another user\'s bookings' 
+      });
+    }
     
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
