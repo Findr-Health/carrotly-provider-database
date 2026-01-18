@@ -442,6 +442,45 @@ router.get('/:id', async (req, res) => {
  * GET /api/bookings/patient/:patientId
  * Get patient's bookings
  */
+// Get current authenticated user's bookings
+router.get('/user', authenticateToken, async (req, res) => {
+  try {
+    // Get user ID from JWT token
+    const userId = req.user.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { status, upcoming, limit = 20, skip = 0 } = req.query;
+    
+    let query = { patient: userId };
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    if (upcoming === 'true') {
+      query.appointmentDate = { $gte: new Date() };
+    }
+
+    const bookings = await Booking.find(query)
+      .populate('providerId', 'practiceName providerTypes address')
+      .populate('serviceId', 'name price duration')
+      .sort({ appointmentDate: upcoming === 'true' ? 1 : -1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(skip));
+
+    res.json({ 
+      bookings,
+      total: await Booking.countDocuments(query)
+    });
+  } catch (error) {
+    console.error('Get user bookings error:', error);
+    res.status(500).json({ error: 'Failed to get bookings' });
+  }
+});
+
 router.get('/patient/:patientId', async (req, res) => {
   try {
     const { status, limit = 20, skip = 0 } = req.query;
