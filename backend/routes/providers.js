@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
     }
 
     
-    // Text search across name, services, categories
+    // Text search across name, services, categories, locations
     if (search) {
       const searchRegex = new RegExp(search, 'i');
       query.$or = [
@@ -37,7 +37,9 @@ router.get('/', async (req, res) => {
         { 'services.name': searchRegex },
         { 'services.category': searchRegex },
         { providerTypes: searchRegex },
-        { description: searchRegex }
+        { description: searchRegex },
+        { 'address.city': searchRegex },
+        { 'address.state': searchRegex }
       ];
     }
     
