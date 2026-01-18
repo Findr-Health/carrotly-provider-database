@@ -18,6 +18,7 @@
  * - POST /api/bookings/:id/cancel       - Cancel booking
  */
 
+const { authenticateToken } = require('../middleware/auth');
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
