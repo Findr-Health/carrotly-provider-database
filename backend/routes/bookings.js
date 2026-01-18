@@ -486,8 +486,8 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
     }
 
     const bookings = await Booking.find(query)
-      .populate('providerId', 'practiceName providerTypes address')
-      .populate('serviceId', 'name price duration')
+      .populate('provider', 'practiceName providerTypes address')
+      .select('-__v')
       .sort({ appointmentDate: upcoming === 'true' ? 1 : -1 })
       .limit(parseInt(limit))
       .skip(parseInt(skip));
