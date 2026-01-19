@@ -49,6 +49,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
+const adminRoutes = require('./routes/admin');
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/providers', require('./routes/providers'));
 app.use('/api/verification', require('./routes/verification'));
@@ -60,6 +61,7 @@ app.use('/api/admin/email', emailRoutes);
 // Admin reviews & bookings management
 app.use('/api/admin/reviews', reviewsAdminRoutes);
 app.use('/api/admin/bookings', bookingsAdminRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/admin/inquiries', inquiriesAdminRoutes);
 
 // User routes
