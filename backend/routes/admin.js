@@ -8,12 +8,15 @@ router.post('/create-search-index', async (req, res) => {
     const db = Provider.db;
     const providers = db.collection('providers');
     
-    // Check if text index exists
+    // Drop ALL text indexes first
     const indexes = await providers.indexes();
-    const hasTextIndex = indexes.some(idx => idx.key && idx.key._fts === 'text');
+    const textIndexes = indexes.filter(idx => idx.key && idx.key._fts === 'text');
     
-    if (hasTextIndex) {
-      await providers.dropIndex('text_search_idx').catch(() => {});
+    for (const idx of textIndexes) {
+      console.log(`Dropping old text index: ${idx.name}`);
+      await providers.dropIndex(idx.name).catch(e => {
+        console.log(`Could not drop ${idx.name}:`, e.message);
+      });
     }
     
     // Create weighted text index
