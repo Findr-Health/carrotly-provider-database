@@ -64,6 +64,34 @@ router.get('/providers', async (req, res) => {
   }
 });
 
+// GET /api/admin/providers/:id - Get single provider for admin
+router.get('/providers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const provider = await Provider.findById(id);
+    
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: 'Provider not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      provider
+    });
+  } catch (error) {
+    console.error('Error fetching admin provider detail:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch provider',
+      error: error.message
+    });
+  }
+});
+
 // Admin endpoint to create search index
 router.post('/create-search-index', async (req, res) => {
   try {
