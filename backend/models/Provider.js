@@ -136,6 +136,16 @@ const providerSchema = new mongoose.Schema({
     default: 'pending'
   },
 
+  // Admin-Controlled Flags
+  verified: {
+    type: Boolean,
+    default: false
+  },
+  featured: {
+    type: Boolean,
+    default: false
+  },
+
   // Metadata
   createdAt: {
     type: Date,
