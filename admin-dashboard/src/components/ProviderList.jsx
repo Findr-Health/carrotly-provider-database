@@ -31,8 +31,8 @@ export default function ProviderList() {
         state: p.address?.state || p.state || 'N/A',
         provider_types: p.providerTypes || p.provider_types || [],
         status: p.status || 'pending',
-        isVerified: p.isVerified || false,
-        isFeatured: p.isFeatured || false,
+        verified: p.verified || false,
+        featured: p.featured || false,
         raw: p
       }));
       
@@ -79,16 +79,16 @@ export default function ProviderList() {
     }
     
     // Badge filter
-    if (badgeFilter === 'verified' && !p.isVerified) return false;
-    if (badgeFilter === 'featured' && !p.isFeatured) return false;
-    if (badgeFilter === 'none' && (p.isVerified || p.isFeatured)) return false;
+    if (badgeFilter === 'verified' && !p.verified) return false;
+    if (badgeFilter === 'featured' && !p.featured) return false;
+    if (badgeFilter === 'none' && (p.verified || p.featured)) return false;
     
     return true;
   });
 
   // Count badges for filter dropdown
-  const verifiedCount = providers.filter(p => p.isVerified).length;
-  const featuredCount = providers.filter(p => p.isFeatured).length;
+  const verifiedCount = providers.filter(p => p.verified).length;
+  const featuredCount = providers.filter(p => p.featured).length;
 
   if (loading) {
     return (
@@ -224,17 +224,17 @@ export default function ProviderList() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex gap-1">
-                    {provider.isVerified && (
+                    {provider.verified && (
                       <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800" title="Verified">
                         ✓
                       </span>
                     )}
-                    {provider.isFeatured && (
+                    {provider.featured && (
                       <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800" title="Featured">
                         ⭐
                       </span>
                     )}
-                    {!provider.isVerified && !provider.isFeatured && (
+                    {!provider.verified && !provider.featured && (
                       <span className="text-gray-400 text-xs">—</span>
                     )}
                   </div>
