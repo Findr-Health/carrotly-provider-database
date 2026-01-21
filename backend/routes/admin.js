@@ -127,6 +127,72 @@ router.put('/providers/:id', async (req, res) => {
   }
 });
 
+// PATCH /api/admin/providers/:id/verified - Toggle verified status
+router.patch('/providers/:id/verified', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const provider = await Provider.findById(id);
+    
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: 'Provider not found'
+      });
+    }
+
+    // Toggle verified status
+    provider.verified = !provider.verified;
+    await provider.save();
+
+    res.json({
+      success: true,
+      provider,
+      message: `Provider ${provider.verified ? 'verified' : 'unverified'} successfully`
+    });
+  } catch (error) {
+    console.error('Error toggling verification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle verification',
+      error: error.message
+    });
+  }
+});
+
+// PATCH /api/admin/providers/:id/featured - Toggle featured status
+router.patch('/providers/:id/featured', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const provider = await Provider.findById(id);
+    
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: 'Provider not found'
+      });
+    }
+
+    // Toggle featured status
+    provider.featured = !provider.featured;
+    await provider.save();
+
+    res.json({
+      success: true,
+      provider,
+      message: `Provider ${provider.featured ? 'featured' : 'unfeatured'} successfully`
+    });
+  } catch (error) {
+    console.error('Error toggling featured status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle featured status',
+      error: error.message
+    });
+  }
+});
+
 // POST /api/admin/providers/:id/photos - Upload photos
 router.post('/providers/:id/photos', async (req, res) => {
   try {
@@ -212,74 +278,6 @@ router.delete('/providers/:id/photos/:photoIndex', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete photo',
-      error: error.message
-    });
-  }
-});
-
-// PUT /api/admin/providers/:id/verify - Toggle verified status
-router.put('/providers/:id/verify', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { verified } = req.body;
-
-    const provider = await Provider.findByIdAndUpdate(
-      id,
-      { $set: { verified: verified !== false } },
-      { new: true }
-    );
-
-    if (!provider) {
-      return res.status(404).json({
-        success: false,
-        message: 'Provider not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      provider,
-      message: `Provider ${provider.verified ? 'verified' : 'unverified'} successfully`
-    });
-  } catch (error) {
-    console.error('Error updating verification:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update verification',
-      error: error.message
-    });
-  }
-});
-
-// PUT /api/admin/providers/:id/feature - Toggle featured status
-router.put('/providers/:id/feature', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { featured } = req.body;
-
-    const provider = await Provider.findByIdAndUpdate(
-      id,
-      { $set: { featured: featured !== false } },
-      { new: true }
-    );
-
-    if (!provider) {
-      return res.status(404).json({
-        success: false,
-        message: 'Provider not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      provider,
-      message: `Provider ${provider.featured ? 'featured' : 'unfeatured'} successfully`
-    });
-  } catch (error) {
-    console.error('Error updating featured status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update featured status',
       error: error.message
     });
   }
