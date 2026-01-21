@@ -654,26 +654,53 @@ export default function ProviderDetail() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">📷 Photos ({(provider.photos || []).length}/5)</h2>
           {(provider.photos || []).length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {provider.photos.map((photo, idx) => (
-                <div key={idx} className="relative">
-                  <img
-                    src={photo.url || photo}
-                    alt={'Photo ' + (idx + 1)}
-                    className="w-full h-40 object-cover rounded-lg border-2 border-gray-200"
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {provider.photos.map((photo, idx) => (
+                  <div key={idx} className="relative">
+                    <img
+                      src={photo.url || photo}
+                      alt={'Photo ' + (idx + 1)}
+                      className="w-full h-40 object-cover rounded-lg border-2 border-gray-200"
+                    />
+                    {idx === 0 && (
+                      <span className="absolute top-2 left-2 px-2 py-1 bg-blue-600 text-white text-xs rounded font-medium">
+                        Primary
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4">
+                <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    disabled={uploadingPhoto || (provider.photos || []).length >= 5}
                   />
-                  {idx === 0 && (
-                    <span className="absolute top-2 left-2 px-2 py-1 bg-blue-600 text-white text-xs rounded font-medium">
-                      Primary
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
+                  {uploadingPhoto ? '⏳ Uploading...' : `📤 Add More Photos (${(provider.photos || []).length}/5)`}
+                </label>
+              </div>
+            </>
           ) : (
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <span className="text-4xl mb-2 block">📷</span>
-              <p className="text-gray-500">No photos uploaded</p>
+              <p className="text-gray-500 mb-4">No photos uploaded</p>
+              <label className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  disabled={uploadingPhoto}
+                />
+                {uploadingPhoto ? '⏳ Uploading...' : '📤 Upload Photos'}
+              </label>
+              <p className="text-xs text-gray-400 mt-2">Max 5 photos, 10MB each</p>
             </div>
           )}
         </div>
