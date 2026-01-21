@@ -670,35 +670,10 @@ export default function ProviderDetail() {
                 </div>
               ))}
             </div>
-            <div className="mt-4">
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  disabled={uploadingPhoto || (provider.photos || []).length >= 5}
-                />
-                {uploadingPhoto ? '⏳ Uploading...' : `📤 Add More Photos (${(provider.photos || []).length}/5)`}
-              </label>
-            </div>
           ) : (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+            <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <span className="text-4xl mb-2 block">📷</span>
-              <p className="text-gray-500 mb-4">No photos uploaded</p>
-              <label className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  disabled={uploadingPhoto}
-                />
-                {uploadingPhoto ? '⏳ Uploading...' : '📤 Upload Photos'}
-              </label>
-              <p className="text-xs text-gray-400 mt-2">Max 5 photos, 10MB each</p>
+              <p className="text-gray-500">No photos uploaded</p>
             </div>
           )}
         </div>
@@ -734,19 +709,6 @@ export default function ProviderDetail() {
                   )}
                 </div>
               ))}
-            </div>
-            <div className="mt-4">
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  disabled={uploadingPhoto || (provider.photos || []).length >= 5}
-                />
-                {uploadingPhoto ? '⏳ Uploading...' : `📤 Add More Photos (${(provider.photos || []).length}/5)`}
-              </label>
             </div>
           ) : (
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
@@ -801,19 +763,6 @@ export default function ProviderDetail() {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="mt-4">
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  disabled={uploadingPhoto || (provider.photos || []).length >= 5}
-                />
-                {uploadingPhoto ? '⏳ Uploading...' : `📤 Add More Photos (${(provider.photos || []).length}/5)`}
-              </label>
             </div>
           ) : (
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
@@ -1072,19 +1021,6 @@ export default function ProviderDetail() {
                 </div>
               </div>
             </div>
-            <div className="mt-4">
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  disabled={uploadingPhoto || (provider.photos || []).length >= 5}
-                />
-                {uploadingPhoto ? '⏳ Uploading...' : `📤 Add More Photos (${(provider.photos || []).length}/5)`}
-              </label>
-            </div>
           ) : (
             <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <span className="text-3xl mb-2 block">📄</span>
@@ -1236,19 +1172,6 @@ export default function ProviderDetail() {
                   </p>
                 </div>
               </div>
-            </div>
-            <div className="mt-4">
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  disabled={uploadingPhoto || (provider.photos || []).length >= 5}
-                />
-                {uploadingPhoto ? '⏳ Uploading...' : `📤 Add More Photos (${(provider.photos || []).length}/5)`}
-              </label>
             </div>
           ) : (
             <div className="text-center py-12 bg-yellow-50 rounded-lg border-2 border-dashed border-yellow-300">
