@@ -2,6 +2,68 @@ const express = require('express');
 const router = express.Router();
 const Provider = require('../models/Provider');
 
+// GET /api/admin/providers - Get all providers with filters for admin dashboard
+router.get('/providers', async (req, res) => {
+  try {
+    const {
+      limit = 1000,
+      skip = 0,
+      search,
+      status,
+      type,
+      verified,
+      featured
+    } = req.query;
+
+    // Build query
+    const query = {};
+    
+    if (search) {
+      query.$text = { $search: search };
+    }
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    if (type) {
+      query.providerTypes = type;
+    }
+    
+    if (verified !== undefined) {
+      query.verified = verified === 'true';
+    }
+    
+    if (featured !== undefined) {
+      query.featured = featured === 'true';
+    }
+
+    // Get total count
+    const total = await Provider.countDocuments(query);
+
+    // Get providers with pagination
+    const providers = await Provider.find(query)
+      .limit(parseInt(limit))
+      .skip(parseInt(skip))
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      providers,
+      total,
+      limit: parseInt(limit),
+      skip: parseInt(skip)
+    });
+  } catch (error) {
+    console.error('Error fetching admin providers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch providers',
+      error: error.message
+    });
+  }
+});
+
 // Admin endpoint to create search index
 router.post('/create-search-index', async (req, res) => {
   try {
