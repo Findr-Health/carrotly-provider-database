@@ -6,9 +6,21 @@ const providerSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  providerTypes: [{
+    providerTypes: [{
     type: String,
-    enum: ['medical', 'dental', 'cosmetic', 'fitness', 'massage', 'mental-health', 'skincare', 'Medical', 'Dental', 'Cosmetic', 'Fitness', 'Massage', 'Mental Health', 'Skincare']
+    enum: [
+      'Medical',
+      'Urgent Care',
+      'Dental',
+      'Mental Health',
+      'Skincare',
+      'Massage',
+      'Fitness',
+      'Yoga',
+      'Nutrition',
+      'Pharmacy'
+    ],
+    required: true
   }],
   
   // Contact Info (can be nested or flat)
