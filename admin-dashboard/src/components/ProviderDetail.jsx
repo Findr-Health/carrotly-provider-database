@@ -45,7 +45,7 @@ export default function ProviderDetail() {
     try {
       setLoading(true);
       const response = await providersAPI.getById(id);
-      setProvider(response.data);
+      setProvider(response.data.provider);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -485,13 +485,13 @@ export default function ProviderDetail() {
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={provider.isVerified || false}
+              checked={provider.verified || false}
               disabled={!editMode}
               onChange={async (e) => {
                 const newValue = e.target.checked;
                 try {
                   await providersAPI.toggleVerified(id, newValue);
-                  setProvider(prev => ({ ...prev, isVerified: newValue }));
+                  setProvider(prev => ({ ...prev, verified: newValue }));
                 } catch (err) {
                   alert('Failed to update verified status: ' + err.message);
                 }
@@ -504,13 +504,13 @@ export default function ProviderDetail() {
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={provider.isFeatured || false}
+              checked={provider.featured || false}
               disabled={!editMode}
               onChange={async (e) => {
                 const newValue = e.target.checked;
                 try {
                   await providersAPI.toggleFeatured(id, newValue);
-                  setProvider(prev => ({ ...prev, isFeatured: newValue }));
+                  setProvider(prev => ({ ...prev, featured: newValue }));
                 } catch (err) {
                   alert('Failed to update featured status: ' + err.message);
                 }
@@ -522,12 +522,12 @@ export default function ProviderDetail() {
         </div>
         
         <div className="flex gap-2 mt-3">
-          {provider.isVerified && (
+          {provider.verified && (
             <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
               ✓ Verified Provider
             </span>
           )}
-          {provider.isFeatured && (
+          {provider.featured && (
             <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
               ⭐ Featured
             </span>
