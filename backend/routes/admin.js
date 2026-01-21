@@ -417,4 +417,147 @@ router.post('/create-search-index', async (req, res) => {
   }
 });
 
+
+/**
+ * POST /api/admin/migrate/cleanup-old-providers
+ * Deletes all non-test providers, keeps only the 10 standardized test providers
+ * 
+ * Safety: Includes dry-run mode
+ * Query params: ?dryRun=true to preview what would be deleted
+ */
+router.post('/migrate/cleanup-old-providers', async (req, res) => {
+  try {
+    const dryRun = req.query.dryRun === 'true';
+    
+    // Define the 10 test providers we want to KEEP
+    const testProvidersToKeep = [
+      'Medical Test',
+      'Urgent Care Test',
+      'Dental Test',
+      'Mental Health Test',
+      'Skincare Test',
+      'Massage Test',
+      'Fitness Test',
+      'Yoga Test',
+      'Nutrition Test',
+      'Pharmacy Test'
+    ];
+    
+    // Find all providers that are NOT in this list
+    const providersToDelete = await Provider.find({
+      practiceName: { $nin: testProvidersToKeep }
+    }).select('practiceName providerTypes _id');
+    
+    if (dryRun) {
+      // Dry run - just show what would be deleted
+      return res.json({
+        success: true,
+        dryRun: true,
+        message: 'DRY RUN - No providers deleted',
+        stats: {
+          wouldDelete: providersToDelete.length,
+          providersToDelete: providersToDelete.map(p => ({
+            name: p.practiceName,
+            types: p.providerTypes,
+            id: p._id
+          }))
+        }
+      });
+    }
+    
+    // Actual deletion
+    const result = await Provider.deleteMany({
+      practiceName: { $nin: testProvidersToKeep }
+    });
+    
+    // Verify what remains
+    const remaining = await Provider.countDocuments();
+    const remainingProviders = await Provider.find()
+      .select('practiceName providerTypes')
+      .sort({ practiceName: 1 });
+    
+    res.json({
+      success: true,
+      message: 'Cleanup completed successfully',
+      stats: {
+        deleted: result.deletedCount,
+        remaining: remaining,
+        remainingProviders: remainingProviders.map(p => ({
+          name: p.practiceName,
+          types: p.providerTypes
+        }))
+      }
+    });
+    
+  } catch (error) {
+    console.error('Cleanup migration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Cleanup failed',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/migrate/normalize-provider-types
+ * Fixes any lowercase provider types to proper capitalization
+ * Run this AFTER cleanup to ensure consistency
+ */
+router.post('/migrate/normalize-provider-types', async (req, res) => {
+  try {
+    const typeMapping = {
+      'medical': 'Medical',
+      'urgent care': 'Urgent Care',
+      'dental': 'Dental',
+      'mental health': 'Mental Health',
+      'skincare': 'Skincare',
+      'massage': 'Massage',
+      'fitness': 'Fitness',
+      'yoga': 'Yoga',
+      'nutrition': 'Nutrition',
+      'pharmacy': 'Pharmacy'
+    };
+    
+    const providers = await Provider.find();
+    let updatedCount = 0;
+    
+    for (const provider of providers) {
+      let updated = false;
+      const normalizedTypes = provider.providerTypes.map(type => {
+        const normalized = typeMapping[type.toLowerCase()];
+        if (normalized && normalized !== type) {
+          updated = true;
+          return normalized;
+        }
+        return type;
+      });
+      
+      if (updated) {
+        provider.providerTypes = normalizedTypes;
+        await provider.save();
+        updatedCount++;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Provider types normalized',
+      stats: {
+        totalProviders: providers.length,
+        updated: updatedCount
+      }
+    });
+    
+  } catch (error) {
+    console.error('Normalization error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Normalization failed',
+      error: error.message
+    });
+  }
+});
+
+
 module.exports = router;
