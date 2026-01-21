@@ -2,6 +2,54 @@ const express = require('express');
 const router = express.Router();
 const Provider = require('../models/Provider');
 
+// POST /api/admin/migrate/add-badge-fields - Run migration
+router.post('/migrate/add-badge-fields', async (req, res) => {
+  try {
+    // Update all providers to have verified and featured fields
+    const result = await Provider.updateMany(
+      {}, // All documents
+      {
+        $setOnInsert: { verified: false, featured: false }
+      },
+      { upsert: false }
+    );
+
+    // Also set them explicitly for providers that don't have them
+    await Provider.updateMany(
+      { verified: { $exists: false } },
+      { $set: { verified: false } }
+    );
+
+    await Provider.updateMany(
+      { featured: { $exists: false } },
+      { $set: { featured: false } }
+    );
+
+    // Get counts
+    const totalProviders = await Provider.countDocuments();
+    const verifiedCount = await Provider.countDocuments({ verified: true });
+    const featuredCount = await Provider.countDocuments({ featured: true });
+
+    res.json({
+      success: true,
+      message: 'Migration completed successfully',
+      stats: {
+        totalProviders,
+        verifiedProviders: verifiedCount,
+        featuredProviders: featuredCount,
+        modified: result.modifiedCount
+      }
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Migration failed',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/admin/providers - Get all providers with filters
 router.get('/providers', async (req, res) => {
   try {
@@ -95,7 +143,6 @@ router.put('/providers/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    // Remove fields that shouldn't be directly updated
     delete updates._id;
     delete updates.createdAt;
     
@@ -141,8 +188,8 @@ router.patch('/providers/:id/verified', async (req, res) => {
       });
     }
 
-    // Toggle verified status
-    provider.verified = !provider.verified;
+    // Defensive toggle - handles undefined, null, or missing field
+    provider.verified = provider.verified !== true;
     await provider.save();
 
     res.json({
@@ -174,8 +221,8 @@ router.patch('/providers/:id/featured', async (req, res) => {
       });
     }
 
-    // Toggle featured status
-    provider.featured = !provider.featured;
+    // Defensive toggle - handles undefined, null, or missing field
+    provider.featured = provider.featured !== true;
     await provider.save();
 
     res.json({
@@ -197,7 +244,7 @@ router.patch('/providers/:id/featured', async (req, res) => {
 router.post('/providers/:id/photos', async (req, res) => {
   try {
     const { id } = req.params;
-    const { photos } = req.body; // Array of photo URLs or base64
+    const { photos } = req.body;
 
     if (!photos || !Array.isArray(photos)) {
       return res.status(400).json({
@@ -215,7 +262,6 @@ router.post('/providers/:id/photos', async (req, res) => {
       });
     }
 
-    // Add new photos to existing photos array
     provider.photos = provider.photos || [];
     provider.photos.push(...photos);
 
@@ -311,13 +357,12 @@ router.delete('/providers/:id', async (req, res) => {
   }
 });
 
-// POST /api/admin/create-search-index - Create/recreate search index
+// POST /api/admin/create-search-index
 router.post('/create-search-index', async (req, res) => {
   try {
     const db = Provider.db;
     const providers = db.collection('providers');
     
-    // Drop ALL text indexes first
     const indexes = await providers.indexes();
     const textIndexes = indexes.filter(idx => idx.key && idx.key._fts === 'text');
     
@@ -328,7 +373,6 @@ router.post('/create-search-index', async (req, res) => {
       });
     }
     
-    // Create weighted text index
     await providers.createIndex(
       {
         'services.name': 'text',
