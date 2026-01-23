@@ -59,9 +59,10 @@ router.post('/', async (req, res) => {
         authProvider: 'google',
         photoUrl: googleUser.photoUrl,
         password: Math.random().toString(36), // Random password (won't be used)
+        profileComplete: false, // Requires profile completion
         agreement: {
-          signed: true,
-          signedAt: new Date(),
+          signed: false, // Must explicitly accept TOS
+          signedAt: null,
         }
       });
       
@@ -87,10 +88,13 @@ router.post('/', async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        phone: user.phone,
         photoUrl: user.photoUrl,
         authProvider: user.authProvider,
+        profileComplete: user.profileComplete || false,
       },
-      message: isNewUser ? 'Account created successfully' : 'Login successful'
+      message: isNewUser ? 'Account created successfully' : 'Login successful',
+      requiresProfileCompletion: !user.profileComplete
     });
     
   } catch (error) {

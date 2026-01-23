@@ -19,6 +19,12 @@ const userSchema = new mongoose.Schema({
     userAgent: { type: String }
   },
   
+  // Profile completion status
+  profileComplete: {
+    type: Boolean,
+    default: false
+  },
+  
   email: {
     type: String,
     required: true,
@@ -164,5 +170,24 @@ userSchema.methods.toJSON = function() {
 // Indexes
 userSchema.index({ status: 1 });
 userSchema.index({ 'location.coordinates': '2dsphere' });
+
+// Check if user profile is complete
+userSchema.methods.isProfileComplete = function() {
+  return !!(
+    this.firstName &&
+    this.lastName &&
+    this.email &&
+    this.phone &&
+    this.agreement.signed &&
+    this.address &&
+    this.address.zipCode
+  );
+};
+
+// Update profileComplete status
+userSchema.methods.updateProfileCompletion = async function() {
+  this.profileComplete = this.isProfileComplete();
+  await this.save();
+};
 
 module.exports = mongoose.model('User', userSchema);
