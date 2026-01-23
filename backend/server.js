@@ -66,6 +66,7 @@ app.use('/api/admin/inquiries', inquiriesAdminRoutes);
 
 // User routes
 app.use('/api/users', userRoutes);
+app.use('/api/auth/google', require('./routes/google'));
 // Availability routes
 app.use('/api/availability', availabilityRoutes);
 
