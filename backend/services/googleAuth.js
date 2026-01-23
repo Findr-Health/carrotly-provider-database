@@ -1,15 +1,22 @@
 const { OAuth2Client } = require('google-auth-library');
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// Accept both iOS and Web client IDs
+const clientIds = [
+  process.env.GOOGLE_CLIENT_ID,      // Web client ID
+  process.env.GOOGLE_IOS_CLIENT_ID,   // iOS client ID
+].filter(Boolean);
+
+const client = new OAuth2Client();
 
 /**
  * Verify Google ID token and extract user info
  */
 async function verifyGoogleToken(idToken) {
   try {
+    // Try to verify with any of our client IDs
     const ticket = await client.verifyIdToken({
       idToken: idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: clientIds,  // Accept multiple audiences
     });
     
     const payload = ticket.getPayload();
