@@ -9,7 +9,7 @@ const { getBillProcessingService } = require('../services/clarityPrice/billProce
 const { getImageManagementService } = require('../services/clarityPrice/imageManagementService');
 const Bill = require('../models/clarityPrice/Bill');
 const Analytics = require('../models/clarityPrice/Analytics');
-const auth = require('../middleware/auth'); // Assuming auth middleware exists
+const { authenticateToken } = require('../middleware/auth'); // Assuming auth middleware exists
 
 // Configure multer for file uploads
 const upload = multer({
@@ -43,7 +43,7 @@ const imageService = getImageManagementService();
  * 
  * Returns: Bill analysis ID (processing happens async)
  */
-router.post('/analyze', auth, upload.single('image'), async (req, res) => {
+router.post('/analyze', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     console.log('[API] POST /clarity-price/analyze');
     
@@ -101,7 +101,7 @@ router.post('/analyze', auth, upload.single('image'), async (req, res) => {
  * Params: id (billId)
  * Returns: Complete bill analysis
  */
-router.get('/bills/:id', auth, async (req, res) => {
+router.get('/bills/:id', authenticateToken, async (req, res) => {
   try {
     console.log(`[API] GET /clarity-price/bills/${req.params.id}`);
     
@@ -138,7 +138,7 @@ router.get('/bills/:id', auth, async (req, res) => {
  * Query: limit (optional, default 50)
  * Returns: List of user's analyzed bills
  */
-router.get('/bills', auth, async (req, res) => {
+router.get('/bills', authenticateToken, async (req, res) => {
   try {
     console.log(`[API] GET /clarity-price/bills for user: ${req.user._id}`);
     
@@ -180,7 +180,7 @@ router.get('/bills', auth, async (req, res) => {
  *   notes: string
  * }
  */
-router.put('/bills/:id/feedback', auth, async (req, res) => {
+router.put('/bills/:id/feedback', authenticateToken, async (req, res) => {
   try {
     console.log(`[API] PUT /clarity-price/bills/${req.params.id}/feedback`);
     
@@ -236,7 +236,7 @@ router.put('/bills/:id/feedback', auth, async (req, res) => {
  *   providerCalled: boolean
  * }
  */
-router.put('/bills/:id/interaction', auth, async (req, res) => {
+router.put('/bills/:id/interaction', authenticateToken, async (req, res) => {
   try {
     const bill = await Bill.findOne({
       _id: req.params.id,
@@ -286,7 +286,7 @@ router.put('/bills/:id/interaction', auth, async (req, res) => {
  * 
  * Note: Image is already auto-deleted after 24 hours
  */
-router.delete('/bills/:id', auth, async (req, res) => {
+router.delete('/bills/:id', authenticateToken, async (req, res) => {
   try {
     console.log(`[API] DELETE /clarity-price/bills/${req.params.id}`);
     
@@ -327,7 +327,7 @@ router.delete('/bills/:id', auth, async (req, res) => {
  * 
  * Returns: Total savings, bill count, etc.
  */
-router.get('/stats', auth, async (req, res) => {
+router.get('/stats', authenticateToken, async (req, res) => {
   try {
     console.log(`[API] GET /clarity-price/stats for user: ${req.user._id}`);
     
@@ -373,7 +373,7 @@ router.get('/stats', auth, async (req, res) => {
  * Query: date (optional, default today)
  * Requires: Admin role
  */
-router.get('/admin/analytics', auth, async (req, res) => {
+router.get('/admin/analytics', authenticateToken, async (req, res) => {
   try {
     // Check if user is admin
     if (!req.user.isAdmin) {
@@ -419,7 +419,7 @@ router.get('/admin/analytics', auth, async (req, res) => {
  * 
  * Requires: Admin role
  */
-router.post('/admin/cleanup-images', auth, async (req, res) => {
+router.post('/admin/cleanup-images', authenticateToken, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
       return res.status(403).json({
