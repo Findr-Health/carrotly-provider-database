@@ -60,6 +60,7 @@ app.use('/api/clarity', require('./routes/clarity'));
 app.use('/api/clarity-admin', clarityAdminRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/clarity-admin/feedback', feedbackRoutes);
+app.use('/api/clarity-price', clarityPriceRoutes);
 app.use('/api/admin/email', emailRoutes);
 // Admin reviews & bookings management
 app.use('/api/admin/reviews', reviewsAdminRoutes);
