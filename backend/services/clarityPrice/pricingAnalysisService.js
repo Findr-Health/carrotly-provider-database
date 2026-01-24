@@ -2,7 +2,7 @@
 // Pricing Intelligence - Medicare, Regional, Market Analysis
 // Non-punitive: Focuses on opportunities, not accusations
 
-const { getMedicareRate, determineCategoryFromCPT } = require('../../data/medicare/rates');
+const { getMedicareRate, determineCategoryFromCPT } = require('../../data/medicare/medicare-rates');
 const { getRegionalAdjustment, applyRegionalAdjustment } = require('../../data/medicare/regionalAdjustments');
 
 /**
