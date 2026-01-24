@@ -112,6 +112,17 @@ app.get('/health', (req, res) => {
 const PORT = process.env.PORT || 3001;
 // Schedule booking cron jobs (reminders, expirations)
 scheduleCronJobs();
+# Clarity Price: Image cleanup job (PHI compliance - deletes images after 24h)
+cron.schedule('0 * * * *', async () => {
+  console.log('[Cron] Running Clarity Price image cleanup...');
+  try {
+    const imageService = getImageManagementService();
+    const result = await imageService.runCleanup();
+    console.log(`[Cron] Clarity Price cleanup: ${result.deletedCount} images deleted`);
+  } catch (error) {
+    console.error('[Cron] Clarity Price cleanup error:', error);
+  }
+});
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
