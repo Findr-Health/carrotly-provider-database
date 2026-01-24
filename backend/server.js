@@ -27,6 +27,9 @@ const stripeConnectRoutes = require('./routes/stripeConnect');
 const calendarRoutes = require('./routes/calendar');
 const uploadRoutes = require('./routes/upload');
 const { scheduleCronJobs } = require('./cron/bookingCron');
+const clarityPriceRoutes = require('./routes/clarityPriceRoutes');
+const { getImageManagementService } = require('./services/clarityPrice/imageManagementService');
+const cron = require('node-cron');
 
 const app = express();
 
