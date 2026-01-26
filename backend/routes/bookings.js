@@ -1156,4 +1156,204 @@ router.get('/:id/history', async (req, res) => {
   }
 });
 
+
+// ==================== BOOKING REQUEST/APPROVAL ENDPOINTS ====================
+
+/**
+ * POST /api/bookings/:bookingId/accept-suggested-time
+ * Patient accepts one of the suggested times
+ */
+router.post('/:bookingId/accept-suggested-time', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { suggestedTimeId } = req.body;
+    
+    // Validate input
+    if (!suggestedTimeId) {
+      return res.status(400).json({
+        success: false,
+        error: 'suggestedTimeId is required'
+      });
+    }
+
+    // Find booking
+    const booking = await Booking.findById(bookingId);
+    
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+
+    // Verify booking is in pending status
+    if (booking.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        error: 'Booking is not in pending status',
+        currentStatus: booking.status
+      });
+    }
+
+    // Find the selected time
+    const selectedTime = booking.suggestedTimes?.find(
+      st => st.id === suggestedTimeId
+    );
+
+    if (!selectedTime) {
+      return res.status(404).json({
+        success: false,
+        error: 'Suggested time not found'
+      });
+    }
+
+    // Update booking with confirmed time
+    booking.status = 'confirmed';
+    booking.appointmentDate = new Date(selectedTime.startTime);
+    booking.appointmentTime = new Date(selectedTime.startTime).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    booking.confirmedAt = new Date();
+    booking.isRequest = false;
+    
+    // Capture payment if it was on hold
+    if (booking.payment?.paymentIntentId && booking.payment?.status === 'held') {
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
+        booking.payment.status = 'captured';
+        booking.payment.capturedAt = new Date();
+      } catch (stripeError) {
+        console.error('Payment capture error:', stripeError);
+        // Continue anyway - we can retry payment capture later
+      }
+    }
+
+    await booking.save();
+
+    // Emit WebSocket event if service is available
+    if (global.realtimeService) {
+      try {
+        global.realtimeService.emitBookingUpdate(booking.userId?.toString(), 'booking_confirmed', {
+          bookingId: booking._id,
+          status: 'confirmed',
+          appointmentDate: booking.appointmentDate,
+          appointmentTime: booking.appointmentTime
+        });
+      } catch (wsError) {
+        console.error('WebSocket emit error:', wsError);
+        // Non-critical - continue
+      }
+    }
+
+    console.log(`✅ Booking ${bookingId} confirmed - suggested time accepted`);
+
+    res.json({
+      success: true,
+      message: 'Booking confirmed successfully',
+      booking: {
+        id: booking._id,
+        status: booking.status,
+        appointmentDate: booking.appointmentDate,
+        appointmentTime: booking.appointmentTime,
+        paymentStatus: booking.payment?.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Accept suggested time error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to accept suggested time'
+    });
+  }
+});
+
+/**
+ * POST /api/bookings/:bookingId/decline-suggested-times
+ * Patient declines all suggested times (cancels request)
+ */
+router.post('/:bookingId/decline-suggested-times', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    // Find booking
+    const booking = await Booking.findById(bookingId);
+    
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+
+    // Verify booking is in pending status
+    if (booking.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        error: 'Booking is not in pending status',
+        currentStatus: booking.status
+      });
+    }
+
+    // Cancel booking
+    booking.status = 'cancelled_patient';
+    booking.cancelledAt = new Date();
+    booking.notes = booking.notes || {};
+    booking.notes.cancellationReason = 'Patient declined suggested times';
+
+    // Release payment hold
+    if (booking.payment?.paymentIntentId && booking.payment?.status === 'held') {
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
+        booking.payment.status = 'cancelled';
+        booking.payment.hold = booking.payment.hold || {};
+        booking.payment.hold.cancelledAt = new Date();
+        booking.payment.hold.cancelReason = 'Declined suggested times';
+      } catch (stripeError) {
+        console.error('Payment cancellation error:', stripeError);
+        // Continue anyway - payment can be cancelled manually
+      }
+    }
+
+    await booking.save();
+
+    // Emit WebSocket event if service is available
+    if (global.realtimeService) {
+      try {
+        global.realtimeService.emitBookingUpdate(booking.userId?.toString(), 'booking_cancelled', {
+          bookingId: booking._id,
+          status: 'cancelled_patient',
+          reason: 'Declined suggested times'
+        });
+      } catch (wsError) {
+        console.error('WebSocket emit error:', wsError);
+        // Non-critical - continue
+      }
+    }
+
+    console.log(`❌ Booking ${bookingId} cancelled - suggested times declined`);
+
+    res.json({
+      success: true,
+      message: 'Booking request cancelled successfully',
+      booking: {
+        id: booking._id,
+        status: booking.status,
+        paymentStatus: booking.payment?.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Decline suggested times error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to decline suggested times'
+    });
+  }
+});
+
 module.exports = router;
