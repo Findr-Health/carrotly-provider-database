@@ -27,6 +27,51 @@ const auth = async (req, res, next) => {
     next();
   } catch (error) {
     res.status(401).json({ error: 'Please authenticate' });
+
+// ==================== AUTHENTICATED USER ROUTES ====================
+/**
+ * GET /api/users/me
+ * Get current authenticated user's profile
+ */
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId)
+      .select('-password')
+      .lean();
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'User not found' 
+      });
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        photoUrl: user.photoUrl,
+        authProvider: user.authProvider,
+        profileComplete: user.profileComplete,
+        favorites: user.favorites,
+        status: user.status,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Get current user error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get user profile' 
+    });
+  }
+});
+
   }
 };
 
