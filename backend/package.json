@@ -28,7 +28,8 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
     "resend": "^6.6.0",
-    "stripe": "^20.1.0"
+    "stripe": "^20.1.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
