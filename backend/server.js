@@ -135,8 +135,8 @@ cron.schedule('0 * * * *', async () => {
 const server = http.createServer(app);
 
 // Initialize WebSocket service for real-time booking updates
-const realtimeService = // new BookingRealtimeService(server);
-global.realtimeService = realtimeService;
+// const realtimeService = // new BookingRealtimeService(server);
+// global.realtimeService = realtimeService;
 
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
