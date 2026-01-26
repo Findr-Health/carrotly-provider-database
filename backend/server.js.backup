@@ -1,6 +1,4 @@
 require('dotenv').config();
-const http = require('http');
-const BookingRealtimeService = require('./services/bookingRealtimeService');
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -14,7 +12,6 @@ const reviewRoutes = require('./routes/reviews');
 const reviewsAdminRoutes = require('./routes/reviewsAdmin');
 const bookingsAdminRoutes = require('./routes/bookingsAdmin');
 const bookingRoutes = require('./routes/bookings');
-const bookingsEnhancedRoutes = require('./routes/bookings_enhanced');
 const searchRoutes = require('./routes/search');
 const providerAdminRoutes = require('./routes/providerAdmin');
 const inquiriesAdminRoutes = require('./routes/inquiriesAdmin');
@@ -88,7 +85,6 @@ app.use('/api/providers', providerServicesRoutes);
 app.use('/api/reviews', reviewRoutes);
 
 // Booking routes
-app.use('/api/bookings', bookingsEnhancedRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/bookings', cancellationRoutes);  // ADD THIS LINE
 app.use('/api/notifications', notificationRoutes);
@@ -131,14 +127,6 @@ cron.schedule('0 * * * *', async () => {
     console.error('[Cron] Clarity Price cleanup error:', error);
   }
 });
-// Create HTTP server for WebSocket support
-const server = http.createServer(app);
-
-// Initialize WebSocket service for real-time booking updates
-const realtimeService = new BookingRealtimeService(server);
-global.realtimeService = realtimeService;
-
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log('📡 WebSocket ready for real-time booking updates');
 });
