@@ -1263,6 +1263,21 @@ router.post('/:bookingId/accept-suggested-time', async (req, res) => {
 
     console.log(`✅ Booking ${bookingId} confirmed - suggested time accepted`);
 
+    // Send push notification to user
+    try {
+      const pushService = require('../services/pushNotificationService');
+      const User = require('../models/User');
+      
+      const user = await User.findById(booking.userId);
+      const provider = await Provider.findById(booking.providerId);
+      
+      if (user && provider) {
+        await pushService.sendBookingConfirmed(user, booking, provider);
+      }
+    } catch (pushError) {
+      console.error('Push notification failed (non-critical):', pushError.message);
+    }
+
     res.json({
       success: true,
       message: 'Booking confirmed successfully',
@@ -1349,6 +1364,26 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
     }
 
     console.log(`❌ Booking ${bookingId} cancelled - suggested times declined`);
+
+    // Send push notification to user
+    try {
+      const pushService = require('../services/pushNotificationService');
+      const User = require('../models/User');
+      
+      const user = await User.findById(booking.userId);
+      const provider = await Provider.findById(booking.providerId);
+      
+      if (user && provider) {
+        await pushService.sendBookingCancelled(
+          user, 
+          booking, 
+          provider, 
+          'You declined the suggested times. You can submit a new booking request anytime.'
+        );
+      }
+    } catch (pushError) {
+      console.error('Push notification failed (non-critical):', pushError.message);
+    }
 
     res.json({
       success: true,
