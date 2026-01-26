@@ -74,8 +74,6 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-  }
-};
 
 // ==================== AUTH ROUTES ====================
 
