@@ -235,16 +235,29 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Provider not found' });
     }
     
-    // Determine booking type based on calendar connection
-    const bookingType = provider.calendarConnected ? 'instant' : 'request';
-    const paymentMode = bookingType === 'request' ? 'hold' : 'prepay';
-    
     // Calculate times
     const requestedStart = new Date(startTime);
     const requestedEnd = endTime 
       ? new Date(endTime) 
       : new Date(requestedStart.getTime() + (serviceDuration || 30) * 60 * 1000);
     
+    // Check calendar availability if connected
+    const { checkTimeSlotAvailability } = require('../utils/calendarAvailability');
+    let bookingType = 'request'; // Default to request
+    let isAvailable = false;
+    
+    if (provider.calendarConnected) {
+      try {
+        isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30);
+        bookingType = isAvailable ? 'instant' : 'request';
+        console.log(`📅 Calendar availability: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
+      } catch (error) {
+        console.error('Calendar availability check failed:', error);
+        bookingType = 'request'; // Fallback to request on error
+      }
+    }
+    
+    const paymentMode = bookingType === 'request' ? 'hold' : 'prepay';
     // Create booking object
     const booking = new Booking({
       patient: patientId,
