@@ -1,6 +1,6 @@
 require('dotenv').config();
 const http = require('http');
-const BookingRealtimeService = require('./services/bookingRealtimeService');
+// const BookingRealtimeService = require('./services/bookingRealtimeService');
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -135,7 +135,7 @@ cron.schedule('0 * * * *', async () => {
 const server = http.createServer(app);
 
 // Initialize WebSocket service for real-time booking updates
-const realtimeService = new BookingRealtimeService(server);
+const realtimeService = // new BookingRealtimeService(server);
 global.realtimeService = realtimeService;
 
 server.listen(PORT, () => {
