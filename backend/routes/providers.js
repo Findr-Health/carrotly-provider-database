@@ -7,6 +7,75 @@ const emailService = require('../services/emailService');
 const JWT_SECRET = process.env.JWT_SECRET || 'findr-health-secret-key-change-in-production';
 
 // Get all providers (for admin)
+
+// Search term normalization - map user queries to provider types
+const searchTermMap = {
+  // Dental variations
+  'dentist': 'Dental',
+  'dentistry': 'Dental',
+  'orthodontist': 'Dental',
+  'dental': 'Dental',
+  
+  // Medical variations  
+  'doctor': 'Medical',
+  'physician': 'Medical',
+  'clinic': 'Medical',
+  'medical': 'Medical',
+  
+  // Mental Health variations
+  'therapist': 'Mental Health',
+  'counselor': 'Mental Health',
+  'psychologist': 'Mental Health',
+  'psychiatrist': 'Mental Health',
+  'therapy': 'Mental Health',
+  
+  // Massage variations
+  'massage therapist': 'Massage',
+  'masseuse': 'Massage',
+  
+  // Fitness variations
+  'trainer': 'Fitness',
+  'personal trainer': 'Fitness',
+  'gym': 'Fitness',
+  
+  // Urgent Care variations
+  'urgent': 'Urgent Care',
+  'walk-in': 'Urgent Care',
+  'emergency': 'Urgent Care',
+  
+  // Skincare variations
+  'dermatologist': 'Skincare',
+  'aesthetician': 'Skincare',
+  'skin care': 'Skincare',
+  
+  // Yoga variations
+  'yoga instructor': 'Yoga',
+  
+  // Nutrition variations
+  'dietitian': 'Nutrition',
+  'nutritionist': 'Nutrition',
+  
+  // Pharmacy variations
+  'pharmacist': 'Pharmacy',
+  'drug store': 'Pharmacy',
+  'drugstore': 'Pharmacy'
+};
+
+function normalizeSearchTerm(query) {
+  if (!query) return query;
+  
+  const lowerQuery = query.toLowerCase().trim();
+  
+  // Check if query matches any mapped term
+  for (const [term, providerType] of Object.entries(searchTermMap)) {
+    if (lowerQuery === term || lowerQuery.includes(term)) {
+      return providerType;
+    }
+  }
+  
+  return query;
+}
+
 router.get('/', async (req, res) => {
   try {
     const { 
@@ -32,6 +101,10 @@ router.get('/', async (req, res) => {
     // Text search with relevance scoring
     let useTextSearch = false;
     if (search) {
+      // Normalize search term (e.g., "dentist" -> "Dental")
+      const normalizedSearch = normalizeSearchTerm(search);
+      console.log(`[Search] Original: "${search}" -> Normalized: "${normalizedSearch}"`);
+      
       // Try text search first (requires text index)
       // If text index exists, use it for better relevance
       try {
@@ -40,13 +113,15 @@ router.get('/', async (req, res) => {
         useTextSearch = true;
       } catch (e) {
         // Fallback to regex search if no text index
+        // Use normalized search for provider type, original for everything else
         const searchRegex = new RegExp(search, 'i');
+        const normalizedRegex = new RegExp(normalizedSearch, 'i');
         
         // Weighted search: prioritize service names and categories
         // Use aggregation to calculate relevance scores
         const serviceNameMatch = { 'services.name': searchRegex };
         const serviceCategoryMatch = { 'services.category': searchRegex };
-        const providerTypeMatch = { providerTypes: searchRegex };
+        const providerTypeMatch = { providerTypes: normalizedRegex };
         const practiceNameMatch = { practiceName: searchRegex };
         const descriptionMatch = { description: searchRegex };
         const locationMatch = {
