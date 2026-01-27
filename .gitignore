@@ -9,3 +9,17 @@ agent/.env
 .env.*
 */.env
 **/.env
+.env
+
+# Development automation scripts
+*.py
+
+# Backup files
+*.backup
+*.backup*
+*.bak
+*_BACKUP.md
+SESSION_SUMMARY_*.md
+
+# Test files
+test-*.js
