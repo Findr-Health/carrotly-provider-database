@@ -332,7 +332,25 @@ router.post('/chat', async (req, res) => {
         
         // Add results to system prompt
         if (providerSearchResults?.providers?.length > 0) {
-          systemPrompt += `\n\n## PROVIDER SEARCH RESULTS\nI found ${providerSearchResults.providers.length} providers near the user:\n`;
+          systemPrompt += `
+
+## FOUND PROVIDERS
+I found ${providerSearchResults.providers.length} provider(s) near you:
+
+${providerSearchResults.providers.map(p => `
+**${p.name}** - ${p.city}, ${p.state} (${p.distance} miles away)
+Services: ${p.services?.slice(0, 3).map(s => s.name).join(', ') || 'View in app'}
+Provider ID: ${p.id}
+
+`).join('\n')}
+
+IMPORTANT INSTRUCTIONS:
+- Format the provider information naturally without showing the Provider ID to the user
+- Tell the user to "View this provider in the app" or "Tap to see services and book"
+- Do NOT tell users to call directly - we want them to book through the app
+- Keep your response focused on this specific provider and their pricing
+- The providerIds array in your response will create clickable provider cards in the app
+`;
           providerSearchResults.providers.forEach((p, i) => {
             systemPrompt += `\n${i+1}. ${p.name} - ${p.address?.city || 'Unknown city'}\n`;
             systemPrompt += `   ID: ${p._id}\n`;
