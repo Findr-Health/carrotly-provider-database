@@ -335,28 +335,23 @@ router.post('/chat', async (req, res) => {
           systemPrompt += `
 
 ## FOUND PROVIDERS
-I found ${providerSearchResults.providers.length} provider(s) near you:
+Found ${providerSearchResults.providers.length} provider(s):
 
 ${providerSearchResults.providers.map(p => `
-**${p.name}** - ${p.city}, ${p.state} (${p.distance} miles away)
-Services: ${p.services?.slice(0, 3).map(s => s.name).join(', ') || 'View in app'}
-Provider ID: ${p.id}
-
+- **${p.name}** (${p.city}, ${p.state}) - ${p.distance} miles
+  Top services: ${p.services?.slice(0, 2).map(s => `${s.name} (${s.price})`).join(', ')}
+  Provider ID: ${p.id}
 `).join('\n')}
 
-IMPORTANT INSTRUCTIONS:
-- Format the provider information naturally without showing the Provider ID to the user
-- Tell the user to "View this provider in the app" or "Tap to see services and book"
-- Do NOT tell users to call directly - we want them to book through the app
-- Keep your response focused on this specific provider and their pricing
-- The providerIds array in your response will create clickable provider cards in the app
+RESPONSE RULES:
+- Keep response BRIEF (2-3 sentences max)
+- State closest provider, distance, and ONE service with price
+- End with "Tap the card below to view services and book"
+- NEVER show provider IDs in your response text
+- Provider cards appear automatically below your message
+- DO NOT tell users to call - booking is in-app only
 `;
-          providerSearchResults.providers.forEach((p, i) => {
-            systemPrompt += `\n${i+1}. ${p.name} - ${p.address?.city || 'Unknown city'}\n`;
-            systemPrompt += `   ID: ${p._id}\n`;
-            systemPrompt += `   Services: ${p.services?.length || 0}\n`;
-          });
-          systemPrompt += `\nYou MUST reference these specific providers in your response using [PROVIDER:id] format.\n`;
+          
         }
       } catch (error) {
         console.error('[Clarity] Pre-search error:', error);
