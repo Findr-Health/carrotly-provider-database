@@ -31,7 +31,7 @@ const tools = [
         },
         radius: {
           type: "number",
-          description: "Search radius in miles (default 25)"
+          description: "Search radius in miles (default 100)"
         }
       },
       required: ["providerType", "latitude", "longitude"]
@@ -128,7 +128,7 @@ async function executeToolCall(toolName, toolInput) {
 }
 
 // Search providers function
-async function searchProviders({ providerType, latitude, longitude, radius = 25 }) {
+async function searchProviders({ providerType, latitude, longitude, radius = 100 }) {
   try {
     if (!latitude || !longitude) {
       return {
