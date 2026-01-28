@@ -145,10 +145,17 @@ async function searchProviders({ providerType, latitude, longitude, radius = 25 
     const normalizedType = providerType.toLowerCase().trim();
     const mappedType = typeMapping[normalizedType] || providerType;
     
+    // Search services FIRST (more accurate), providerTypes as fallback
+    const searchRegex = new RegExp(providerType, 'i');
     const query = {
       status: 'approved',
       'location.coordinates': { $exists: true },
-      providerTypes: { $regex: new RegExp(mappedType, 'i') }
+      $or: [
+        { 'services.name': { $regex: searchRegex } },
+        { 'services.category': { $regex: searchRegex } },
+        { 'services.description': { $regex: searchRegex } },
+        { providerTypes: { $regex: searchRegex } }
+      ]
     };
     
     console.log('[searchProviders] Query:', JSON.stringify(query));
