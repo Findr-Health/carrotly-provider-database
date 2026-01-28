@@ -775,21 +775,28 @@ router.post('/admin/fix-test-providers', async (req, res) => {
     const results = [];
     for (const u of updates) {
       const coords = cityCoords[u.city];
-      const result = await Provider.findByIdAndUpdate(
-        u.id,
-        {
-          $set: {
-            name: u.name,
-            'location.type': 'Point',
-            'location.coordinates': coords
-          }
-        },
-        { new: true }
-      );
-      results.push({ id: u.id, name: u.name, updated: !!result });
+      
+      // Get the provider
+      const provider = await Provider.findById(u.id);
+      if (provider) {
+        // Directly modify and save
+        provider.name = u.name;
+        provider.location = {
+          type: 'Point',
+          coordinates: coords
+        };
+        await provider.save();
+        results.push({ id: u.id, name: u.name, updated: true, coords });
+      } else {
+        results.push({ id: u.id, name: u.name, updated: false, error: 'not found' });
+      }
     }
 
     res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+})
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
