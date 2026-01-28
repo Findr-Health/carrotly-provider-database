@@ -453,9 +453,12 @@ RESPONSE RULES:
     // Clean message for display (remove provider tags - app will render them)
     // Actually, keep them so the app can parse and render buttons
     
+    // Strip [PROVIDER:...] tags from the message
+    const cleanedMessage = assistantMessage.replace(/\[PROVIDER:[a-f0-9]+\]/gi, '').trim();
+    
     res.json({
       success: true,
-      message: assistantMessage,
+      message: cleanedMessage,
       providerIds: providerIds,
       usage: {
         inputTokens: response.usage?.input_tokens,
