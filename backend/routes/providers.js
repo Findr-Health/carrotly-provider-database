@@ -798,4 +798,37 @@ router.post('/admin/fix-test-providers', async (req, res) => {
   }
 })
 
+
+// Admin: Fix test providers
+router.get('/admin/fix-one-provider/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, lat, lon } = req.query;
+    
+    const provider = await Provider.findById(id);
+    if (!provider) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    
+    provider.name = name;
+    provider.location = {
+      type: 'Point',
+      coordinates: [parseFloat(lon), parseFloat(lat)]
+    };
+    
+    await provider.save();
+    
+    res.json({ 
+      success: true, 
+      provider: {
+        id: provider._id,
+        name: provider.name,
+        location: provider.location
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
