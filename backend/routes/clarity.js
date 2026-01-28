@@ -281,6 +281,7 @@ router.post('/chat', async (req, res) => {
     
     // Add location context to system prompt if available
     let systemPrompt = claritySystemPrompt;
+    console.log('[Clarity] Received location:', location);
     if (location?.latitude && location?.longitude) {
       systemPrompt += `\n\n## CURRENT USER LOCATION\nLatitude: ${location.latitude}\nLongitude: ${location.longitude}`;
       if (location.city) systemPrompt += `\nCity: ${location.city}`;
