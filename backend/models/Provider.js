@@ -42,6 +42,18 @@ const providerSchema = new mongoose.Schema({
     state: String,
     zip: String
   },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0]
+    }
+  },
+  name: String, // Provider display name
 
   // Step 3: Photos
   photos: [{
