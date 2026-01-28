@@ -293,6 +293,17 @@ router.post('/chat', async (req, res) => {
       systemPrompt += `\n\nUse this location when searching for providers.`;
     }
     
+    // Force tool use if user mentions provider-related keywords
+    const providerKeywords = ['dentist', 'dental', 'doctor', 'physician', 'therapist', 'massage', 'urgent care', 'medical', 'need a', 'find me', 'looking for', 'where can'];
+    const messageText = message.toLowerCase();
+    const shouldForceToolUse = providerKeywords.some(keyword => messageText.includes(keyword));
+    
+    if (shouldForceToolUse && location?.latitude && location?.longitude) {
+      console.log('[Clarity] FORCING tool use - adding system instruction');
+      // Add explicit instruction to last user message
+      messages[messages.length - 1].content += '\n\n[INTERNAL SYSTEM INSTRUCTION: You MUST call the searchProviders tool with the provided location before writing any text response. Do not respond without calling the tool first.]';
+    }
+    
     // Initial API call with tools (with timeout)
     console.log('[Clarity] Calling Anthropic API...');
     const apiTimeout = new Promise((_, reject) => 
