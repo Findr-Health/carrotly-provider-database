@@ -325,6 +325,11 @@ router.post('/chat', async (req, res) => {
       apiOptions.tool_choice = { type: 'tool', name: 'searchProviders' };
     }
     
+    console.log('[Clarity] API options:', { 
+      hasToolChoice: !!apiOptions.tool_choice, 
+      toolChoice: apiOptions.tool_choice 
+    });
+    
     let response = await Promise.race([
       anthropic.messages.create(apiOptions),
       apiTimeout
