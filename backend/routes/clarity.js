@@ -151,6 +151,9 @@ async function searchProviders({ providerType, latitude, longitude, radius = 25 
       providerTypes: { $regex: new RegExp(mappedType, 'i') }
     };
     
+    console.log('[searchProviders] Query:', JSON.stringify(query));
+    console.log('[searchProviders] Input:', { providerType, latitude, longitude, radius, mappedType });
+    
     const providers = await Provider.aggregate([
       {
         $geoNear: {
