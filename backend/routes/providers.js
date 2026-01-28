@@ -902,4 +902,27 @@ router.get('/admin/fix-geo-indexes', async (req, res) => {
   }
 });
 
+
+// Admin: Rebuild all geospatial indexes
+router.get('/admin/rebuild-geo-index', async (req, res) => {
+  try {
+    // Drop ALL 2dsphere indexes
+    try {
+      await Provider.collection.dropIndex('location_2dsphere');
+    } catch (e) { console.log('location_2dsphere not found'); }
+    
+    try {
+      await Provider.collection.dropIndex('location.coordinates_2dsphere');
+    } catch (e) { console.log('location.coordinates_2dsphere not found'); }
+    
+    // Create ONLY ONE on location field
+    await Provider.collection.createIndex({ location: '2dsphere' });
+    
+    const indexes = await Provider.collection.getIndexes();
+    res.json({ success: true, indexes });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
