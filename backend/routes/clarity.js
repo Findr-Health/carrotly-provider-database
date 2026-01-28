@@ -298,10 +298,41 @@ router.post('/chat', async (req, res) => {
     const messageText = message.toLowerCase();
     const shouldForceToolUse = providerKeywords.some(keyword => messageText.includes(keyword));
     
+    // PRE-SEARCH: If user mentions provider keywords, search BEFORE calling Claude
+    let providerSearchResults = null;
     if (shouldForceToolUse && location?.latitude && location?.longitude) {
-      console.log('[Clarity] FORCING tool use - adding system instruction');
-      // Add explicit instruction to last user message
-      messages[messages.length - 1].content += '\n\n[INTERNAL SYSTEM INSTRUCTION: You MUST call the searchProviders tool with the provided location before writing any text response. Do not respond without calling the tool first.]';
+      console.log('[Clarity] PRE-SEARCHING for providers...');
+      try {
+        // Determine provider type from message
+        const messageText = message.toLowerCase();
+        let providerType = 'Medical'; // default
+        if (messageText.includes('dentist') || messageText.includes('dental')) providerType = 'Dental';
+        else if (messageText.includes('therapist') || messageText.includes('therapy') || messageText.includes('mental')) providerType = 'Mental Health';
+        else if (messageText.includes('massage')) providerType = 'Massage';
+        else if (messageText.includes('urgent')) providerType = 'Urgent Care';
+        
+        providerSearchResults = await executeToolCall('searchProviders', {
+          providerType,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          radius: 25
+        });
+        
+        console.log('[Clarity] Pre-search found:', providerSearchResults?.providers?.length || 0, 'providers');
+        
+        // Add results to system prompt
+        if (providerSearchResults?.providers?.length > 0) {
+          systemPrompt += `\n\n## PROVIDER SEARCH RESULTS\nI found ${providerSearchResults.providers.length} providers near the user:\n`;
+          providerSearchResults.providers.forEach((p, i) => {
+            systemPrompt += `\n${i+1}. ${p.name} - ${p.address?.city || 'Unknown city'}\n`;
+            systemPrompt += `   ID: ${p._id}\n`;
+            systemPrompt += `   Services: ${p.services?.length || 0}\n`;
+          });
+          systemPrompt += `\nYou MUST reference these specific providers in your response using [PROVIDER:id] format.\n`;
+        }
+      } catch (error) {
+        console.error('[Clarity] Pre-search error:', error);
+      }
     }
     
     // Initial API call with tools (with timeout)
