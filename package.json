@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "ws": "^8.19.0"
   }
 }
