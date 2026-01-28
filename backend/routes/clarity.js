@@ -444,11 +444,8 @@ RESPONSE RULES:
     const textContent = response.content.find(block => block.type === 'text');
     const assistantMessage = textContent?.text || 'I apologize, but I was unable to generate a response.';
     
-    // Parse out provider references for the app
-    const providerMatches = assistantMessage.match(/\[PROVIDER:([^\]]+)\]/g);
-    const providerIds = providerMatches 
-      ? providerMatches.map(m => m.match(/\[PROVIDER:([^\]]+)\]/)[1])
-      : [];
+    // Extract provider IDs from pre-search results (more reliable than parsing Claude's response)
+    const providerIds = providerSearchResults?.providers?.map(p => p.id) || [];
     
     // Clean message for display (remove provider tags - app will render them)
     // Actually, keep them so the app can parse and render buttons
