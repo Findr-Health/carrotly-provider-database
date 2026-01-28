@@ -441,7 +441,10 @@ router.post('/chat', async (req, res) => {
       debug: {
         receivedLocation: !!location?.latitude,
         forcedTool: shouldForceToolUse,
-        stopReason: response.stop_reason
+        stopReason: response.stop_reason,
+        preSearchRan: providerSearchResults !== null,
+        preSearchFound: providerSearchResults?.providers?.length || 0,
+        locationCoords: location?.latitude ? `${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)}` : 'none'
       }
     });
     
