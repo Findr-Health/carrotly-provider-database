@@ -831,4 +831,16 @@ router.get('/admin/fix-one-provider/:id', async (req, res) => {
   }
 });
 
+
+// Admin: Build geospatial index
+router.get('/admin/build-geo-index', async (req, res) => {
+  try {
+    await Provider.collection.createIndex({ 'location.coordinates': '2dsphere' });
+    const indexes = await Provider.collection.getIndexes();
+    res.json({ success: true, indexes });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
