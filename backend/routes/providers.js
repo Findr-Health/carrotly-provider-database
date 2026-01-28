@@ -742,4 +742,58 @@ router.get('/:id/agreement-status', async (req, res) => {
     res.status(500).json({ error: 'Failed to get agreement status' });
   }
 });
+
+// TEMPORARY: Fix test providers
+router.post('/admin/fix-test-providers', async (req, res) => {
+  try {
+    const cityCoords = {
+      'Chicago': [-87.6298, 41.8781],
+      'Portland': [-122.6765, 45.5231],
+      'San Francisco': [-122.4194, 37.7749],
+      'Miami': [-80.1918, 25.7617],
+      'Nashville': [-86.7816, 36.1627],
+      'Los Angeles': [-118.2437, 34.0522],
+      'Austin': [-97.7431, 30.2672],
+      'Seattle': [-122.3321, 47.6062],
+      'Denver': [-104.9903, 39.7392],
+      'Phoenix': [-112.0740, 33.4484]
+    };
+
+    const updates = [
+      {id: '6961103fef927c3f05b10d47', city: 'Chicago', name: 'Chicago Pharmacy Test'},
+      {id: '6961103fef927c3f05b10d38', city: 'Portland', name: 'Portland Nutrition Test'},
+      {id: '6961103fef927c3f05b10d2c', city: 'San Francisco', name: 'SF Yoga Test'},
+      {id: '6961103eef927c3f05b10d1e', city: 'Miami', name: 'Miami Fitness Test'},
+      {id: '6961103eef927c3f05b10d0e', city: 'Nashville', name: 'Nashville Massage Test'},
+      {id: '6961103def927c3f05b10cf6', city: 'Los Angeles', name: 'LA Skincare Test'},
+      {id: '6961103def927c3f05b10ce4', city: 'Austin', name: 'Austin Mental Health Test'},
+      {id: '6961103cef927c3f05b10cd3', city: 'Seattle', name: 'Seattle Dental Test'},
+      {id: '6961103bef927c3f05b10cac', city: 'Denver', name: 'Denver Urgent Care Test'},
+      {id: '6961103bef927c3f05b10c87', city: 'Phoenix', name: 'Phoenix Medical Test'}
+    ];
+
+    const results = [];
+    for (const u of updates) {
+      const coords = cityCoords[u.city];
+      const result = await Provider.findByIdAndUpdate(
+        u.id,
+        {
+          $set: {
+            name: u.name,
+            'location.type': 'Point',
+            'location.coordinates': coords
+          }
+        },
+        { new: true }
+      );
+      results.push({ id: u.id, name: u.name, updated: !!result });
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 module.exports = router;
