@@ -109,7 +109,7 @@ router.get('/', async (req, res) => {
       // If text index exists, use it for better relevance
       try {
         // Use MongoDB text search with scoring
-        query.$text = { $search: search };
+        query.$text = { $search: normalizedSearch };
         useTextSearch = true;
       } catch (e) {
         // Fallback to regex search if no text index
