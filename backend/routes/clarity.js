@@ -325,7 +325,7 @@ router.post('/chat', async (req, res) => {
           providerType,
           latitude: location.latitude,
           longitude: location.longitude,
-          radius: 5000  // 5000 miles = nationwide search for testing
+          radius: 100  // 5000 miles = nationwide search for testing
         });
         
         console.log('[Clarity] Pre-search found:', providerSearchResults?.providers?.length || 0, 'providers');
