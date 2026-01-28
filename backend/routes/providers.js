@@ -843,4 +843,45 @@ router.get('/admin/build-geo-index', async (req, res) => {
   }
 });
 
+
+// Admin: Test geospatial search
+router.get('/admin/test-geo-search', async (req, res) => {
+  try {
+    const { lat, lon, radius = 5000 } = req.query;
+    
+    const radiusInMeters = radius * 1609.34;
+    
+    // Try basic geoNear
+    const results = await Provider.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: 'Point',
+            coordinates: [parseFloat(lon), parseFloat(lat)]
+          },
+          distanceField: 'distance',
+          maxDistance: radiusInMeters,
+          spherical: true
+        }
+      },
+      { $limit: 10 }
+    ]);
+    
+    res.json({ 
+      success: true, 
+      query: { lat, lon, radius, radiusInMeters },
+      count: results.length,
+      results: results.map(r => ({
+        id: r._id,
+        name: r.name,
+        type: r.providerTypes,
+        distance: Math.round(r.distance / 1609.34) + ' miles',
+        location: r.location
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
 module.exports = router;
