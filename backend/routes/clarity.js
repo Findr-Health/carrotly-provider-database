@@ -310,14 +310,23 @@ router.post('/chat', async (req, res) => {
       setTimeout(() => reject(new Error('Anthropic API timeout')), 25000)
     );
     
-    let response = await Promise.race([
-      anthropic.messages.create({
+    // Force tool use with tool_choice if provider keywords detected
+    const apiOptions = {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       system: systemPrompt,
       tools: tools,
       messages: messages
-    }),
+    };
+    
+    // FORCE searchProviders tool as first action for provider queries
+    if (shouldForceToolUse && location?.latitude) {
+      console.log('[Clarity] FORCING searchProviders with tool_choice');
+      apiOptions.tool_choice = { type: 'tool', name: 'searchProviders' };
+    }
+    
+    let response = await Promise.race([
+      anthropic.messages.create(apiOptions),
       apiTimeout
     ]);
     
