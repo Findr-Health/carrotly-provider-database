@@ -884,4 +884,22 @@ router.get('/admin/test-geo-search', async (req, res) => {
   }
 });
 
+
+// Admin: Fix duplicate 2dsphere indexes
+router.get('/admin/fix-geo-indexes', async (req, res) => {
+  try {
+    // Drop the duplicate index on location.coordinates
+    await Provider.collection.dropIndex('location.coordinates_2dsphere');
+    
+    const indexes = await Provider.collection.getIndexes();
+    res.json({ 
+      success: true, 
+      message: 'Dropped location.coordinates_2dsphere, kept location_2dsphere',
+      indexes 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
