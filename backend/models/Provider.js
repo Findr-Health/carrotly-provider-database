@@ -50,8 +50,7 @@ const providerSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      default: [0, 0],
-      index: '2dsphere'
+      default: [0, 0]
     }
   },
   name: String, // Provider display name
