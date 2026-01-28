@@ -257,6 +257,10 @@ async function logProviderRequest({ providerType, latitude, longitude, city, sta
  * POST /api/clarity/chat
  */
 router.post('/chat', async (req, res) => {
+  console.log('[Clarity /chat] === REQUEST RECEIVED ===');
+  console.log('[Clarity /chat] Message:', req.body.message?.substring(0, 100));
+  console.log('[Clarity /chat] Has location:', !!req.body.location);
+  
   try {
     const { 
       message, 
@@ -289,14 +293,22 @@ router.post('/chat', async (req, res) => {
       systemPrompt += `\n\nUse this location when searching for providers.`;
     }
     
-    // Initial API call with tools
-    let response = await anthropic.messages.create({
+    // Initial API call with tools (with timeout)
+    console.log('[Clarity] Calling Anthropic API...');
+    const apiTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Anthropic API timeout')), 25000)
+    );
+    
+    let response = await Promise.race([
+      anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       system: systemPrompt,
       tools: tools,
       messages: messages
-    });
+    }),
+      apiTimeout
+    ]);
     
     console.log('Initial response stop_reason:', response.stop_reason);
     
