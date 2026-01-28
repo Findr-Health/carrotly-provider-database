@@ -925,4 +925,30 @@ router.get('/admin/rebuild-geo-index', async (req, res) => {
   }
 });
 
+
+// Admin: Create test provider (bypasses agreement requirement)
+router.post('/admin/create-test-provider', async (req, res) => {
+  try {
+    const providerData = {
+      ...req.body,
+      status: 'approved',
+      onboardingCompleted: true,
+      onboardingStep: 10,
+      agreement: {
+        agreedDate: new Date(),
+        version: 'test',
+        signature: 'Test Provider',
+        title: 'Owner'
+      }
+    };
+    
+    const provider = new Provider(providerData);
+    await provider.save();
+    
+    res.json({ success: true, provider });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
