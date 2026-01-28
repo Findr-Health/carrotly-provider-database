@@ -401,6 +401,11 @@ router.post('/chat', async (req, res) => {
       usage: {
         inputTokens: response.usage?.input_tokens,
         outputTokens: response.usage?.output_tokens
+      },
+      debug: {
+        receivedLocation: !!location?.latitude,
+        forcedTool: shouldForceToolUse,
+        stopReason: response.stop_reason
       }
     });
     
