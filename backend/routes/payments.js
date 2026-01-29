@@ -1,76 +1,77 @@
 /**
  * Payment Routes for Findr Health
- * 
- * File: backend/routes/payments.js
- * 
- * Handles:
- * - Setup intents for adding cards
- * - Payment methods CRUD
- * - Payment intents for bookings
  */
 
 const express = require('express');
 const router = express.Router();
 const Stripe = require('stripe');
 
-// Initialize Stripe with secret key from environment
+// Authentication middleware
+const { authenticate } = require('../middleware/auth');
+
+// Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// User model (for storing Stripe customer ID)
+// User model
 const User = require('../models/User');
-
-/**
- * Get or create Stripe customer for user
- */
-async function getOrCreateCustomer(userId, email) {
-  let user = await User.findById(userId);
-  
-  if (user?.stripeCustomerId) {
-    return user.stripeCustomerId;
-  }
-  
-  // Create new Stripe customer
-  const customer = await stripe.customers.create({
-    email: email || `user_${userId}@findrhealth.com`,
-    metadata: { userId: userId.toString() }
-  });
-  
-  // Save customer ID to user
-  if (user) {
-    user.stripeCustomerId = customer.id;
-    await user.save();
-  }
-  
-  return customer.id;
-}
 
 /**
  * POST /api/payments/setup-intent
  * Create a SetupIntent for adding a new payment method
  */
-router.post('/setup-intent', async (req, res) => {
+router.post('/setup-intent', authenticate, async (req, res) => {
   try {
-    const { userId, email } = req.body;
+    const user = await User.findById(req.userId);
     
-    if (!userId) {
-      return res.status(400).json({ error: 'userId is required' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
     
-    const customerId = await getOrCreateCustomer(userId, email);
+    // ✅ CHECK: Does user already have Stripe customer?
+    let customerId = user.stripeCustomerId;
     
+    if (!customerId) {
+      // ✅ CREATE: Only if doesn't exist
+      console.log(`[Payment] Creating new Stripe customer for: ${user.email}`);
+      
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`,
+        metadata: {
+          userId: user._id.toString(),
+        },
+      });
+      
+      customerId = customer.id;
+      
+      // ✅ SAVE: Store customer ID in database
+      user.stripeCustomerId = customerId;
+      await user.save();
+      
+      console.log(`[Payment] ✅ Saved customer ID: ${customerId}`);
+    } else {
+      console.log(`[Payment] ✅ Reusing existing customer: ${customerId}`);
+    }
+    
+    // ✅ USE: Persistent customer ID
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
       payment_method_types: ['card'],
-      metadata: { userId: userId.toString() }
     });
     
     res.json({
+      success: true,
       clientSecret: setupIntent.client_secret,
-      customerId: customerId
+      customerId: customerId,
     });
+    
   } catch (error) {
-    console.error('Setup intent error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[Payment] Setup intent error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to initialize payment',
+      message: error.message 
+    });
   }
 });
 
@@ -78,17 +79,15 @@ router.post('/setup-intent', async (req, res) => {
  * GET /api/payments/methods
  * Get all payment methods for a user
  */
-router.get('/methods', async (req, res) => {
+router.get('/methods', authenticate, async (req, res) => {
   try {
-    const { userId } = req.query;
+    const user = await User.findById(req.userId);
     
-    if (!userId) {
-      return res.status(400).json({ error: 'userId is required' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
     
-    const user = await User.findById(userId);
-    
-    if (!user?.stripeCustomerId) {
+    if (!user.stripeCustomerId) {
       return res.json({ methods: [] });
     }
     
@@ -97,7 +96,6 @@ router.get('/methods', async (req, res) => {
       type: 'card',
     });
     
-    // Get default payment method
     const customer = await stripe.customers.retrieve(user.stripeCustomerId);
     const defaultPaymentMethod = customer.invoice_settings?.default_payment_method;
     
@@ -114,7 +112,7 @@ router.get('/methods', async (req, res) => {
     
     res.json({ methods });
   } catch (error) {
-    console.error('Get methods error:', error);
+    console.error('[Payment] Get methods error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -123,15 +121,25 @@ router.get('/methods', async (req, res) => {
  * DELETE /api/payments/methods/:id
  * Delete a payment method
  */
-router.delete('/methods/:id', async (req, res) => {
+router.delete('/methods/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
+    const user = await User.findById(req.userId);
+    
+    if (!user?.stripeCustomerId) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    
+    const paymentMethod = await stripe.paymentMethods.retrieve(id);
+    if (paymentMethod.customer !== user.stripeCustomerId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
     
     await stripe.paymentMethods.detach(id);
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete method error:', error);
+    console.error('[Payment] Delete method error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -140,19 +148,18 @@ router.delete('/methods/:id', async (req, res) => {
  * POST /api/payments/methods/:id/default
  * Set a payment method as default
  */
-router.post('/methods/:id/default', async (req, res) => {
+router.post('/methods/:id/default', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'userId is required' });
-    }
-    
-    const user = await User.findById(userId);
+    const user = await User.findById(req.userId);
     
     if (!user?.stripeCustomerId) {
       return res.status(404).json({ error: 'Customer not found' });
+    }
+    
+    const paymentMethod = await stripe.paymentMethods.retrieve(id);
+    if (paymentMethod.customer !== user.stripeCustomerId) {
+      return res.status(403).json({ error: 'Unauthorized' });
     }
     
     await stripe.customers.update(user.stripeCustomerId, {
@@ -163,7 +170,7 @@ router.post('/methods/:id/default', async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Set default error:', error);
+    console.error('[Payment] Set default error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -172,36 +179,50 @@ router.post('/methods/:id/default', async (req, res) => {
  * POST /api/payments/create-payment-intent
  * Create a PaymentIntent for booking
  */
-router.post('/create-payment-intent', async (req, res) => {
+router.post('/create-payment-intent', authenticate, async (req, res) => {
   try {
     const { 
-      userId, 
-      amount, // in cents
+      amount,
       paymentMethodId,
       bookingId,
       description 
     } = req.body;
     
-    if (!userId || !amount) {
-      return res.status(400).json({ error: 'userId and amount are required' });
+    if (!amount) {
+      return res.status(400).json({ error: 'amount is required' });
     }
     
-    const customerId = await getOrCreateCustomer(userId);
+    const user = await User.findById(req.userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    let customerId = user.stripeCustomerId;
+    
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`,
+        metadata: { userId: user._id.toString() }
+      });
+      customerId = customer.id;
+      user.stripeCustomerId = customerId;
+      await user.save();
+    }
     
     const paymentIntentData = {
-      amount: Math.round(amount), // Ensure integer
+      amount: Math.round(amount),
       currency: 'usd',
       customer: customerId,
       description: description || 'Findr Health booking',
       metadata: {
-        userId: userId.toString(),
+        userId: user._id.toString(),
         bookingId: bookingId || '',
       },
-      // Capture immediately (Option C)
       capture_method: 'automatic',
     };
     
-    // If specific payment method provided, use it
     if (paymentMethodId) {
       paymentIntentData.payment_method = paymentMethodId;
       paymentIntentData.confirm = true;
@@ -216,16 +237,16 @@ router.post('/create-payment-intent', async (req, res) => {
       status: paymentIntent.status
     });
   } catch (error) {
-    console.error('Payment intent error:', error);
+    console.error('[Payment] Payment intent error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 /**
  * POST /api/payments/confirm
- * Confirm a payment (if not auto-confirmed)
+ * Confirm a payment
  */
-router.post('/confirm', async (req, res) => {
+router.post('/confirm', authenticate, async (req, res) => {
   try {
     const { paymentIntentId, paymentMethodId } = req.body;
     
@@ -239,16 +260,16 @@ router.post('/confirm', async (req, res) => {
       paymentIntentId: paymentIntent.id
     });
   } catch (error) {
-    console.error('Confirm error:', error);
+    console.error('[Payment] Confirm error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 /**
  * POST /api/payments/refund
- * Refund a payment (for cancellations)
+ * Refund a payment
  */
-router.post('/refund', async (req, res) => {
+router.post('/refund', authenticate, async (req, res) => {
   try {
     const { paymentIntentId, amount, reason } = req.body;
     
@@ -257,7 +278,6 @@ router.post('/refund', async (req, res) => {
       reason: reason || 'requested_by_customer',
     };
     
-    // Partial refund if amount specified
     if (amount) {
       refundData.amount = Math.round(amount);
     }
@@ -270,36 +290,9 @@ router.post('/refund', async (req, res) => {
       amount: refund.amount
     });
   } catch (error) {
-    console.error('Refund error:', error);
+    console.error('[Payment] Refund error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 module.exports = router;
-
-
-// =============================================================================
-// ADD TO backend/index.js or backend/server.js
-// =============================================================================
-// 
-// Add this line with other route imports:
-// const paymentsRoutes = require('./routes/payments');
-//
-// Add this line with other app.use() statements:
-// app.use('/api/payments', paymentsRoutes);
-//
-// =============================================================================
-
-
-// =============================================================================
-// ADD stripeCustomerId TO User model if not exists
-// =============================================================================
-//
-// In backend/models/User.js, add to schema:
-//
-// stripeCustomerId: {
-//   type: String,
-//   default: null
-// },
-//
-// =============================================================================
