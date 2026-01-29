@@ -7,7 +7,7 @@ const router = express.Router();
 const Stripe = require('stripe');
 
 // Authentication middleware
-const { authenticate } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -19,9 +19,9 @@ const User = require('../models/User');
  * POST /api/payments/setup-intent
  * Create a SetupIntent for adding a new payment method
  */
-router.post('/setup-intent', authenticate, async (req, res) => {
+router.post('/setup-intent', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.user.userId);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -79,9 +79,9 @@ router.post('/setup-intent', authenticate, async (req, res) => {
  * GET /api/payments/methods
  * Get all payment methods for a user
  */
-router.get('/methods', authenticate, async (req, res) => {
+router.get('/methods', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.user.userId);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -121,10 +121,10 @@ router.get('/methods', authenticate, async (req, res) => {
  * DELETE /api/payments/methods/:id
  * Delete a payment method
  */
-router.delete('/methods/:id', authenticate, async (req, res) => {
+router.delete('/methods/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.user.userId);
     
     if (!user?.stripeCustomerId) {
       return res.status(404).json({ error: 'Customer not found' });
@@ -148,10 +148,10 @@ router.delete('/methods/:id', authenticate, async (req, res) => {
  * POST /api/payments/methods/:id/default
  * Set a payment method as default
  */
-router.post('/methods/:id/default', authenticate, async (req, res) => {
+router.post('/methods/:id/default', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.user.userId);
     
     if (!user?.stripeCustomerId) {
       return res.status(404).json({ error: 'Customer not found' });
@@ -179,7 +179,7 @@ router.post('/methods/:id/default', authenticate, async (req, res) => {
  * POST /api/payments/create-payment-intent
  * Create a PaymentIntent for booking
  */
-router.post('/create-payment-intent', authenticate, async (req, res) => {
+router.post('/create-payment-intent', authenticateToken, async (req, res) => {
   try {
     const { 
       amount,
@@ -192,7 +192,7 @@ router.post('/create-payment-intent', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'amount is required' });
     }
     
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.user.userId);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -246,7 +246,7 @@ router.post('/create-payment-intent', authenticate, async (req, res) => {
  * POST /api/payments/confirm
  * Confirm a payment
  */
-router.post('/confirm', authenticate, async (req, res) => {
+router.post('/confirm', authenticateToken, async (req, res) => {
   try {
     const { paymentIntentId, paymentMethodId } = req.body;
     
@@ -269,7 +269,7 @@ router.post('/confirm', authenticate, async (req, res) => {
  * POST /api/payments/refund
  * Refund a payment
  */
-router.post('/refund', authenticate, async (req, res) => {
+router.post('/refund', authenticateToken, async (req, res) => {
   try {
     const { paymentIntentId, amount, reason } = req.body;
     
