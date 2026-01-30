@@ -130,6 +130,60 @@ router.get('/', async (req, res) => {
  * PUT /api/users/:id
  * Admin route to update user
  */
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const allowedUpdates = ['firstName', 'lastName', 'phone', 'photoUrl', 'dateOfBirth', 'location', 'notificationPreferences'];
+    const updates = {};
+    
+    for (const key of allowedUpdates) {
+      if (req.body[key] !== undefined) {
+        updates[key] = req.body[key];
+      }
+    }
+    
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      updates,
+      { new: true, runValidators: true }
+    );
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Change password
+router.put('/password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password required' });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+    
+    const user = await User.findById(req.userId).select('+password');
+    
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    
+    user.password = newPassword;
+    await user.save();
+    
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Password change error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 router.put('/:id', async (req, res) => {
   try {
     const updates = req.body;
@@ -355,59 +409,6 @@ router.get('/profile', auth, async (req, res) => {
 });
 
 // Update profile
-router.put('/profile', auth, async (req, res) => {
-  try {
-    const allowedUpdates = ['firstName', 'lastName', 'phone', 'photoUrl', 'dateOfBirth', 'location', 'notificationPreferences'];
-    const updates = {};
-    
-    for (const key of allowedUpdates) {
-      if (req.body[key] !== undefined) {
-        updates[key] = req.body[key];
-      }
-    }
-    
-    const user = await User.findByIdAndUpdate(
-      req.userId,
-      updates,
-      { new: true, runValidators: true }
-    );
-    
-    res.json(user);
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
-  }
-});
-
-// Change password
-router.put('/password', auth, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current and new password required' });
-    }
-    
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'New password must be at least 8 characters' });
-    }
-    
-    const user = await User.findById(req.userId).select('+password');
-    
-    const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
-    }
-    
-    user.password = newPassword;
-    await user.save();
-    
-    res.json({ message: 'Password updated successfully' });
-  } catch (error) {
-    console.error('Password change error:', error);
-    res.status(500).json({ error: 'Failed to change password' });
-  }
-});
 
 // ==================== FAVORITES ROUTES ====================
 
