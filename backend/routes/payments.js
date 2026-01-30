@@ -295,4 +295,28 @@ router.post('/refund', authenticateToken, async (req, res) => {
   }
 });
 
+
+// TEMPORARY: Clear customer ID for current user
+router.post('/clear-customer', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const oldCustomerId = user.stripeCustomerId;
+    user.stripeCustomerId = undefined;
+    await user.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Customer ID cleared',
+      oldCustomerId: oldCustomerId,
+      email: user.email
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
