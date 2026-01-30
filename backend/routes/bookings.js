@@ -324,6 +324,10 @@ router.post('/', async (req, res) => {
           currency: 'usd',
           payment_method: paymentMethodId,
           confirm: true,
+          automatic_payment_methods: {
+            enabled: true,
+            allow_redirects: 'never'
+          },
           metadata: {
             bookingId: booking._id.toString(),
             bookingNumber: booking.bookingNumber,
