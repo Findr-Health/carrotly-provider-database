@@ -56,6 +56,7 @@ router.get('/me', auth, async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
+        address: user.address,
         photoUrl: user.photoUrl,
         authProvider: user.authProvider,
         profileComplete: user.profileComplete,
