@@ -316,12 +316,24 @@ router.post('/', async (req, res) => {
     // Generate booking number
     await booking.generateBookingNumber();
     
+    // Get patient for customer ID
+    const patient = await User.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+    if (!patient.stripeCustomerId) {
+      return res.status(400).json({ 
+        error: 'Patient has no payment method configured. Please add a payment method first.' 
+      });
+    }
+    
     // Process payment
     if (stripe && paymentMethodId && servicePrice > 0) {
       try {
         const paymentIntentParams = {
           amount: servicePrice,
           currency: 'usd',
+          customer: patient.stripeCustomerId,
           payment_method: paymentMethodId,
           confirm: true,
           automatic_payment_methods: {
