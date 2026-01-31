@@ -61,7 +61,51 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
+
+/**
+ * Middleware specifically for provider-authenticated routes
+ * Verifies token and ensures user has providerId
+ */
+const authenticateProvider = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ 
+      success: false,
+      error: 'Authentication required - no token provided' 
+    });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Check if this is a provider account
+    if (!decoded.providerId) {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Provider access required. This endpoint is only accessible to providers.' 
+      });
+    }
+    
+    // Attach decoded token data to request
+    req.user = decoded;
+    
+    next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, error: 'Token expired' });
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, error: 'Invalid token' });
+    }
+    return res.status(401).json({ success: false, error: 'Authentication failed' });
+  }
+};
+
 module.exports = {
   authenticateToken,
-  optionalAuth
+  optionalAuth,
+  authenticateProvider
 };
