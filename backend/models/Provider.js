@@ -152,13 +152,13 @@ const providerSchema = new mongoose.Schema({
     syncBusyOnly: Boolean,
     bufferMinutes: Number,
     businessHours: {
-      monday: { enabled: Boolean, start: String, end: String },
-      tuesday: { enabled: Boolean, start: String, end: String },
-      wednesday: { enabled: Boolean, start: String, end: String },
-      thursday: { enabled: Boolean, start: String, end: String },
-      friday: { enabled: Boolean, start: String, end: String },
-      saturday: { enabled: Boolean, start: String, end: String },
-      sunday: { enabled: Boolean, start: String, end: String }
+      monday: { isOpen: Boolean, open: String, close: String },
+      tuesday: { isOpen: Boolean, open: String, close: String },
+      wednesday: { isOpen: Boolean, open: String, close: String },
+      thursday: { isOpen: Boolean, open: String, close: String },
+      friday: { isOpen: Boolean, open: String, close: String },
+      saturday: { isOpen: Boolean, open: String, close: String },
+      sunday: { isOpen: Boolean, open: String, close: String }
     }
   },
 
