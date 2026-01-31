@@ -10,9 +10,10 @@ router.post('/:providerId/business-hours', async (req, res) => {
     console.log('📅 Setting business hours for provider:', providerId);
     console.log('📋 Business hours data:', JSON.stringify(businessHours, null, 2));
     
+    // FIXED: Use correct nested path
     const provider = await Provider.findByIdAndUpdate(
       providerId,
-      { $set: { businessHours } },
+      { $set: { 'calendar.businessHours': businessHours } },
       { new: true, runValidators: true }
     );
     
@@ -22,11 +23,11 @@ router.post('/:providerId/business-hours', async (req, res) => {
     }
     
     console.log('✅ Business hours updated successfully');
-    console.log('📋 Saved hours:', JSON.stringify(provider.businessHours, null, 2));
+    console.log('📋 Saved hours:', JSON.stringify(provider.calendar?.businessHours, null, 2));
     
     return res.json({
       success: true,
-      businessHours: provider.businessHours
+      businessHours: provider.calendar?.businessHours || {}
     });
     
   } catch (error) {
@@ -42,7 +43,7 @@ router.get('/:providerId/business-hours', async (req, res) => {
   try {
     const { providerId } = req.params;
     
-    const provider = await Provider.findById(providerId).select('businessHours practiceName');
+    const provider = await Provider.findById(providerId).select('calendar.businessHours practiceName');
     
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
@@ -51,7 +52,7 @@ router.get('/:providerId/business-hours', async (req, res) => {
     return res.json({
       success: true,
       practiceName: provider.practiceName,
-      businessHours: provider.businessHours || {}
+      businessHours: provider.calendar?.businessHours || {}
     });
     
   } catch (error) {
