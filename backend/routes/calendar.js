@@ -34,8 +34,8 @@ const oauthStates = new Map();
 // ==================== GOOGLE OAUTH CONFIG ====================
 
 const googleOAuth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_CALENDAR_CLIENT_ID,
+  process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
   process.env.GOOGLE_REDIRECT_URI
 );
 
@@ -128,7 +128,7 @@ router.post('/connect', async (req, res) => {
     } else if (provider === 'microsoft') {
       // Generate Microsoft OAuth URL
       const params = new URLSearchParams({
-        client_id: process.env.MICROSOFT_CLIENT_ID,
+        client_id: process.env.MICROSOFT_CALENDAR_CLIENT_ID,
         response_type: 'code',
         redirect_uri: process.env.MICROSOFT_REDIRECT_URI,
         scope: MICROSOFT_SCOPES.join(' '),
@@ -273,8 +273,8 @@ router.get('/callback/microsoft', async (req, res) => {
     // Exchange code for tokens
     const axios = require('axios');
     const tokenResponse = await axios.post(MICROSOFT_TOKEN_URL, new URLSearchParams({
-      client_id: process.env.MICROSOFT_CLIENT_ID,
-      client_secret: process.env.MICROSOFT_CLIENT_SECRET,
+      client_id: process.env.MICROSOFT_CALENDAR_CLIENT_ID,
+      client_secret: process.env.MICROSOFT_CALENDAR_CLIENT_SECRET,
       code: code,
       redirect_uri: process.env.MICROSOFT_REDIRECT_URI,
       grant_type: 'authorization_code'
