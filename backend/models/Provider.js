@@ -99,7 +99,29 @@ const providerSchema = new mongoose.Schema({
     specialties: [String],
     yearsExperience: Number,
     acceptsBookings: { type: Boolean, default: true },
-    calendarConnected: { type: Boolean, default: false }
+    calendar: {
+      provider: { 
+        type: String, 
+        enum: ['google', 'microsoft', null],
+        default: null 
+      },
+      connected: { type: Boolean, default: false },
+      accessToken: String,
+      refreshToken: String,
+      tokenExpiry: Date,
+      calendarId: String,
+      calendarEmail: String,
+      syncStatus: {
+        type: String,
+        enum: ['active', 'error', 'expired', 'disconnected'],
+        default: 'disconnected'
+      },
+      lastSyncAt: Date,
+      syncError: String,
+      bufferMinutes: { type: Number, default: 15 },
+      minNoticeHours: { type: Number, default: 24 },
+      maxDaysOut: { type: Number, default: 60 }
+    }
   }],
 
   // Step 6: Payment & Payout (Future)

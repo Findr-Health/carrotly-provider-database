@@ -1,499 +1,564 @@
 /**
- * Calendar Integration Routes
- * Google Calendar + Microsoft Outlook OAuth
- * With diagnostic field tracking
- * Updated: January 15, 2026
+ * Findr Health - Calendar Integration Routes
+ * 
+ * OAuth flow for Google Calendar and Microsoft Outlook
+ * Supports individual team member calendar connections
+ * 
+ * Endpoints:
+ * POST   /api/calendar/connect                    - Initiate OAuth
+ * GET    /api/calendar/callback/google            - Google OAuth callback
+ * GET    /api/calendar/callback/microsoft         - Microsoft OAuth callback
+ * DELETE /api/calendar/disconnect                 - Disconnect calendar
+ * GET    /api/calendar/status/:providerId/:memberId - Check connection status
+ * POST   /api/calendar/test-connection            - Test calendar access
  */
 
 const express = require('express');
 const router = express.Router();
 const { google } = require('googleapis');
 const Provider = require('../models/Provider');
+const crypto = require('crypto');
 
-// Google OAuth Setup
+// In-memory state storage (use Redis in production)
+const oauthStates = new Map();
+
+// Environment variables required:
+// GOOGLE_CLIENT_ID
+// GOOGLE_CLIENT_SECRET
+// GOOGLE_REDIRECT_URI (e.g., https://api.findrhealth.com/api/calendar/callback/google)
+// MICROSOFT_CLIENT_ID
+// MICROSOFT_CLIENT_SECRET
+// MICROSOFT_REDIRECT_URI
+// FRONTEND_URL (e.g., https://provider.findrhealth.com)
+
+// ==================== GOOGLE OAUTH CONFIG ====================
+
 const googleOAuth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CALENDAR_CLIENT_ID,
-  process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
-  process.env.NODE_ENV === 'production' 
-    ? 'https://fearless-achievement-production.up.railway.app/api/calendar/google/callback'
-    : 'http://localhost:3000/api/calendar/google/callback'
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
 );
 
 const GOOGLE_SCOPES = [
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/calendar.readonly',
-  'https://www.googleapis.com/auth/calendar.events'
+  'https://www.googleapis.com/auth/calendar',           // Read/write calendar
+  'https://www.googleapis.com/auth/calendar.events',    // Manage events
+  'https://www.googleapis.com/auth/userinfo.email'      // Get email for verification
 ];
 
-// Microsoft OAuth Setup
-const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CALENDAR_CLIENT_ID;
-const MICROSOFT_CLIENT_SECRET = process.env.MICROSOFT_CALENDAR_CLIENT_SECRET;
-const MICROSOFT_REDIRECT_URI = process.env.NODE_ENV === 'production'
-  ? 'https://fearless-achievement-production.up.railway.app/api/calendar/microsoft/callback'
-  : 'http://localhost:3000/api/calendar/microsoft/callback';
+// ==================== MICROSOFT OAUTH CONFIG ====================
 
+const MICROSOFT_AUTH_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
+const MICROSOFT_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
 const MICROSOFT_SCOPES = [
-  'openid',
-  'profile', 
-  'email',
-  'offline_access',
   'Calendars.ReadWrite',
   'User.Read'
 ];
 
-// ==================== GOOGLE ROUTES ====================
+// ==================== INITIATE OAUTH ====================
 
-router.get('/google/auth/:providerId', (req, res) => {
-  const { providerId } = req.params;
-  
-  const authUrl = googleOAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: GOOGLE_SCOPES,
-    prompt: 'consent',
-    state: providerId
-  });
-  
-  res.json({ authUrl });
+/**
+ * POST /api/calendar/connect
+ * Initiates OAuth flow for Google or Microsoft
+ * 
+ * Body:
+ * {
+ *   "provider": "google" | "microsoft",
+ *   "providerId": "mongo-id",
+ *   "teamMemberId": "mongo-id",
+ *   "returnUrl": "/onboarding/calendar-setup"  // Optional
+ * }
+ */
+router.post('/connect', async (req, res) => {
+  try {
+    const { provider, providerId, teamMemberId, returnUrl } = req.body;
+
+    // Validate
+    if (!provider || !providerId || !teamMemberId) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['provider', 'providerId', 'teamMemberId']
+      });
+    }
+
+    if (!['google', 'microsoft'].includes(provider)) {
+      return res.status(400).json({
+        error: 'Invalid provider',
+        validProviders: ['google', 'microsoft']
+      });
+    }
+
+    // Verify provider exists
+    const providerDoc = await Provider.findById(providerId);
+    if (!providerDoc) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    // Verify team member exists
+    const teamMember = providerDoc.teamMembers.id(teamMemberId);
+    if (!teamMember) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    // Generate state for CSRF protection
+    const state = crypto.randomBytes(32).toString('hex');
+    
+    // Store state with metadata (expires in 10 minutes)
+    oauthStates.set(state, {
+      provider,
+      providerId: providerId.toString(),
+      teamMemberId: teamMemberId.toString(),
+      returnUrl: returnUrl || '/calendar-setup',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + (10 * 60 * 1000)
+    });
+
+    // Clean up expired states
+    cleanupExpiredStates();
+
+    let authUrl;
+
+    if (provider === 'google') {
+      // Generate Google OAuth URL
+      authUrl = googleOAuth2Client.generateAuthUrl({
+        access_type: 'offline',     // Get refresh token
+        scope: GOOGLE_SCOPES,
+        state: state,
+        prompt: 'consent'            // Force consent screen to get refresh token
+      });
+    } else if (provider === 'microsoft') {
+      // Generate Microsoft OAuth URL
+      const params = new URLSearchParams({
+        client_id: process.env.MICROSOFT_CLIENT_ID,
+        response_type: 'code',
+        redirect_uri: process.env.MICROSOFT_REDIRECT_URI,
+        scope: MICROSOFT_SCOPES.join(' '),
+        state: state,
+        prompt: 'consent'
+      });
+      authUrl = `${MICROSOFT_AUTH_URL}?${params.toString()}`;
+    }
+
+    console.log(`📅 OAuth initiated for ${provider} - Provider: ${providerId}, Member: ${teamMemberId}`);
+
+    res.json({
+      success: true,
+      authUrl,
+      state,
+      message: `Redirect user to authUrl to begin ${provider} authorization`
+    });
+
+  } catch (error) {
+    console.error('Calendar connect error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
-router.get('/google/callback', async (req, res) => {
-  const { code, state: providerId } = req.query;
-  
-  if (!code || !providerId) {
-    return res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=error&reason=missing_params');
-  }
-  
+// ==================== GOOGLE OAUTH CALLBACK ====================
+
+/**
+ * GET /api/calendar/callback/google
+ * Handles OAuth callback from Google
+ * Query params: code, state
+ */
+router.get('/callback/google', async (req, res) => {
   try {
+    const { code, state, error } = req.query;
+
+    // Handle OAuth error
+    if (error) {
+      console.error('Google OAuth error:', error);
+      return redirectToFrontend(res, state, false, error);
+    }
+
+    if (!code || !state) {
+      return redirectToFrontend(res, state, false, 'Missing authorization code or state');
+    }
+
+    // Verify state
+    const stateData = oauthStates.get(state);
+    if (!stateData) {
+      return redirectToFrontend(res, null, false, 'Invalid or expired state');
+    }
+
+    // Exchange code for tokens
     const { tokens } = await googleOAuth2Client.getToken(code);
     
+    if (!tokens.access_token) {
+      return redirectToFrontend(res, state, false, 'Failed to get access token');
+    }
+
+    // Set credentials to get user info
     googleOAuth2Client.setCredentials(tokens);
+    
+    // Get user's email for verification
     const oauth2 = google.oauth2({ version: 'v2', auth: googleOAuth2Client });
     const userInfo = await oauth2.userinfo.get();
-    
+    const calendarEmail = userInfo.data.email;
+
+    // Get calendar list to verify access
     const calendar = google.calendar({ version: 'v3', auth: googleOAuth2Client });
     const calendarList = await calendar.calendarList.list();
-    const primaryCalendar = calendarList.data.items.find(cal => cal.primary) || calendarList.data.items[0];
-    
-    await Provider.findByIdAndUpdate(providerId, {
-      'calendar.provider': 'google',
-      'calendar.accessToken': tokens.access_token,
-      'calendar.refreshToken': tokens.refresh_token,
-      'calendar.tokenExpiry': new Date(tokens.expiry_date),
-      'calendar.calendarEmail': userInfo.data.email,
-      'calendar.calendarId': primaryCalendar?.id || 'primary',
-      'calendar.syncDirection': 'two-way',
-      'calendar.syncBusyOnly': true,
-      'calendar.connectedAt': new Date(),
-      'calendar.disconnectedAt': null,
-      'calendar.scopesGranted': GOOGLE_SCOPES,
-      'calendar.lastSyncAt': new Date(),
-      'calendar.lastSyncStatus': 'success',
-      'calendar.lastSyncError': null,
-      'calendar.syncFailureCount': 0,
-      'calendar.lastTokenRefreshAt': new Date(),
-      'calendar.tokenRefreshFailures': 0,
-      calendarConnected: true
-    });
-    
-    res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=success');
-  } catch (error) {
-    console.error('Google OAuth callback error:', error);
-    res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=error&reason=' + encodeURIComponent(error.message));
-  }
-});
+    const primaryCalendar = calendarList.data.items.find(cal => cal.primary);
 
-// ==================== MICROSOFT ROUTES ====================
-
-router.get('/microsoft/auth/:providerId', (req, res) => {
-  const { providerId } = req.params;
-  
-  if (!MICROSOFT_CLIENT_ID) {
-    return res.status(500).json({ 
-      error: 'Microsoft Calendar not configured. Add MICROSOFT_CALENDAR_CLIENT_ID and MICROSOFT_CALENDAR_CLIENT_SECRET to Railway.' 
-    });
-  }
-  
-  const authUrl = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?' +
-    'client_id=' + encodeURIComponent(MICROSOFT_CLIENT_ID) +
-    '&response_type=code' +
-    '&redirect_uri=' + encodeURIComponent(MICROSOFT_REDIRECT_URI) +
-    '&response_mode=query' +
-    '&scope=' + encodeURIComponent(MICROSOFT_SCOPES.join(' ')) +
-    '&state=' + encodeURIComponent(providerId) +
-    '&prompt=consent';
-  
-  res.json({ authUrl });
-});
-
-router.get('/microsoft/callback', async (req, res) => {
-  const { code, state: providerId, error: oauthError } = req.query;
-  
-  if (oauthError) {
-    return res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=error&reason=' + encodeURIComponent(oauthError));
-  }
-  
-  if (!code || !providerId) {
-    return res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=error&reason=missing_params');
-  }
-  
-  try {
-    const tokenResponse = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: MICROSOFT_CLIENT_ID,
-        client_secret: MICROSOFT_CLIENT_SECRET,
-        code: code,
-        redirect_uri: MICROSOFT_REDIRECT_URI,
-        grant_type: 'authorization_code'
-      })
-    });
-    
-    const tokens = await tokenResponse.json();
-    
-    if (tokens.error) {
-      throw new Error(tokens.error_description || tokens.error);
+    // Update provider document
+    const provider = await Provider.findById(stateData.providerId);
+    if (!provider) {
+      return redirectToFrontend(res, state, false, 'Provider not found');
     }
-    
-    // Get user info
-    const userResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
-      headers: { 'Authorization': 'Bearer ' + tokens.access_token }
-    });
-    const userInfo = await userResponse.json();
-    
-    // Get calendars
-    const calendarsResponse = await fetch('https://graph.microsoft.com/v1.0/me/calendars', {
-      headers: { 'Authorization': 'Bearer ' + tokens.access_token }
-    });
-    const calendarsData = await calendarsResponse.json();
-    const primaryCalendar = calendarsData.value?.find(cal => cal.isDefaultCalendar) || calendarsData.value?.[0];
-    
-    const tokenExpiry = new Date(Date.now() + (tokens.expires_in * 1000));
-    
-    await Provider.findByIdAndUpdate(providerId, {
-      'calendar.provider': 'microsoft',
-      'calendar.accessToken': tokens.access_token,
-      'calendar.refreshToken': tokens.refresh_token,
-      'calendar.tokenExpiry': tokenExpiry,
-      'calendar.calendarEmail': userInfo.mail || userInfo.userPrincipalName,
-      'calendar.calendarId': primaryCalendar?.id || 'primary',
-      'calendar.syncDirection': 'two-way',
-      'calendar.syncBusyOnly': true,
-      'calendar.connectedAt': new Date(),
-      'calendar.disconnectedAt': null,
-      'calendar.scopesGranted': MICROSOFT_SCOPES,
-      'calendar.lastSyncAt': new Date(),
-      'calendar.lastSyncStatus': 'success',
-      'calendar.lastSyncError': null,
-      'calendar.syncFailureCount': 0,
-      'calendar.lastTokenRefreshAt': new Date(),
-      'calendar.tokenRefreshFailures': 0,
-      calendarConnected: true
-    });
-    
-    res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=success&provider=microsoft');
+
+    const teamMember = provider.teamMembers.id(stateData.teamMemberId);
+    if (!teamMember) {
+      return redirectToFrontend(res, state, false, 'Team member not found');
+    }
+
+    // Save tokens to team member
+    teamMember.calendar = {
+      provider: 'google',
+      connected: true,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600000),
+      calendarId: primaryCalendar?.id || 'primary',
+      calendarEmail: calendarEmail,
+      syncStatus: 'active',
+      lastSyncAt: new Date(),
+      bufferMinutes: teamMember.calendar?.bufferMinutes || 15,
+      minNoticeHours: teamMember.calendar?.minNoticeHours || 24,
+      maxDaysOut: teamMember.calendar?.maxDaysOut || 60
+    };
+
+    await provider.save();
+
+    // Clean up state
+    oauthStates.delete(state);
+
+    console.log(`✅ Google Calendar connected - Provider: ${stateData.providerId}, Member: ${stateData.teamMemberId}`);
+
+    // Redirect back to frontend
+    return redirectToFrontend(res, state, true, 'Google Calendar connected successfully');
+
   } catch (error) {
-    console.error('Microsoft OAuth callback error:', error);
-    res.redirect('https://findrhealth-provider.vercel.app/calendar?calendar=error&reason=' + encodeURIComponent(error.message));
+    console.error('Google callback error:', error);
+    return redirectToFrontend(res, req.query.state, false, error.message);
   }
 });
 
-// ==================== SHARED ROUTES ====================
+// ==================== MICROSOFT OAUTH CALLBACK ====================
 
-router.get('/status/:providerId', async (req, res) => {
+/**
+ * GET /api/calendar/callback/microsoft
+ * Handles OAuth callback from Microsoft
+ * Query params: code, state
+ */
+router.get('/callback/microsoft', async (req, res) => {
   try {
-    const provider = await Provider.findById(req.params.providerId);
+    const { code, state, error, error_description } = req.query;
+
+    // Handle OAuth error
+    if (error) {
+      console.error('Microsoft OAuth error:', error, error_description);
+      return redirectToFrontend(res, state, false, error_description || error);
+    }
+
+    if (!code || !state) {
+      return redirectToFrontend(res, state, false, 'Missing authorization code or state');
+    }
+
+    // Verify state
+    const stateData = oauthStates.get(state);
+    if (!stateData) {
+      return redirectToFrontend(res, null, false, 'Invalid or expired state');
+    }
+
+    // Exchange code for tokens
+    const axios = require('axios');
+    const tokenResponse = await axios.post(MICROSOFT_TOKEN_URL, new URLSearchParams({
+      client_id: process.env.MICROSOFT_CLIENT_ID,
+      client_secret: process.env.MICROSOFT_CLIENT_SECRET,
+      code: code,
+      redirect_uri: process.env.MICROSOFT_REDIRECT_URI,
+      grant_type: 'authorization_code'
+    }), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const tokens = tokenResponse.data;
     
+    if (!tokens.access_token) {
+      return redirectToFrontend(res, state, false, 'Failed to get access token');
+    }
+
+    // Get user info
+    const userResponse = await axios.get('https://graph.microsoft.com/v1.0/me', {
+      headers: { 'Authorization': `Bearer ${tokens.access_token}` }
+    });
+    
+    const calendarEmail = userResponse.data.mail || userResponse.data.userPrincipalName;
+
+    // Update provider document
+    const provider = await Provider.findById(stateData.providerId);
+    if (!provider) {
+      return redirectToFrontend(res, state, false, 'Provider not found');
+    }
+
+    const teamMember = provider.teamMembers.id(stateData.teamMemberId);
+    if (!teamMember) {
+      return redirectToFrontend(res, state, false, 'Team member not found');
+    }
+
+    // Calculate token expiry
+    const expiresIn = tokens.expires_in || 3600;
+    const tokenExpiry = new Date(Date.now() + (expiresIn * 1000));
+
+    // Save tokens to team member
+    teamMember.calendar = {
+      provider: 'microsoft',
+      connected: true,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      tokenExpiry: tokenExpiry,
+      calendarId: 'primary', // Microsoft doesn't require calendar ID
+      calendarEmail: calendarEmail,
+      syncStatus: 'active',
+      lastSyncAt: new Date(),
+      bufferMinutes: teamMember.calendar?.bufferMinutes || 15,
+      minNoticeHours: teamMember.calendar?.minNoticeHours || 24,
+      maxDaysOut: teamMember.calendar?.maxDaysOut || 60
+    };
+
+    await provider.save();
+
+    // Clean up state
+    oauthStates.delete(state);
+
+    console.log(`✅ Microsoft Calendar connected - Provider: ${stateData.providerId}, Member: ${stateData.teamMemberId}`);
+
+    // Redirect back to frontend
+    return redirectToFrontend(res, state, true, 'Microsoft Calendar connected successfully');
+
+  } catch (error) {
+    console.error('Microsoft callback error:', error);
+    return redirectToFrontend(res, req.query.state, false, error.message);
+  }
+});
+
+// ==================== DISCONNECT CALENDAR ====================
+
+/**
+ * DELETE /api/calendar/disconnect
+ * Disconnects calendar for a team member
+ * 
+ * Body:
+ * {
+ *   "providerId": "mongo-id",
+ *   "teamMemberId": "mongo-id"
+ * }
+ */
+router.delete('/disconnect', async (req, res) => {
+  try {
+    const { providerId, teamMemberId } = req.body;
+
+    if (!providerId || !teamMemberId) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['providerId', 'teamMemberId']
+      });
+    }
+
+    const provider = await Provider.findById(providerId);
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
+
+    const teamMember = provider.teamMembers.id(teamMemberId);
+    if (!teamMember) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    // TODO: Revoke token with Google/Microsoft (optional but recommended)
     
-    const cal = provider.calendar || {};
-    
+    // Clear calendar connection
+    teamMember.calendar = {
+      provider: null,
+      connected: false,
+      accessToken: null,
+      refreshToken: null,
+      tokenExpiry: null,
+      calendarId: null,
+      calendarEmail: null,
+      syncStatus: 'disconnected',
+      lastSyncAt: null
+    };
+
+    await provider.save();
+
+    console.log(`🔌 Calendar disconnected - Provider: ${providerId}, Member: ${teamMemberId}`);
+
     res.json({
-      connected: provider.calendarConnected || false,
-      provider: cal.provider || null,
-      email: cal.calendarEmail || null,
-      calendarId: cal.calendarId || null,
-      syncDirection: cal.syncDirection || null,
-      connectedAt: cal.connectedAt || null,
-      tokenExpiry: cal.tokenExpiry || null,
-      tokenValid: cal.tokenExpiry ? new Date(cal.tokenExpiry) > new Date() : false,
-      lastSyncAt: cal.lastSyncAt || null,
-      lastSyncStatus: cal.lastSyncStatus || null,
-      lastSyncError: cal.lastSyncError || null,
-      syncFailureCount: cal.syncFailureCount || 0,
-      lastFreeBusyQueryAt: cal.lastFreeBusyQueryAt || null,
-      lastFreeBusyStatus: cal.lastFreeBusyStatus || null,
-      eventsCreatedCount: cal.eventsCreatedCount || 0
+      success: true,
+      message: 'Calendar disconnected successfully'
     });
+
   } catch (error) {
-    console.error('Get status error:', error);
+    console.error('Disconnect calendar error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/disconnect/:providerId', async (req, res) => {
+// ==================== CHECK CONNECTION STATUS ====================
+
+/**
+ * GET /api/calendar/status/:providerId/:memberId
+ * Check calendar connection status for a team member
+ */
+router.get('/status/:providerId/:memberId', async (req, res) => {
   try {
-    await Provider.findByIdAndUpdate(req.params.providerId, {
-      'calendar.provider': null,
-      'calendar.accessToken': null,
-      'calendar.refreshToken': null,
-      'calendar.tokenExpiry': null,
-      'calendar.calendarEmail': null,
-      'calendar.calendarId': null,
-      'calendar.scopesGranted': [],
-      'calendar.disconnectedAt': new Date(),
-      calendarConnected: false
-    });
-    
-    res.json({ success: true, message: 'Calendar disconnected' });
-  } catch (error) {
-    console.error('Disconnect error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+    const { providerId, memberId } = req.params;
 
-// ==================== TOKEN REFRESH ====================
-
-async function refreshGoogleToken(provider) {
-  googleOAuth2Client.setCredentials({ refresh_token: provider.calendar.refreshToken });
-  const { credentials } = await googleOAuth2Client.refreshAccessToken();
-  
-  await Provider.findByIdAndUpdate(provider._id, {
-    'calendar.accessToken': credentials.access_token,
-    'calendar.tokenExpiry': new Date(credentials.expiry_date),
-    'calendar.lastTokenRefreshAt': new Date(),
-    'calendar.tokenRefreshFailures': 0
-  });
-  
-  return credentials.access_token;
-}
-
-async function refreshMicrosoftToken(provider) {
-  const tokenResponse = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: MICROSOFT_CLIENT_ID,
-      client_secret: MICROSOFT_CLIENT_SECRET,
-      refresh_token: provider.calendar.refreshToken,
-      grant_type: 'refresh_token'
-    })
-  });
-  
-  const tokens = await tokenResponse.json();
-  if (tokens.error) throw new Error(tokens.error_description || tokens.error);
-  
-  const tokenExpiry = new Date(Date.now() + (tokens.expires_in * 1000));
-  
-  await Provider.findByIdAndUpdate(provider._id, {
-    'calendar.accessToken': tokens.access_token,
-    'calendar.refreshToken': tokens.refresh_token || provider.calendar.refreshToken,
-    'calendar.tokenExpiry': tokenExpiry,
-    'calendar.lastTokenRefreshAt': new Date(),
-    'calendar.tokenRefreshFailures': 0
-  });
-  
-  return tokens.access_token;
-}
-
-async function getValidTokens(provider) {
-  if (!provider.calendar?.refreshToken) {
-    throw new Error('No refresh token available');
-  }
-  
-  const tokenExpiry = new Date(provider.calendar.tokenExpiry);
-  const now = new Date();
-  
-  if (tokenExpiry.getTime() - now.getTime() < 5 * 60 * 1000) {
-    if (provider.calendar.provider === 'google') {
-      return await refreshGoogleToken(provider);
-    } else if (provider.calendar.provider === 'microsoft') {
-      return await refreshMicrosoftToken(provider);
-    }
-  }
-  
-  return provider.calendar.accessToken;
-}
-
-// ==================== FREEBUSY ====================
-
-router.get('/freebusy/:providerId', async (req, res) => {
-  const providerId = req.params.providerId;
-  
-  try {
-    const { startDate, endDate } = req.query;
     const provider = await Provider.findById(providerId);
-    
-    if (!provider) return res.status(404).json({ error: 'Provider not found' });
-    if (!provider.calendarConnected) return res.json({ busy: [], source: 'manual' });
-    
-    let busyTimes = [];
-    
-    if (provider.calendar?.provider === 'google') {
-      busyTimes = await getGoogleFreeBusy(provider, startDate, endDate);
-    } else if (provider.calendar?.provider === 'microsoft') {
-      busyTimes = await getMicrosoftFreeBusy(provider, startDate, endDate);
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
     }
-    
-    await Provider.findByIdAndUpdate(providerId, {
-      'calendar.lastFreeBusyQueryAt': new Date(),
-      'calendar.lastFreeBusyStatus': 'success',
-      'calendar.lastFreeBusyError': null
+
+    const teamMember = provider.teamMembers.id(memberId);
+    if (!teamMember) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    const calendar = teamMember.calendar;
+
+    res.json({
+      success: true,
+      connected: calendar?.connected || false,
+      provider: calendar?.provider || null,
+      calendarEmail: calendar?.calendarEmail || null,
+      syncStatus: calendar?.syncStatus || 'disconnected',
+      lastSyncAt: calendar?.lastSyncAt || null,
+      syncError: calendar?.syncError || null,
+      tokenExpiry: calendar?.tokenExpiry || null,
+      isExpired: calendar?.tokenExpiry ? new Date(calendar.tokenExpiry) < new Date() : null
     });
-    
-    res.json({ busy: busyTimes, source: provider.calendar?.provider, calendarId: provider.calendar?.calendarId });
+
   } catch (error) {
-    console.error('FreeBusy error:', error);
-    
-    await Provider.findByIdAndUpdate(providerId, {
-      'calendar.lastFreeBusyQueryAt': new Date(),
-      'calendar.lastFreeBusyStatus': 'failed',
-      'calendar.lastFreeBusyError': error.message
-    }).catch(e => console.error('Failed to update diagnostic:', e));
-    
+    console.error('Get calendar status error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-async function getGoogleFreeBusy(provider, startDate, endDate) {
-  const accessToken = await getValidTokens(provider);
-  
-  googleOAuth2Client.setCredentials({
-    access_token: accessToken,
-    refresh_token: provider.calendar.refreshToken
-  });
-  
-  const calendar = google.calendar({ version: 'v3', auth: googleOAuth2Client });
-  
-  const freeBusyResponse = await calendar.freebusy.query({
-    requestBody: {
-      timeMin: startDate || new Date().toISOString(),
-      timeMax: endDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-      items: [{ id: provider.calendar.calendarId || 'primary' }]
-    }
-  });
-  
-  return freeBusyResponse.data.calendars[provider.calendar.calendarId || 'primary']?.busy || [];
-}
+// ==================== TEST CONNECTION ====================
 
-async function getMicrosoftFreeBusy(provider, startDate, endDate) {
-  const accessToken = await getValidTokens(provider);
-  
-  const start = startDate || new Date().toISOString();
-  const end = endDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
-  
-  const eventsResponse = await fetch(
-    'https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=' + encodeURIComponent(start) + '&endDateTime=' + encodeURIComponent(end) + '&$select=start,end,showAs',
-    {
-      headers: {
-        'Authorization': 'Bearer ' + accessToken,
-        'Prefer': 'outlook.timezone="America/Denver"'
-      }
-    }
-  );
-  
-  const eventsData = await eventsResponse.json();
-  if (eventsData.error) throw new Error(eventsData.error.message);
-  
-  return (eventsData.value || [])
-    .filter(event => event.showAs === 'busy' || event.showAs === 'tentative')
-    .map(event => ({ start: event.start.dateTime, end: event.end.dateTime }));
-}
-
-// ==================== EVENT CREATION ====================
-
-router.post('/create-event/:providerId', async (req, res) => {
-  const providerId = req.params.providerId;
-  
+/**
+ * POST /api/calendar/test-connection
+ * Test if calendar access is working
+ * 
+ * Body:
+ * {
+ *   "providerId": "mongo-id",
+ *   "teamMemberId": "mongo-id"
+ * }
+ */
+router.post('/test-connection', async (req, res) => {
   try {
-    const { title, description, startTime, endTime, patientName, patientEmail, bookingId } = req.body;
+    const { providerId, teamMemberId } = req.body;
+
     const provider = await Provider.findById(providerId);
-    
-    if (!provider) return res.status(404).json({ error: 'Provider not found' });
-    if (!provider.calendarConnected) return res.json({ success: true, message: 'No calendar connected' });
-    
-    let result;
-    
-    if (provider.calendar?.provider === 'google') {
-      result = await createGoogleEvent(provider, { title, description, startTime, endTime, patientName, patientEmail, bookingId });
-    } else if (provider.calendar?.provider === 'microsoft') {
-      result = await createMicrosoftEvent(provider, { title, description, startTime, endTime, patientName, patientEmail, bookingId });
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
     }
-    
-    await Provider.findByIdAndUpdate(providerId, {
-      'calendar.lastEventCreatedAt': new Date(),
-      'calendar.lastEventCreationStatus': 'success',
-      'calendar.lastEventCreationError': null,
-      $inc: { 'calendar.eventsCreatedCount': 1 }
-    });
-    
-    res.json({ success: true, eventId: result?.eventId, eventLink: result?.eventLink });
+
+    const teamMember = provider.teamMembers.id(teamMemberId);
+    if (!teamMember || !teamMember.calendar?.connected) {
+      return res.status(400).json({ error: 'Calendar not connected' });
+    }
+
+    const calendar = teamMember.calendar;
+
+    // Test connection based on provider
+    if (calendar.provider === 'google') {
+      googleOAuth2Client.setCredentials({
+        access_token: calendar.accessToken,
+        refresh_token: calendar.refreshToken,
+        expiry_date: calendar.tokenExpiry?.getTime()
+      });
+
+      const calendarApi = google.calendar({ version: 'v3', auth: googleOAuth2Client });
+      const result = await calendarApi.calendarList.list();
+
+      res.json({
+        success: true,
+        connected: true,
+        calendarsFound: result.data.items?.length || 0,
+        message: 'Google Calendar connection is working'
+      });
+
+    } else if (calendar.provider === 'microsoft') {
+      const axios = require('axios');
+      const result = await axios.get('https://graph.microsoft.com/v1.0/me/calendars', {
+        headers: { 'Authorization': `Bearer ${calendar.accessToken}` }
+      });
+
+      res.json({
+        success: true,
+        connected: true,
+        calendarsFound: result.data.value?.length || 0,
+        message: 'Microsoft Calendar connection is working'
+      });
+    }
+
   } catch (error) {
-    console.error('Create event error:', error);
+    console.error('Test connection error:', error);
     
-    await Provider.findByIdAndUpdate(providerId, {
-      'calendar.lastEventCreatedAt': new Date(),
-      'calendar.lastEventCreationStatus': 'failed',
-      'calendar.lastEventCreationError': error.message
-    }).catch(e => console.error('Failed to update diagnostic:', e));
-    
-    res.status(500).json({ error: error.message });
+    // Token might be expired
+    if (error.code === 401 || error.status === 401) {
+      res.status(401).json({
+        success: false,
+        error: 'Token expired',
+        message: 'Please reconnect your calendar'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
   }
 });
 
-async function createGoogleEvent(provider, eventData) {
-  const accessToken = await getValidTokens(provider);
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Redirect user back to frontend with OAuth result
+ */
+function redirectToFrontend(res, state, success, message) {
+  const stateData = oauthStates.get(state);
+  const returnUrl = stateData?.returnUrl || '/calendar-setup';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   
-  googleOAuth2Client.setCredentials({
-    access_token: accessToken,
-    refresh_token: provider.calendar.refreshToken
+  const params = new URLSearchParams({
+    success: success.toString(),
+    message: message
   });
+
+  const redirectUrl = `${frontendUrl}${returnUrl}?${params.toString()}`;
   
-  const calendar = google.calendar({ version: 'v3', auth: googleOAuth2Client });
+  console.log(`↩️  Redirecting to: ${redirectUrl}`);
   
-  const event = {
-    summary: eventData.title || 'Findr Health: ' + eventData.patientName,
-    description: eventData.description || 'Booking via Findr Health\nPatient: ' + eventData.patientName + '\nBooking ID: ' + eventData.bookingId,
-    start: { dateTime: eventData.startTime, timeZone: 'America/Denver' },
-    end: { dateTime: eventData.endTime, timeZone: 'America/Denver' },
-    attendees: eventData.patientEmail ? [{ email: eventData.patientEmail }] : [],
-    reminders: { useDefault: false, overrides: [{ method: 'email', minutes: 60 }, { method: 'popup', minutes: 30 }] }
-  };
-  
-  const createdEvent = await calendar.events.insert({
-    calendarId: provider.calendar.calendarId || 'primary',
-    requestBody: event,
-    sendUpdates: 'all'
-  });
-  
-  return { eventId: createdEvent.data.id, eventLink: createdEvent.data.htmlLink };
+  res.redirect(redirectUrl);
 }
 
-async function createMicrosoftEvent(provider, eventData) {
-  const accessToken = await getValidTokens(provider);
-  
-  const event = {
-    subject: eventData.title || 'Findr Health: ' + eventData.patientName,
-    body: { contentType: 'text', content: eventData.description || 'Booking via Findr Health\nPatient: ' + eventData.patientName + '\nBooking ID: ' + eventData.bookingId },
-    start: { dateTime: eventData.startTime, timeZone: 'America/Denver' },
-    end: { dateTime: eventData.endTime, timeZone: 'America/Denver' },
-    attendees: eventData.patientEmail ? [{ emailAddress: { address: eventData.patientEmail }, type: 'required' }] : [],
-    reminderMinutesBeforeStart: 30,
-    isReminderOn: true
-  };
-  
-  const response = await fetch('https://graph.microsoft.com/v1.0/me/events', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify(event)
-  });
-  
-  const createdEvent = await response.json();
-  if (createdEvent.error) throw new Error(createdEvent.error.message);
-  
-  return { eventId: createdEvent.id, eventLink: createdEvent.webLink };
+/**
+ * Clean up expired OAuth states (run periodically)
+ */
+function cleanupExpiredStates() {
+  const now = Date.now();
+  for (const [state, data] of oauthStates.entries()) {
+    if (data.expiresAt < now) {
+      oauthStates.delete(state);
+    }
+  }
 }
+
+// Clean up expired states every 5 minutes
+setInterval(cleanupExpiredStates, 5 * 60 * 1000);
 
 module.exports = router;

@@ -1,32 +1,41 @@
 /**
- * Findr Health Availability Routes
+ * Findr Health - Availability Routes
+ * 
+ * Exposes calendar availability to mobile app and provider portal
  * 
  * Endpoints:
- * GET    /api/availability/provider/:providerId  - Get available time slots
- * POST   /api/availability/provider/:providerId/block - Block time slots
- * POST   /api/availability/provider/:providerId/unblock - Unblock time slots
+ * GET /api/availability/:providerId                          - Get availability for provider
+ * GET /api/availability/:providerId/member/:memberId         - Get availability for specific team member
+ * POST /api/availability/verify-slot                         - Real-time slot verification
+ * GET /api/availability/:providerId/range                    - Get availability for date range
  */
 
 const express = require('express');
 const router = express.Router();
 const Provider = require('../models/Provider');
-const Booking = require('../models/Booking');
+const calendarSync = require('../services/calendarSync');
 
 // ==================== GET PROVIDER AVAILABILITY ====================
 
-router.get('/provider/:providerId', async (req, res) => {
+/**
+ * GET /api/availability/:providerId
+ * Get availability for a provider (all team members or first available)
+ * 
+ * Query params:
+ * - date: YYYY-MM-DD (default: today)
+ * - duration: service duration in minutes (default: 60)
+ * - memberId: specific team member (optional)
+ * - mode: 'all' | 'first_available' (default: 'all')
+ */
+router.get('/:providerId', async (req, res) => {
   try {
     const { providerId } = req.params;
-    const { 
-      startDate, 
-      endDate, 
-      teamMemberId,
-      serviceDuration = 30  // Default 30 min slots
+    const {
+      date = new Date().toISOString().split('T')[0],
+      duration = 60,
+      memberId,
+      mode = 'all'
     } = req.query;
-
-    // Validate dates
-    const start = startDate ? new Date(startDate) : new Date();
-    const end = endDate ? new Date(endDate) : new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     // Get provider
     const provider = await Provider.findById(providerId);
@@ -34,108 +43,89 @@ router.get('/provider/:providerId', async (req, res) => {
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    // Get provider's business hours
-    const businessHours = provider.calendar?.businessHours || getDefaultBusinessHours();
-    
-    // Check if provider has calendar integration
-    const hasCalendarIntegration = provider.calendar?.provider && 
-                                   ['google', 'microsoft', 'apple'].includes(provider.calendar.provider);
+    const requestDate = new Date(date);
+    const serviceDuration = parseInt(duration);
 
-    // Get existing bookings in date range
-    const bookings = await Booking.find({
-      provider: providerId,
-      appointmentDate: { $gte: start, $lte: end },
-      status: { $in: ['pending', 'confirmed'] }
-    });
+    // Get team members
+    let teamMembers = provider.teamMembers.filter(m => m.acceptsBookings !== false);
 
-    // Create set of booked slots for quick lookup
-    const bookedSlots = new Set();
-    bookings.forEach(b => {
-      const dateKey = b.appointmentDate.toISOString().split('T')[0];
-      bookedSlots.add(`${dateKey}-${b.appointmentTime}`);
-    });
-
-    // Generate availability for each day
-    const availability = [];
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    
-    let currentDate = new Date(start);
-    currentDate.setHours(0, 0, 0, 0);
-    
-    while (currentDate <= end) {
-      const dayName = dayNames[currentDate.getDay()];
-      const hours = businessHours[dayName];
-      const dateStr = currentDate.toISOString().split('T')[0];
-      
-      // Check if this day is enabled
-      if (hours && hours.enabled) {
-        const slots = generateTimeSlots(
-          hours.start || '09:00',
-          hours.end || '17:00',
-          parseInt(serviceDuration)
-        );
-        
-        const dayAvailability = {
-          date: dateStr,
-          dayOfWeek: dayName,
-          isOpen: true,
-          slots: slots.map(slot => {
-            const slotKey = `${dateStr}-${slot.time}`;
-            const isBooked = bookedSlots.has(slotKey);
-            
-            // Don't show past slots for today
-            let isPast = false;
-            if (dateStr === new Date().toISOString().split('T')[0]) {
-              const now = new Date();
-              const slotTime = parseTimeToMinutes(slot.time);
-              const currentTime = now.getHours() * 60 + now.getMinutes();
-              isPast = slotTime <= currentTime;
-            }
-            
-            return {
-              time: slot.time,
-              endTime: slot.endTime,
-              displayTime: formatDisplayTime(slot.time),
-              isAvailable: !isBooked && !isPast,
-              isBooked,
-              isPast
-            };
-          })
-        };
-        
-        // Count available slots
-        dayAvailability.availableCount = dayAvailability.slots.filter(s => s.isAvailable).length;
-        dayAvailability.totalSlots = dayAvailability.slots.length;
-        
-        availability.push(dayAvailability);
-      } else {
-        // Day is closed
-        availability.push({
-          date: dateStr,
-          dayOfWeek: dayName,
-          isOpen: false,
-          slots: [],
-          availableCount: 0,
-          totalSlots: 0
-        });
+    // Filter by specific member if requested
+    if (memberId) {
+      teamMembers = teamMembers.filter(m => m._id.toString() === memberId);
+      if (teamMembers.length === 0) {
+        return res.status(404).json({ error: 'Team member not found' });
       }
-      
-      currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    // Generate availability for each team member
+    const availability = [];
+
+    for (const member of teamMembers) {
+      try {
+        const slots = await calendarSync.generateAvailableSlots(
+          providerId,
+          member._id,
+          requestDate,
+          serviceDuration
+        );
+
+        availability.push({
+          teamMemberId: member._id,
+          teamMemberName: member.name,
+          title: member.title,
+          calendarConnected: member.calendar?.connected || false,
+          bookingMode: member.calendar?.connected ? 'instant' : 'request',
+          slots: slots.filter(s => s.available)
+        });
+
+      } catch (error) {
+        console.error(`Error generating slots for member ${member._id}:`, error);
+        // Continue with other members
+        availability.push({
+          teamMemberId: member._id,
+          teamMemberName: member.name,
+          error: 'Failed to load availability',
+          slots: []
+        });
+      }
+    }
+
+    // If mode is 'first_available', merge all slots and deduplicate
+    if (mode === 'first_available' && availability.length > 1) {
+      const allSlots = new Map(); // time -> first member who has it
+
+      for (const memberAvail of availability) {
+        for (const slot of memberAvail.slots) {
+          if (!allSlots.has(slot.startTime)) {
+            allSlots.set(slot.startTime, {
+              ...slot,
+              teamMemberId: memberAvail.teamMemberId,
+              teamMemberName: memberAvail.teamMemberName
+            });
+          }
+        }
+      }
+
+      // Return merged availability
+      return res.json({
+        success: true,
+        providerId,
+        date,
+        duration: serviceDuration,
+        mode: 'first_available',
+        slots: Array.from(allSlots.values()).sort((a, b) => 
+          a.startTime.localeCompare(b.startTime)
+        )
+      });
+    }
+
+    // Return per-member availability
     res.json({
       success: true,
-      provider: {
-        _id: provider._id,
-        practiceName: provider.practiceName,
-        hasCalendarIntegration,
-        timezone: provider.calendar?.timezone || 'America/Denver'
-      },
-      serviceDuration: parseInt(serviceDuration),
-      dateRange: {
-        start: start.toISOString().split('T')[0],
-        end: end.toISOString().split('T')[0]
-      },
+      providerId,
+      date,
+      duration: serviceDuration,
+      mode,
       availability
     });
 
@@ -145,203 +135,249 @@ router.get('/provider/:providerId', async (req, res) => {
   }
 });
 
-// ==================== GET NEXT AVAILABLE SLOT ====================
+// ==================== GET TEAM MEMBER AVAILABILITY ====================
 
-router.get('/provider/:providerId/next-available', async (req, res) => {
+/**
+ * GET /api/availability/:providerId/member/:memberId
+ * Get availability for specific team member
+ * 
+ * Query params:
+ * - date: YYYY-MM-DD (default: today)
+ * - duration: service duration in minutes (default: 60)
+ */
+router.get('/:providerId/member/:memberId', async (req, res) => {
   try {
-    const { providerId } = req.params;
-    const { serviceDuration = 30 } = req.query;
+    const { providerId, memberId } = req.params;
+    const {
+      date = new Date().toISOString().split('T')[0],
+      duration = 60
+    } = req.query;
 
     const provider = await Provider.findById(providerId);
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    const businessHours = provider.calendar?.businessHours || getDefaultBusinessHours();
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    
-    // Search next 60 days
-    const maxDays = 60;
-    let currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
-    
-    for (let i = 0; i < maxDays; i++) {
-      const dayName = dayNames[currentDate.getDay()];
-      const hours = businessHours[dayName];
-      const dateStr = currentDate.toISOString().split('T')[0];
-      
-      if (hours && hours.enabled) {
-        // Get bookings for this day
-        const dayStart = new Date(currentDate);
-        const dayEnd = new Date(currentDate);
-        dayEnd.setHours(23, 59, 59, 999);
-        
-        const bookings = await Booking.find({
-          provider: providerId,
-          appointmentDate: { $gte: dayStart, $lte: dayEnd },
-          status: { $in: ['pending', 'confirmed'] }
-        });
-        
-        const bookedTimes = new Set(bookings.map(b => b.appointmentTime));
-        
-        // Generate slots
-        const slots = generateTimeSlots(
-          hours.start || '09:00',
-          hours.end || '17:00',
-          parseInt(serviceDuration)
-        );
-        
-        // Find first available slot
-        for (const slot of slots) {
-          // Skip if booked
-          if (bookedTimes.has(slot.time)) continue;
-          
-          // Skip past slots for today
-          if (i === 0) {
-            const now = new Date();
-            const slotTime = parseTimeToMinutes(slot.time);
-            const currentTime = now.getHours() * 60 + now.getMinutes();
-            if (slotTime <= currentTime + 60) continue; // At least 1 hour notice
-          }
-          
-          // Found available slot!
-          return res.json({
-            success: true,
-            nextAvailable: {
-              date: dateStr,
-              time: slot.time,
-              displayTime: formatDisplayTime(slot.time),
-              dayOfWeek: dayName,
-              displayDate: formatDisplayDate(currentDate)
-            }
-          });
-        }
-      }
-      
-      currentDate.setDate(currentDate.getDate() + 1);
+    const teamMember = provider.teamMembers.id(memberId);
+    if (!teamMember) {
+      return res.status(404).json({ error: 'Team member not found' });
     }
-    
-    // No availability found
+
+    const requestDate = new Date(date);
+    const serviceDuration = parseInt(duration);
+
+    const slots = await calendarSync.generateAvailableSlots(
+      providerId,
+      memberId,
+      requestDate,
+      serviceDuration
+    );
+
     res.json({
       success: true,
-      nextAvailable: null,
-      message: 'No availability in the next 60 days'
+      providerId,
+      teamMemberId: memberId,
+      teamMemberName: teamMember.name,
+      date,
+      duration: serviceDuration,
+      calendarConnected: teamMember.calendar?.connected || false,
+      bookingMode: teamMember.calendar?.connected ? 'instant' : 'request',
+      slots: slots.filter(s => s.available)
     });
 
   } catch (error) {
-    console.error('Get next available error:', error);
+    console.error('Get team member availability error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ==================== BLOCK TIME SLOTS (Provider) ====================
+// ==================== GET AVAILABILITY RANGE ====================
 
-router.post('/provider/:providerId/block', async (req, res) => {
+/**
+ * GET /api/availability/:providerId/range
+ * Get availability for multiple days
+ * 
+ * Query params:
+ * - startDate: YYYY-MM-DD (default: today)
+ * - days: number of days (default: 14, max: 60)
+ * - duration: service duration in minutes (default: 60)
+ * - memberId: specific team member (optional)
+ */
+router.get('/:providerId/range', async (req, res) => {
   try {
     const { providerId } = req.params;
-    const { date, slots, reason, allDay = false } = req.body;
+    const {
+      startDate = new Date().toISOString().split('T')[0],
+      days = 14,
+      duration = 60,
+      memberId
+    } = req.query;
 
-    if (!date) {
-      return res.status(400).json({ error: 'Date is required' });
+    const provider = await Provider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
     }
 
-    // For now, we'll create placeholder bookings to block slots
-    // In a full implementation, you'd have a separate BlockedSlot model
-    
-    const blockedDate = new Date(date);
-    
-    // TODO: Implement proper slot blocking
-    // This would involve creating a BlockedSlot model or using the Availability model
-    
+    const numDays = Math.min(parseInt(days), 60); // Cap at 60 days
+    const serviceDuration = parseInt(duration);
+    const start = new Date(startDate);
+
+    // Get team member
+    let teamMember;
+    if (memberId) {
+      teamMember = provider.teamMembers.id(memberId);
+      if (!teamMember) {
+        return res.status(404).json({ error: 'Team member not found' });
+      }
+    } else {
+      // Use first available team member
+      teamMember = provider.teamMembers.find(m => m.acceptsBookings !== false);
+      if (!teamMember) {
+        return res.status(400).json({ error: 'No available team members' });
+      }
+    }
+
+    // Generate availability range
+    const availability = await calendarSync.generateAvailabilityRange(
+      providerId,
+      teamMember._id,
+      start,
+      numDays,
+      serviceDuration
+    );
+
     res.json({
       success: true,
-      message: `Slots blocked for ${date}`,
-      blocked: { date, slots, reason, allDay }
+      providerId,
+      teamMemberId: teamMember._id,
+      teamMemberName: teamMember.name,
+      startDate,
+      numDays,
+      duration: serviceDuration,
+      calendarConnected: teamMember.calendar?.connected || false,
+      bookingMode: teamMember.calendar?.connected ? 'instant' : 'request',
+      availability
     });
 
   } catch (error) {
-    console.error('Block slots error:', error);
+    console.error('Get availability range error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ==================== HELPER FUNCTIONS ====================
+// ==================== VERIFY SLOT AVAILABILITY ====================
 
-function getDefaultBusinessHours() {
-  return {
-    monday: { enabled: true, start: '09:00', end: '17:00' },
-    tuesday: { enabled: true, start: '09:00', end: '17:00' },
-    wednesday: { enabled: true, start: '09:00', end: '17:00' },
-    thursday: { enabled: true, start: '09:00', end: '17:00' },
-    friday: { enabled: true, start: '09:00', end: '17:00' },
-    saturday: { enabled: false, start: '09:00', end: '13:00' },
-    sunday: { enabled: false, start: '09:00', end: '13:00' }
-  };
-}
+/**
+ * POST /api/availability/verify-slot
+ * Real-time verification that a slot is still available
+ * Should be called right before booking
+ * 
+ * Body:
+ * {
+ *   "providerId": "mongo-id",
+ *   "teamMemberId": "mongo-id",
+ *   "date": "YYYY-MM-DD",
+ *   "startTime": "HH:MM",
+ *   "duration": 60
+ * }
+ */
+router.post('/verify-slot', async (req, res) => {
+  try {
+    const { providerId, teamMemberId, date, startTime, duration = 60 } = req.body;
 
-function generateTimeSlots(startTime, endTime, intervalMinutes) {
-  const slots = [];
-  let current = parseTimeToMinutes(startTime);
-  const end = parseTimeToMinutes(endTime);
-  
-  while (current + intervalMinutes <= end) {
-    const time = minutesToTime(current);
-    const endTimeSlot = minutesToTime(current + intervalMinutes);
-    
-    slots.push({
-      time: time,
-      endTime: endTimeSlot
+    if (!providerId || !teamMemberId || !date || !startTime) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['providerId', 'teamMemberId', 'date', 'startTime']
+      });
+    }
+
+    const provider = await Provider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    const teamMember = provider.teamMembers.id(teamMemberId);
+    if (!teamMember) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    // Generate slots for this date
+    const requestDate = new Date(date);
+    const slots = await calendarSync.generateAvailableSlots(
+      providerId,
+      teamMemberId,
+      requestDate,
+      parseInt(duration)
+    );
+
+    // Find the requested slot
+    const requestedSlot = slots.find(s => s.startTime === startTime);
+
+    if (!requestedSlot) {
+      return res.json({
+        success: true,
+        available: false,
+        reason: 'Slot not found in schedule'
+      });
+    }
+
+    if (!requestedSlot.available) {
+      return res.json({
+        success: true,
+        available: false,
+        reason: requestedSlot.reason || 'Slot no longer available'
+      });
+    }
+
+    // Slot is available
+    res.json({
+      success: true,
+      available: true,
+      slot: requestedSlot
     });
-    
-    current += intervalMinutes;
+
+  } catch (error) {
+    console.error('Verify slot error:', error);
+    res.status(500).json({ error: error.message });
   }
-  
-  return slots;
-}
+});
 
-function parseTimeToMinutes(timeStr) {
-  // Handle "HH:MM" format
-  if (timeStr.includes(':') && !timeStr.includes(' ')) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
+// ==================== GET CALENDAR STATUS ====================
+
+/**
+ * GET /api/availability/:providerId/calendar-status
+ * Get calendar connection status for all team members
+ */
+router.get('/:providerId/calendar-status', async (req, res) => {
+  try {
+    const { providerId } = req.params;
+
+    const provider = await Provider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    const status = provider.teamMembers.map(member => ({
+      teamMemberId: member._id,
+      teamMemberName: member.name,
+      calendarConnected: member.calendar?.connected || false,
+      calendarProvider: member.calendar?.provider || null,
+      syncStatus: member.calendar?.syncStatus || 'disconnected',
+      lastSyncAt: member.calendar?.lastSyncAt || null,
+      bookingMode: member.calendar?.connected ? 'instant' : 'request'
+    }));
+
+    res.json({
+      success: true,
+      providerId,
+      teamMembers: status
+    });
+
+  } catch (error) {
+    console.error('Get calendar status error:', error);
+    res.status(500).json({ error: error.message });
   }
-  
-  // Handle "H:MM AM/PM" format
-  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-  if (!match) return 0;
-  
-  let [, hours, minutes, period] = match;
-  hours = parseInt(hours);
-  minutes = parseInt(minutes);
-  
-  if (period) {
-    if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
-    if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
-  }
-  
-  return hours * 60 + minutes;
-}
-
-function minutesToTime(minutes) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  const period = h >= 12 ? 'PM' : 'AM';
-  const hour12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-  return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
-}
-
-function formatDisplayTime(time) {
-  // Ensure consistent display format
-  const minutes = parseTimeToMinutes(time);
-  return minutesToTime(minutes);
-}
-
-function formatDisplayDate(date) {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric'
-  });
-}
+});
 
 module.exports = router;
