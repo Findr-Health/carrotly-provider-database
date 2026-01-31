@@ -18,6 +18,10 @@
  * - POST /api/bookings/:id/cancel       - Cancel booking
  */
 
+const { generateBookingNumber } = require('../utils/bookingNumberGenerator');
+const calendarSync = require('../services/calendarSync');
+
+
 const { authenticateToken } = require('../middleware/auth');
 const express = require('express');
 const router = express.Router();
@@ -403,6 +407,35 @@ router.post('/', async (req, res) => {
         releasedReason: 'converted'
       };
     }
+
+    // Create calendar event for instant bookings
+    if (bookingType === 'instant' && booking.status === 'confirmed') {
+      try {
+        console.log('📅 Creating calendar event for instant booking...');
+        
+        // Get team member if specified
+        let teamMember = null;
+        if (req.body.teamMemberId) {
+          teamMember = provider.teamMembers.id(req.body.teamMemberId);
+        }
+        
+        // Create HIPAA-compliant calendar event
+        const calendarEvent = await calendarSync.createCalendarEvent(
+          booking,
+          provider,
+          teamMember
+        );
+        
+        if (calendarEvent) {
+          console.log(`✅ Calendar event created: ${calendarEvent.id || 'success'}`);
+        }
+        
+      } catch (calendarError) {
+        console.error('Calendar event creation failed:', calendarError);
+        // Don't fail the booking - event can be created later
+      }
+    }
+
     
     // Save booking
     await booking.save();

@@ -15,6 +15,8 @@ const reviewsAdminRoutes = require('./routes/reviewsAdmin');
 const bookingsAdminRoutes = require('./routes/bookingsAdmin');
 const bookingRoutes = require('./routes/bookings');
 const bookingsEnhancedRoutes = require('./routes/bookings_enhanced');
+const bookingCheckinRoutes = require('./routes/bookings_checkin');
+
 const searchRoutes = require('./routes/search');
 const providerAdminRoutes = require('./routes/providerAdmin');
 const inquiriesAdminRoutes = require('./routes/inquiriesAdmin');
@@ -89,7 +91,10 @@ app.use('/api/reviews', reviewRoutes);
 
 // Booking routes
 app.use('/api/bookings', bookingsEnhancedRoutes);
+app.use('/api/bookings', bookingCheckinRoutes);
+
 app.use('/api/bookings', bookingRoutes);
+
 app.use('/api/bookings', cancellationRoutes);  // ADD THIS LINE
 app.use('/api/notifications', notificationRoutes);
 
