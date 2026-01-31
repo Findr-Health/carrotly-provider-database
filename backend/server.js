@@ -147,3 +147,7 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log('📡 WebSocket ready for real-time booking updates');
 });
+
+// Business hours management route
+const providersHoursRoutes = require('./routes/providers_hours');
+app.use('/api/providers', providersHoursRoutes);
