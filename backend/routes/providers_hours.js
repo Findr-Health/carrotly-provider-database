@@ -1,30 +1,28 @@
-/**
- * Provider Business Hours Management
- * Quick endpoint to set business hours
- */
-
 const express = require('express');
 const router = express.Router();
 const Provider = require('../models/Provider');
 
-/**
- * POST /api/providers/:providerId/business-hours
- * Set business hours for a provider
- */
 router.post('/:providerId/business-hours', async (req, res) => {
   try {
     const { providerId } = req.params;
     const { businessHours } = req.body;
     
+    console.log('📅 Setting business hours for provider:', providerId);
+    console.log('📋 Business hours data:', JSON.stringify(businessHours, null, 2));
+    
     const provider = await Provider.findByIdAndUpdate(
       providerId,
       { $set: { businessHours } },
-      { new: true }
+      { new: true, runValidators: true }
     );
     
     if (!provider) {
+      console.error('❌ Provider not found:', providerId);
       return res.status(404).json({ error: 'Provider not found' });
     }
+    
+    console.log('✅ Business hours updated successfully');
+    console.log('📋 Saved hours:', JSON.stringify(provider.businessHours, null, 2));
     
     return res.json({
       success: true,
@@ -32,15 +30,14 @@ router.post('/:providerId/business-hours', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Update business hours error:', error);
-    return res.status(500).json({ error: 'Failed to update business hours' });
+    console.error('❌ Update business hours error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to update business hours',
+      details: error.message 
+    });
   }
 });
 
-/**
- * GET /api/providers/:providerId/business-hours
- * Get business hours for a provider
- */
 router.get('/:providerId/business-hours', async (req, res) => {
   try {
     const { providerId } = req.params;
