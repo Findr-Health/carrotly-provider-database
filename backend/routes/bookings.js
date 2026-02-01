@@ -507,7 +507,8 @@ router.get('/:id', async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('patient', 'firstName lastName email phone')
-      .populate('provider', 'practiceName email phone address photos');
+      .populate('provider', 'practiceName email phone address photos')
+      .populate('teamMember', 'name title profilePhoto');
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -569,6 +570,7 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 
     const bookings = await Booking.find(query)
       .populate('provider', 'practiceName providerTypes address')
+      .populate('teamMember', 'name title profilePhoto')
       .select('-__v')
       .sort({ appointmentDate: upcoming === 'true' ? 1 : -1 })
       .limit(parseInt(limit))

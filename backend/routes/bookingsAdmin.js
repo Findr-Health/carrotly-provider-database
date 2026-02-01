@@ -68,6 +68,7 @@ router.get('/', adminAuth, async (req, res) => {
     const bookings = await Booking.find(filter)
       .populate('userId', 'firstName lastName email phone')
       .populate('providerId', 'practiceName contactInfo')
+      .populate('teamMember', 'name title profilePhoto email phone serviceIds')
       .sort({ appointmentDate: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
@@ -93,7 +94,8 @@ router.get('/:bookingId', adminAuth, async (req, res) => {
     const booking = await Booking.findById(req.params.bookingId)
       .populate('userId', 'firstName lastName email phone')
       .populate('providerId', 'practiceName contactInfo address')
-      .populate('reviewId');
+      .populate('reviewId')
+      .populate('teamMember', 'name title profilePhoto email phone serviceIds calendar');
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -132,7 +134,8 @@ router.patch('/:bookingId/status', adminAuth, async (req, res) => {
       updateData,
       { new: true }
     ).populate('userId', 'firstName lastName email')
-     .populate('providerId', 'practiceName');
+     .populate('providerId', 'practiceName')
+     .populate('teamMember', 'name title');
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
