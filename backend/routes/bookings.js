@@ -211,7 +211,9 @@ router.post('/', async (req, res) => {
       paymentMethodId,
       reservationId,
       locationType,
-      idempotencyKey
+      idempotencyKey,
+      teamMemberId,
+      teamMemberName
     } = req.body;
     
     // Check idempotency
