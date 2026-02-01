@@ -34,6 +34,13 @@ const bookingSchema = new mongoose.Schema({
     index: true 
   },
 
+
+  // ==================== TEAM MEMBER (Optional) ====================
+  teamMember: {
+    memberId: String,  // ID from provider.teamMembers array
+    name: String,      // Snapshot at booking time
+    title: String      // Snapshot at booking time
+  },
   // ==================== SERVICE DETAILS ====================
   service: {
     serviceId: String,
