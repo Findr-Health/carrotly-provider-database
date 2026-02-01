@@ -252,17 +252,35 @@ router.post('/', async (req, res) => {
     let bookingType = 'request'; // Default to request
     let isAvailable = false;
     
-    if (provider.calendarConnected) {
+    let selectedTeamMember = null;
+    
+    // Check team member's calendar if specified
+    if (teamMemberId) {
+      selectedTeamMember = provider.teamMembers.id(teamMemberId);
+      
+      if (selectedTeamMember?.calendar?.connected) {
+        try {
+          isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30);
+          bookingType = isAvailable ? 'instant' : 'request';
+          console.log(`📅 Team member ${selectedTeamMember.name} calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
+        } catch (error) {
+          console.error('Calendar availability check failed:', error);
+          bookingType = 'request'; // Fallback to request on error
+        }
+      } else {
+        console.log(`📋 Team member ${selectedTeamMember?.name || teamMemberName || 'unknown'} has no calendar - request booking`);
+      }
+    } else if (provider.calendarConnected) {
+      // Fallback to provider-level calendar (legacy)
       try {
         isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30);
         bookingType = isAvailable ? 'instant' : 'request';
-        console.log(`📅 Calendar availability: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
+        console.log(`📅 Provider-level calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
       } catch (error) {
         console.error('Calendar availability check failed:', error);
         bookingType = 'request'; // Fallback to request on error
       }
     }
-    
     const paymentMode = bookingType === 'request' ? 'hold' : 'prepay';
     // Create booking object
     const booking = new Booking({
