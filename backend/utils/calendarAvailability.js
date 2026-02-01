@@ -14,13 +14,22 @@ const googleOAuth2Client = new google.auth.OAuth2(
 /**
  * Check if a specific time slot is available
  * @param {Object} provider - Provider document with calendar info
- * @param {Date} startTime - Requested appointment start time
- * @param {Number} durationMinutes - Appointment duration in minutes
- * @returns {Promise<Boolean>} - true if available, false if busy
- */
-async function checkTimeSlotAvailability(provider, startTime, durationMinutes) {
-  // If calendar not connected, can't check availability
-  if (!provider.calendarConnected || !provider.calendar) {
+async function checkTimeSlotAvailability(provider, startTime, durationMinutes, teamMemberId = null) {
+  // Check team member's calendar if provided
+  let calendarToCheck = null;
+  
+  if (teamMemberId) {
+    const teamMember = provider.teamMembers.id(teamMemberId);
+    if (teamMember?.calendar?.connected) {
+      calendarToCheck = teamMember.calendar;
+    }
+  } else if (provider.calendarConnected && provider.calendar) {
+    // Fallback to provider-level calendar
+    calendarToCheck = provider.calendar;
+  }
+  
+  // If no calendar connected, can't check availability
+  if (!calendarToCheck) {
     return false; // Default to request mode
   }
 
@@ -29,10 +38,10 @@ async function checkTimeSlotAvailability(provider, startTime, durationMinutes) {
   try {
     let busyTimes = [];
 
-    if (provider.calendar.provider === 'google') {
-      busyTimes = await getGoogleBusyTimes(provider, startTime, endTime);
-    } else if (provider.calendar.provider === 'microsoft') {
-      busyTimes = await getMicrosoftBusyTimes(provider, startTime, endTime);
+    if (calendarToCheck.provider === 'google') {
+      busyTimes = await getGoogleBusyTimes(calendarToCheck, startTime, endTime);
+    } else if (calendarToCheck.provider === 'microsoft') {
+      busyTimes = await getMicrosoftBusyTimes(calendarToCheck, startTime, endTime);
     } else {
       // Manual calendar or unsupported - default to unavailable
       return false;
@@ -66,7 +75,7 @@ async function checkTimeSlotAvailability(provider, startTime, durationMinutes) {
 /**
  * Get busy times from Google Calendar
  */
-async function getGoogleBusyTimes(provider, startTime, endTime) {
+async function getGoogleBusyTimes(calendarToCheck, startTime, endTime) {
   const accessToken = await getValidGoogleToken(provider);
 
   googleOAuth2Client.setCredentials({
@@ -92,7 +101,7 @@ async function getGoogleBusyTimes(provider, startTime, endTime) {
 /**
  * Get busy times from Microsoft Calendar
  */
-async function getMicrosoftBusyTimes(provider, startTime, endTime) {
+async function getMicrosoftBusyTimes(calendarToCheck, startTime, endTime) {
   const accessToken = await getValidMicrosoftToken(provider);
 
   const eventsResponse = await fetch(

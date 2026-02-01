@@ -260,7 +260,7 @@ router.post('/', async (req, res) => {
       
       if (selectedTeamMember?.calendar?.connected) {
         try {
-          isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30);
+          isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30, teamMemberId);
           bookingType = isAvailable ? 'instant' : 'request';
           console.log(`📅 Team member ${selectedTeamMember.name} calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
         } catch (error) {
