@@ -133,6 +133,12 @@ router.post('/reserve-slot', async (req, res) => {
     // Try to reserve the slot
     const reservation = await SlotReservation.reserveSlot({
       provider: providerId,
+      
+      teamMember: teamMemberId && selectedTeamMember ? {
+        memberId: teamMemberId,
+        name: selectedTeamMember.name || teamMemberName,
+        title: selectedTeamMember.title
+      } : undefined,
       startTime: start,
       endTime: end,
       serviceId: serviceId || 'default',
@@ -286,6 +292,12 @@ router.post('/', async (req, res) => {
     const booking = new Booking({
       patient: patientId,
       provider: providerId,
+      
+      teamMember: teamMemberId && selectedTeamMember ? {
+        memberId: teamMemberId,
+        name: selectedTeamMember.name || teamMemberName,
+        title: selectedTeamMember.title
+      } : undefined,
       bookingType,
       status: 'pending_payment',
       
