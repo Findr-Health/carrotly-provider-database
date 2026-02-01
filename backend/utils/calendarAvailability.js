@@ -14,6 +14,7 @@ const googleOAuth2Client = new google.auth.OAuth2(
 /**
  * Check if a specific time slot is available
  * @param {Object} provider - Provider document with calendar info
+ */
 async function checkTimeSlotAvailability(provider, startTime, durationMinutes, teamMemberId = null) {
   // Check team member's calendar if provided
   let calendarToCheck = null;
