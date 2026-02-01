@@ -39,9 +39,9 @@ async function checkTimeSlotAvailability(provider, startTime, durationMinutes, t
     let busyTimes = [];
 
     if (calendarToCheck.provider === 'google') {
-      busyTimes = await getGoogleBusyTimes(calendarToCheck, startTime, endTime);
+      busyTimes = await getGoogleBusyTimes(provider, teamMemberId, startTime, endTime);
     } else if (calendarToCheck.provider === 'microsoft') {
-      busyTimes = await getMicrosoftBusyTimes(calendarToCheck, startTime, endTime);
+      busyTimes = await getMicrosoftBusyTimes(provider, teamMemberId, startTime, endTime);
     } else {
       // Manual calendar or unsupported - default to unavailable
       return false;
@@ -75,35 +75,47 @@ async function checkTimeSlotAvailability(provider, startTime, durationMinutes, t
 /**
  * Get busy times from Google Calendar
  */
-async function getGoogleBusyTimes(calendarToCheck, startTime, endTime) {
-  const accessToken = await getValidGoogleToken(provider);
-
+async function getGoogleBusyTimes(provider, teamMemberId, startTime, endTime) {
+  // Get calendar to check
+  let calendar = provider.calendar;
+  if (teamMemberId) {
+    const teamMember = provider.teamMembers.id(teamMemberId);
+    if (teamMember?.calendar?.connected) {
+      calendar = teamMember.calendar;
+    }
+  }
+  
+  const accessToken = await getValidGoogleToken(provider, teamMemberId);
   googleOAuth2Client.setCredentials({
     access_token: accessToken,
-    refresh_token: provider.calendar.refreshToken
+    refresh_token: calendar.refreshToken
   });
-
-  const calendar = google.calendar({ version: 'v3', auth: googleOAuth2Client });
-
-  const freeBusyResponse = await calendar.freebusy.query({
+  const calendarApi = google.calendar({ version: 'v3', auth: googleOAuth2Client });
+  const freeBusyResponse = await calendarApi.freebusy.query({
     requestBody: {
       timeMin: startTime.toISOString(),
       timeMax: endTime.toISOString(),
-      items: [{ id: provider.calendar.calendarId || 'primary' }]
+      items: [{ id: calendar.calendarId || 'primary' }]
     }
   });
-
-  const busyTimes = freeBusyResponse.data.calendars[provider.calendar.calendarId || 'primary']?.busy || [];
   
+  const busyTimes = freeBusyResponse.data.calendars[calendar.calendarId || 'primary']?.busy || [];
   return busyTimes;
 }
 
 /**
  * Get busy times from Microsoft Calendar
- */
-async function getMicrosoftBusyTimes(calendarToCheck, startTime, endTime) {
-  const accessToken = await getValidMicrosoftToken(provider);
-
+async function getMicrosoftBusyTimes(provider, teamMemberId, startTime, endTime) {
+  // Get calendar to check
+  let calendar = provider.calendar;
+  if (teamMemberId) {
+    const teamMember = provider.teamMembers.id(teamMemberId);
+    if (teamMember?.calendar?.connected) {
+      calendar = teamMember.calendar;
+    }
+  }
+  
+  const accessToken = await getValidMicrosoftToken(provider, teamMemberId);
   const eventsResponse = await fetch(
     `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(startTime.toISOString())}&endDateTime=${encodeURIComponent(endTime.toISOString())}&$select=start,end,showAs`,
     {
@@ -113,13 +125,11 @@ async function getMicrosoftBusyTimes(calendarToCheck, startTime, endTime) {
       }
     }
   );
-
   const eventsData = await eventsResponse.json();
   
   if (eventsData.error) {
     throw new Error(eventsData.error.message);
   }
-
   // Filter to only busy events and convert to same format as Google
   const busyTimes = (eventsData.value || [])
     .filter(event => event.showAs === 'busy' || event.showAs === 'tentative')
@@ -127,14 +137,14 @@ async function getMicrosoftBusyTimes(calendarToCheck, startTime, endTime) {
       start: event.start.dateTime,
       end: event.end.dateTime
     }));
-
   return busyTimes;
+}
 }
 
 /**
  * Get valid Google access token (refresh if expired)
  */
-async function getValidGoogleToken(provider) {
+async function getValidGoogleToken(provider, teamMemberId = null) {
   const now = new Date();
   const expiry = new Date(provider.calendar.tokenExpiry);
 
@@ -165,7 +175,7 @@ async function getValidGoogleToken(provider) {
 /**
  * Get valid Microsoft access token (refresh if expired)
  */
-async function getValidMicrosoftToken(provider) {
+async function getValidMicrosoftToken(provider, teamMemberId = null) {
   const now = new Date();
   const expiry = new Date(provider.calendar.tokenExpiry);
 
