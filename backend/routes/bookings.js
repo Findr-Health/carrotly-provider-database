@@ -1606,3 +1606,17 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
 });
 
 module.exports = router;
+
+/**
+ * GET /api/bookings/cancellation-policy
+ * Get cancellation policy details for display
+ */
+router.get('/cancellation-policy', (req, res) => {
+  const { getPolicyDetails } = require('../utils/cancellationPolicy');
+  
+  res.json({
+    success: true,
+    policy: getPolicyDetails(),
+    note: 'This standard 24-hour policy applies to all providers on Findr Health'
+  });
+});
