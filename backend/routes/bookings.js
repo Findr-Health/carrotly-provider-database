@@ -1669,3 +1669,40 @@ router.post('/:id/cancel-patient-test', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+/**
+ * DEBUG: Find booking by confirmation number
+ */
+router.get('/debug/:bookingNumber', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ 
+      bookingNumber: req.params.bookingNumber 
+    }).populate('provider', 'practiceName').populate('patient', 'firstName lastName');
+    
+    if (!booking) {
+      return res.json({ found: false, searched: req.params.bookingNumber });
+    }
+    
+    res.json({
+      found: true,
+      booking: {
+        id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        provider: {
+          id: booking.provider?._id,
+          name: booking.provider?.practiceName
+        },
+        patient: {
+          id: booking.patient?._id,
+          name: `${booking.patient?.firstName} ${booking.patient?.lastName}`
+        },
+        service: booking.service,
+        status: booking.status,
+        dateTime: booking.dateTime,
+        createdAt: booking.createdAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
