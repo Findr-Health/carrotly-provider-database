@@ -1621,3 +1621,51 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
 
 module.exports = router;
 
+
+/**
+ * TEST ONLY: Cancel booking without auth
+ * DELETE THIS AFTER TESTING
+ */
+router.post('/:id/cancel-patient-test', async (req, res) => {
+  try {
+    const { calculateRefund } = require('../utils/cancellationPolicy');
+    const Booking = require('../models/Booking');
+    
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    const refundCalc = calculateRefund(
+      booking.dateTime.requestedStart,
+      booking.payment.originalAmount || booking.service.price
+    );
+    
+    booking.status = 'cancelled_patient';
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      cancelledBy: 'patient',
+      reason: 'TEST CANCELLATION',
+      refundAmount: refundCalc.refundAmount,
+      refundPercentage: refundCalc.refundPercentage,
+      feeAmount: refundCalc.feeAmount,
+      feePercentage: refundCalc.feePercentage,
+      policy: refundCalc.policyDescription,
+      hoursBeforeAppointment: refundCalc.hoursUntilAppointment
+    };
+    
+    await booking.save();
+    
+    res.json({
+      success: true,
+      booking,
+      refund: refundCalc,
+      note: 'TEST MODE - No Stripe refund processed'
+    });
+    
+  } catch (error) {
+    console.error('Test cancel error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
