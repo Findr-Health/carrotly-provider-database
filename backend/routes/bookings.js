@@ -1706,3 +1706,50 @@ router.get('/debug/:bookingNumber', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+/**
+ * DEBUG: Test upcoming query
+ */
+router.get('/debug-upcoming/:providerId', async (req, res) => {
+  try {
+    const providerId = req.params.providerId;
+    const now = new Date();
+    
+    // Test different queries
+    const allBookings = await Booking.find({ provider: providerId });
+    const confirmedBookings = await Booking.find({ 
+      provider: providerId,
+      status: 'confirmed' 
+    });
+    const futureBookings = await Booking.find({
+      provider: providerId,
+      'dateTime.requestedStart': { $gte: now }
+    });
+    const upcomingQuery = {
+      provider: providerId,
+      status: { $in: ['confirmed', 'pending_confirmation'] },
+      'dateTime.requestedStart': { $gte: now }
+    };
+    const upcomingBookings = await Booking.find(upcomingQuery);
+    
+    res.json({
+      currentTime: now,
+      providerId,
+      counts: {
+        all: allBookings.length,
+        confirmed: confirmedBookings.length,
+        future: futureBookings.length,
+        upcoming: upcomingBookings.length
+      },
+      upcomingQuery,
+      sampleBooking: allBookings[0] ? {
+        id: allBookings[0]._id,
+        status: allBookings[0].status,
+        requestedStart: allBookings[0].dateTime?.requestedStart,
+        provider: allBookings[0].provider
+      } : null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
