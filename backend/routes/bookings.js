@@ -1149,6 +1149,126 @@ router.post('/:id/decline-reschedule', async (req, res) => {
 });
 
 /**
+ * POST /api/bookings/:id/cancel-patient
+ * Patient cancels their booking with refund based on standard 24hr policy
+ */
+router.post('/:id/cancel-patient', authenticateUser, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const { calculateRefund } = require('../utils/cancellationPolicy');
+    
+    const booking = await Booking.findById(req.params.id)
+      .populate('provider', 'practiceName email')
+      .populate('patient', 'firstName lastName email');
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Authorization - only patient can cancel their booking
+    if (booking.patient._id.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Not authorized to cancel this booking' });
+    }
+    
+    // Check if already cancelled
+    if (booking.status.includes('cancelled')) {
+      return res.status(400).json({ error: 'Booking already cancelled' });
+    }
+    
+    // Calculate refund based on standard policy
+    const refundCalc = calculateRefund(
+      booking.dateTime.requestedStart,
+      booking.payment.originalAmount || booking.service.price
+    );
+    
+    // Process refund via Stripe if payment exists
+    let stripeRefund = null;
+    if (booking.payment.paymentIntentId && refundCalc.refundAmount > 0) {
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        stripeRefund = await stripe.refunds.create({
+          payment_intent: booking.payment.paymentIntentId,
+          amount: Math.round(refundCalc.refundAmount * 100), // Convert to cents
+          reason: 'requested_by_customer',
+          metadata: {
+            bookingId: booking._id.toString(),
+            bookingNumber: booking.bookingNumber,
+            refundPercentage: refundCalc.refundPercentage,
+            feePercentage: refundCalc.feePercentage
+          }
+        });
+        
+        booking.payment.refunds = booking.payment.refunds || [];
+        booking.payment.refunds.push({
+          refundId: stripeRefund.id,
+          amount: refundCalc.refundAmount,
+          percentage: refundCalc.refundPercentage,
+          processedAt: new Date(),
+          reason: 'patient_cancellation'
+        });
+      } catch (stripeError) {
+        console.error('Stripe refund error:', stripeError);
+        return res.status(500).json({ 
+          error: 'Failed to process refund',
+          details: stripeError.message 
+        });
+      }
+    }
+    
+    // Update booking status
+    const previousStatus = booking.status;
+    booking.status = 'cancelled_patient';
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      cancelledBy: 'patient',
+      reason: reason || 'Patient requested cancellation',
+      refundAmount: refundCalc.refundAmount,
+      refundPercentage: refundCalc.refundPercentage,
+      feeAmount: refundCalc.feeAmount,
+      feePercentage: refundCalc.feePercentage,
+      policy: refundCalc.policyDescription,
+      hoursBeforeAppointment: refundCalc.hoursUntilAppointment
+    };
+    
+    await booking.save();
+    
+    // TODO: Delete calendar event if exists
+    // TODO: Send notification to provider
+    // TODO: Send confirmation email to patient
+    
+    console.log('✅ Booking cancelled by patient', {
+      bookingNumber: booking.bookingNumber,
+      refundAmount: refundCalc.refundAmount,
+      feeAmount: refundCalc.feeAmount,
+      stripeRefundId: stripeRefund?.id
+    });
+    
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status,
+        cancellation: booking.cancellation
+      },
+      refund: {
+        amount: refundCalc.refundAmount,
+        percentage: refundCalc.refundPercentage,
+        feeAmount: refundCalc.feeAmount,
+        feePercentage: refundCalc.feePercentage,
+        description: refundCalc.policyDescription,
+        stripeRefundId: stripeRefund?.id
+      }
+    });
+    
+  } catch (error) {
+    console.error('Patient cancel error:', error);
+    res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
+/**
  * POST /api/bookings/:id/cancel
  * Cancel a booking (patient or provider)
  */
