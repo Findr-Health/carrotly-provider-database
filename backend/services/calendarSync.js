@@ -26,9 +26,15 @@ class CalendarSyncService {
         throw new Error('Provider not found');
       }
 
-      const teamMember = provider.teamMembers.id(teamMemberId);
-      if (!teamMember || !teamMember.calendar?.connected) {
-        throw new Error('Calendar not connected');
+      // Handle virtual provider-calendar member
+      let teamMember;
+      if (teamMemberId === null || teamMemberId === 'provider-calendar') {
+        teamMember = { _id: 'provider-calendar', calendar: provider.calendar };
+        if (!teamMember.calendar?.connected) throw new Error('Calendar not connected');
+      } else {
+        teamMember = provider.teamMembers.id(teamMemberId);
+        if (!teamMember || !teamMember.calendar?.connected) {
+      }
       }
 
       const calendar = teamMember.calendar;
@@ -144,16 +150,22 @@ class CalendarSyncService {
   /**
    * Generate available time slots
    */
-  async generateAvailableSlots(providerId, teamMemberId, date, serviceDuration = 60) {
+  async generateAvailableSlots(providerId, teamMemberId, date, serviceDuration = 60, calendarOverride = null) {
     try {
       const provider = await Provider.findById(providerId);
       if (!provider) {
         throw new Error('Provider not found');
       }
 
-      const teamMember = provider.teamMembers.id(teamMemberId);
-      if (!teamMember) {
-        throw new Error('Team member not found');
+      // Handle virtual provider-calendar member
+      let teamMember;
+      if (teamMemberId === null || teamMemberId === 'provider-calendar') {
+        teamMember = { _id: 'provider-calendar', calendar: provider.calendar };
+        if (!teamMember.calendar?.connected) throw new Error('Calendar not connected');
+      } else {
+        teamMember = provider.teamMembers.id(teamMemberId);
+        if (!teamMember) {
+      }
       }
 
       // Get business hours for this day
