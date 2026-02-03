@@ -46,8 +46,19 @@ router.get('/:providerId', async (req, res) => {
     const requestDate = new Date(date);
     const serviceDuration = parseInt(duration);
 
-    // Get team members
+    // Get team members - if none, use provider's own calendar
     let teamMembers = provider.teamMembers.filter(m => m.acceptsBookings !== false);
+    
+    // Fallback: If no team members, create virtual member from provider calendar
+    if (teamMembers.length === 0 && provider.calendar) {
+      teamMembers = [{
+        _id: 'provider-calendar',
+        name: provider.practiceName || 'Provider',
+        title: 'Provider',
+        acceptsBookings: true,
+        calendar: provider.calendar
+      }];
+    }
 
     // Filter by specific member if requested
     if (memberId) {
