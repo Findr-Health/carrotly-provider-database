@@ -37,8 +37,7 @@ router.get('/provider/:providerId', async (req, res) => {
       .sort({ 'confirmation.requestedAt': -1 })
       .limit(parseInt(limit))
       .skip(parseInt(offset))
-      // Patient is embedded, not a reference
-      .lean();
+      .populate("patient", "firstName lastName email phone profileImage").lean();
     
     // Get counts
     const totalCount = await Booking.countDocuments(query);
