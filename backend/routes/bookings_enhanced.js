@@ -268,7 +268,8 @@ router.post('/:id/suggest-times', async (req, res) => {
  * Helper: Format booking data for provider view
  */
 function formatBookingForProvider(booking) {
-  const patient = booking.patient.id;
+  // Handle both embedded patient object and populated reference
+  const patient = booking.patient?.id || booking.patient || {};
   
   return {
     _id: booking._id,
@@ -309,7 +310,7 @@ function formatBookingForProvider(booking) {
  * Helper: Send booking confirmation notifications
  */
 async function sendBookingConfirmationNotifications(booking, note) {
-  const patient = booking.patient.id;
+  const patient = booking.patient;
   
   // TODO: Implement actual notification service
   console.log(`📧 Sending confirmation to ${patient.email}`);
@@ -342,7 +343,7 @@ async function sendBookingConfirmationNotifications(booking, note) {
  * Helper: Send booking declined notifications
  */
 async function sendBookingDeclinedNotifications(booking, reason) {
-  const patient = booking.patient.id;
+  const patient = booking.patient;
   
   console.log(`📧 Sending decline notification to ${patient.email}`);
   console.log(`📱 SMS to ${patient.phone}: Your booking request was declined`);
@@ -354,7 +355,7 @@ async function sendBookingDeclinedNotifications(booking, reason) {
  * Helper: Send reschedule proposal notifications
  */
 async function sendRescheduleProposalNotifications(booking, proposedTimes, message) {
-  const patient = booking.patient.id;
+  const patient = booking.patient;
   
   console.log(`📧 Sending reschedule options to ${patient.email}`);
   console.log(`Proposed times: ${proposedTimes.length}`);
