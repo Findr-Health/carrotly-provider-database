@@ -504,3 +504,49 @@ router.post('/admin/sync-team-calendar/:providerId', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+/**
+ * POST /api/bookings/:id/cancel-provider
+ * Provider cancels a booking (same logic as patient, but different notifications)
+ */
+router.post('/:id/cancel-provider', async (req, res) => {
+  try {
+    const Booking = require('../models/Booking');
+    const { reason } = req.body;
+    const booking = await Booking.findById(req.params.id).populate('patient');
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Calculate refund (100% for provider cancellations)
+    const refundAmount = booking.totalAmount;
+    const refundPercent = 100;
+    
+    // Update booking
+    booking.status = 'cancelled';
+    booking.cancelledBy = 'provider';
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      reason,
+      refundAmount,
+      refundPercent,
+      refundStatus: 'pending'
+    };
+    
+    await booking.save();
+    
+    // TODO: Send notification to patient
+    // TODO: Process refund via Stripe
+    
+    res.json({
+      success: true,
+      booking,
+      message: 'Booking cancelled successfully'
+    });
+    
+  } catch (error) {
+    console.error('Cancel booking error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
