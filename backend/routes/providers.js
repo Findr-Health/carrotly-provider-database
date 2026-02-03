@@ -1033,3 +1033,43 @@ router.post('/admin/sync-calendar-all', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+/**
+ * POST /api/providers/admin/set-default-hours
+ * Add standard M-F 8am-5pm business hours to all providers
+ */
+router.post('/admin/set-default-hours', async (req, res) => {
+  try {
+    const defaultHours = {
+      monday: { isOpen: true, open: '08:00', close: '17:00' },
+      tuesday: { isOpen: true, open: '08:00', close: '17:00' },
+      wednesday: { isOpen: true, open: '08:00', close: '17:00' },
+      thursday: { isOpen: true, open: '08:00', close: '17:00' },
+      friday: { isOpen: true, open: '08:00', close: '17:00' },
+      saturday: { isOpen: false },
+      sunday: { isOpen: false }
+    };
+    
+    const providers = await Provider.find({});
+    let updated = 0;
+    
+    for (const provider of providers) {
+      if (!provider.calendar) {
+        provider.calendar = {};
+      }
+      provider.calendar.businessHours = defaultHours;
+      await provider.save();
+      updated++;
+    }
+    
+    res.json({
+      success: true,
+      updated,
+      message: `Set M-F 8am-5pm hours for ${updated} providers`
+    });
+    
+  } catch (error) {
+    console.error('Set hours error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
