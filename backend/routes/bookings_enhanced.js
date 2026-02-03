@@ -524,7 +524,7 @@ router.post('/:id/cancel-provider', async (req, res) => {
     const refundPercent = 100;
     
     // Update booking
-    booking.status = 'cancelled';
+    booking.status = 'cancelled_provider';
     booking.cancelledBy = 'provider';
     booking.cancellation = {
       cancelledAt: new Date(),
