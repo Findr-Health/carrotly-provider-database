@@ -186,17 +186,22 @@ class CalendarSyncService {
       const dayEnd = new Date(date);
       dayEnd.setHours(closeHour, closeMin, 0, 0);
 
-      // Get busy blocks for this day
+      // Get busy blocks for this day (only if calendar integrated)
       let busyBlocks = [];
       
       if (teamMember.calendar?.connected) {
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-        
-        busyBlocks = await this.fetchBusyBlocks(providerId, teamMemberId, startOfDay, endOfDay);
+        try {
+          const startOfDay = new Date(date);
+          startOfDay.setHours(0, 0, 0, 0);
+          
+          const endOfDay = new Date(date);
+          endOfDay.setHours(23, 59, 59, 999);
+          
+          busyBlocks = await this.fetchBusyBlocks(providerId, teamMemberId, startOfDay, endOfDay);
+        } catch (error) {
+          console.log('Could not fetch busy blocks, continuing with business hours only:', error.message);
+          // Continue without busy blocks - just show all business hours
+        }
       }
 
       // Generate slots
