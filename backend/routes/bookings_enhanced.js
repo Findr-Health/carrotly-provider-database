@@ -268,16 +268,16 @@ router.post('/:id/suggest-times', async (req, res) => {
  * Helper: Format booking data for provider view
  */
 function formatBookingForProvider(booking) {
-  // Handle both embedded patient object and populated reference
-  const patient = booking.patient?.id || booking.patient || {};
+  // Patient is stored as embedded object with {id, name, email, phone}
+  const patient = booking.patient || {};
   
   return {
     _id: booking._id,
     patient: {
-      name: `${patient.firstName} ${patient.lastName}`,
-      email: patient.email,
-      phone: patient.phone,
-      avatar: patient.profileImage,
+      name: patient.name || 'Unknown Patient',
+      email: patient.email || '',
+      phone: patient.phone || '',
+      avatar: patient.avatar || patient.profileImage || null,
     },
     isReturningPatient: false, // TODO: Calculate from booking history
     previousBookingCount: 0, // TODO: Calculate from booking history
