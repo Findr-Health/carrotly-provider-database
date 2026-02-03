@@ -379,3 +379,19 @@ function emitBookingUpdate(userId, eventType, booking) {
 }
 
 module.exports = router;
+
+/**
+ * DEBUG: Check raw booking data
+ */
+router.get('/debug-patient/:bookingId', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId).lean();
+    res.json({
+      hasPatient: !!booking.patient,
+      patientStructure: booking.patient,
+      patientKeys: booking.patient ? Object.keys(booking.patient) : []
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
