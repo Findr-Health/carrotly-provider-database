@@ -395,3 +395,51 @@ router.get("/debug-patient/:bookingId", async (req, res) => {
 
 
 module.exports = router;
+
+/**
+ * DELETE /api/bookings/cleanup/expired-pending
+ * Remove expired pending confirmation requests
+ * Security: Only accessible with admin key
+ */
+router.delete('/cleanup/expired-pending', async (req, res) => {
+  try {
+    // Simple security check
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'temp-cleanup-key-2026') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    // Find expired pending requests
+    const expiredBookings = await Booking.find({
+      status: 'pending_confirmation',
+      'confirmation.expiresAt': { $lt: new Date() }
+    }).select('bookingNumber confirmation.expiresAt createdAt').lean();
+    
+    const count = expiredBookings.length;
+    
+    if (req.query.preview === 'true') {
+      return res.json({
+        preview: true,
+        count,
+        sample: expiredBookings.slice(0, 5),
+        message: 'Add ?preview=false to actually delete'
+      });
+    }
+    
+    // Actually delete
+    const result = await Booking.deleteMany({
+      status: 'pending_confirmation',
+      'confirmation.expiresAt': { $lt: new Date() }
+    });
+    
+    res.json({
+      success: true,
+      deleted: result.deletedCount,
+      message: `Removed ${result.deletedCount} expired pending requests`
+    });
+    
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
