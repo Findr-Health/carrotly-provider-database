@@ -24,7 +24,7 @@ const calendarSync = require('../services/calendarSync');
 
 const { authenticateToken } = require('../middleware/auth');
 const express = require('express');
-const { zonedTimeToUtc } = require('date-fns-tz');
+const { fromZonedTime } = require('date-fns-tz');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
@@ -253,10 +253,10 @@ router.post('/', async (req, res) => {
     console.log('🕐 BOOKING TIME DEBUG:', { rawStartTime: startTime, patientTz, hasTimezoneHeader: !!req.headers['x-timezone'] });
     
     // Parse time in patient's timezone, then convert to UTC for storage
-    const requestedStart = zonedTimeToUtc(startTime, patientTz);
+    const requestedStart = fromZonedTime(startTime, patientTz);
     console.log('🕐 CONVERTED:', { requestedStart: requestedStart.toISOString() });
     const requestedEnd = endTime 
-      ? zonedTimeToUtc(endTime, patientTz)
+      ? fromZonedTime(endTime, patientTz)
       : new Date(requestedStart.getTime() + (serviceDuration || 30) * 60 * 1000);
     
     // Check calendar availability if connected
