@@ -448,3 +448,59 @@ router.delete('/cleanup/expired-pending', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+/**
+ * POST /api/bookings/admin/sync-team-calendar
+ * Copy calendar integration to all team members
+ */
+router.post('/admin/sync-team-calendar/:providerId', async (req, res) => {
+  try {
+    const Provider = require('../models/Provider');
+    const provider = await Provider.findById(req.params.providerId);
+    
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Find first team member with calendar
+    const withCalendar = provider.teamMembers.find(m => m.calendar?.connected);
+    
+    if (!withCalendar) {
+      return res.status(400).json({ error: 'No team member has calendar integration' });
+    }
+    
+    // Copy to all team members without calendar
+    let updated = 0;
+    provider.teamMembers.forEach(member => {
+      if (!member.calendar?.connected) {
+        member.calendar = {
+          provider: withCalendar.calendar.provider,
+          connected: true,
+          accessToken: withCalendar.calendar.accessToken,
+          refreshToken: withCalendar.calendar.refreshToken,
+          tokenExpiry: withCalendar.calendar.tokenExpiry,
+          calendarId: withCalendar.calendar.calendarId,
+          calendarEmail: withCalendar.calendar.calendarEmail,
+          syncStatus: 'active',
+          lastSyncAt: new Date(),
+          bufferMinutes: 15,
+          minNoticeHours: 24,
+          maxDaysOut: 60
+        };
+        updated++;
+      }
+    });
+    
+    await provider.save();
+    
+    res.json({
+      success: true,
+      updated,
+      message: `Synced calendar to ${updated} team members`
+    });
+    
+  } catch (error) {
+    console.error('Sync calendar error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
