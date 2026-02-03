@@ -90,12 +90,13 @@ router.get('/:providerId', async (req, res) => {
         });
 
       } catch (error) {
-        console.error(`Error generating slots for member ${member._id}:`, error);
+        console.error(`Error generating slots for member ${member._id}:`, error.message);
+        console.error('Full error:', error);
         // Continue with other members
         availability.push({
           teamMemberId: member._id,
           teamMemberName: member.name,
-          error: 'Failed to load availability',
+          error: error.message || 'Failed to load availability',
           slots: []
         });
       }
