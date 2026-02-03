@@ -250,9 +250,11 @@ router.post('/', async (req, res) => {
     
     // Calculate times - convert from patient timezone to UTC
     const patientTz = req.headers['x-timezone'] || 'America/Denver';
+    console.log('🕐 BOOKING TIME DEBUG:', { rawStartTime: startTime, patientTz, hasTimezoneHeader: !!req.headers['x-timezone'] });
     
     // Parse time in patient's timezone, then convert to UTC for storage
     const requestedStart = zonedTimeToUtc(startTime, patientTz);
+    console.log('🕐 CONVERTED:', { requestedStart: requestedStart.toISOString() });
     const requestedEnd = endTime 
       ? zonedTimeToUtc(endTime, patientTz)
       : new Date(requestedStart.getTime() + (serviceDuration || 30) * 60 * 1000);
