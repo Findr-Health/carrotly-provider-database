@@ -273,7 +273,7 @@ function formatBookingForProvider(booking) {
   return {
     _id: booking._id,
     patient: {
-      name: patient.name || 'Unknown Patient',
+      name: patient.firstName && patient.lastName ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient',
       email: patient.email || '',
       phone: patient.phone || '',
       avatar: patient.avatar || patient.profileImage || null,
