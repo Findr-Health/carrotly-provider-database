@@ -981,3 +981,55 @@ router.get('/debug/calendar-status', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+/**
+ * POST /api/providers/admin/sync-calendar-all
+ * Copy calendar from Long Island City PT to all providers without calendars
+ */
+router.post('/admin/sync-calendar-all', async (req, res) => {
+  try {
+    // Get the source provider with working calendar
+    const source = await Provider.findById('697a98f3a04e359abfda111f');
+    const sourceCalendar = source.teamMembers[0].calendar;
+    
+    // Find all providers without calendar
+    const providers = await Provider.find({
+      $or: [
+        { 'calendar.connected': { $ne: true } },
+        { calendar: null },
+        { calendar: { $exists: false } }
+      ]
+    });
+    
+    let updated = 0;
+    for (const provider of providers) {
+      provider.calendar = {
+        provider: sourceCalendar.provider,
+        connected: true,
+        accessToken: sourceCalendar.accessToken,
+        refreshToken: sourceCalendar.refreshToken,
+        tokenExpiry: sourceCalendar.tokenExpiry,
+        calendarId: sourceCalendar.calendarId,
+        calendarEmail: sourceCalendar.calendarEmail,
+        syncStatus: 'active',
+        lastSyncAt: new Date(),
+        bufferMinutes: 15,
+        minNoticeHours: 24,
+        maxDaysOut: 60
+      };
+      
+      await provider.save();
+      updated++;
+    }
+    
+    res.json({
+      success: true,
+      updated,
+      message: `Added calendar to ${updated} providers`
+    });
+    
+  } catch (error) {
+    console.error('Sync all calendars error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
