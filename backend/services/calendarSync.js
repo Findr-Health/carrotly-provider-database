@@ -30,7 +30,7 @@ class CalendarSyncService {
       let teamMember;
       if (teamMemberId === null || teamMemberId === 'provider-calendar') {
         teamMember = { _id: 'provider-calendar', calendar: provider.calendar };
-        if (!teamMember.calendar?.connected) throw new Error('Calendar not connected');
+        // Don't check connected - we only need business hours
       } else {
         teamMember = provider.teamMembers.id(teamMemberId);
         if (!teamMember || !teamMember.calendar?.connected) {
@@ -161,7 +161,7 @@ class CalendarSyncService {
       let teamMember;
       if (teamMemberId === null || teamMemberId === 'provider-calendar') {
         teamMember = { _id: 'provider-calendar', calendar: provider.calendar };
-        if (!teamMember.calendar?.connected) throw new Error('Calendar not connected');
+        // Don't check connected - we only need business hours
       } else {
         teamMember = provider.teamMembers.id(teamMemberId);
         if (!teamMember) {
