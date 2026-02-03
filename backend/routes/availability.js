@@ -73,11 +73,15 @@ router.get('/:providerId', async (req, res) => {
 
     for (const member of teamMembers) {
       try {
+        // For virtual provider-calendar member, pass provider ID as both params
+        const memberIdToUse = member._id === 'provider-calendar' ? null : member._id;
+        
         const slots = await calendarSync.generateAvailableSlots(
           providerId,
-          member._id,
+          memberIdToUse,
           requestDate,
-          serviceDuration
+          serviceDuration,
+          member.calendar // Pass calendar directly for virtual members
         );
 
         availability.push({
