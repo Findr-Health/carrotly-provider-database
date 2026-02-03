@@ -19,7 +19,7 @@ router.get('/provider/:providerId', async (req, res) => {
     const { status = 'pending', limit = 20, offset = 0 } = req.query;
     
     // Build query based on status
-    let query = { 'provider.id': providerId };
+    let query = { provider: providerId };
     
     if (status === 'pending') {
       query.status = 'pending_confirmation';
@@ -46,7 +46,7 @@ router.get('/provider/:providerId', async (req, res) => {
     // Count urgent bookings (expiring in < 6 hours)
     const sixHoursFromNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
     const urgentCount = await Booking.countDocuments({
-      'provider.id': providerId,
+      provider: providerId,
       status: 'pending_confirmation',
       'confirmation.expiresAt': { $lt: sixHoursFromNow, $gte: new Date() }
     });
@@ -102,7 +102,7 @@ router.post('/:id/confirm', async (req, res) => {
     // Find and validate booking
     const booking = await Booking.findOne({
       _id: id,
-      'provider.id': providerId,
+      provider: providerId,
       status: 'pending_confirmation'
     }).populate('patient.id');
     
@@ -165,7 +165,7 @@ router.post('/:id/decline', async (req, res) => {
     // Find booking
     const booking = await Booking.findOne({
       _id: id,
-      'provider.id': providerId,
+      provider: providerId,
       status: 'pending_confirmation'
     }).populate('patient.id');
     
@@ -226,7 +226,7 @@ router.post('/:id/suggest-times', async (req, res) => {
     // Find booking
     const booking = await Booking.findOne({
       _id: id,
-      'provider.id': providerId,
+      provider: providerId,
       status: 'pending_confirmation'
     }).populate('patient.id');
     
