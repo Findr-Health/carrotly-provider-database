@@ -23,6 +23,11 @@ router.get('/provider/:providerId', async (req, res) => {
     
     if (status === 'pending') {
       query.status = 'pending_confirmation';
+      // Only show non-expired pending requests by default
+      const showExpired = req.query.showExpired === 'true';
+      if (!showExpired) {
+        query['confirmation.expiresAt'] = { $gte: new Date() };
+      }
     } else if (status === 'upcoming') {
       query.status = 'confirmed';
       query['dateTime.requestedStart'] = { $gte: new Date() };
