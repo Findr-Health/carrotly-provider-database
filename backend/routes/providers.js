@@ -952,3 +952,32 @@ router.post('/admin/create-test-provider', async (req, res) => {
 });
 
 module.exports = router;
+
+/**
+ * GET /api/providers/debug/calendar-status
+ * Check which providers have working calendar integration
+ */
+router.get('/debug/calendar-status', async (req, res) => {
+  try {
+    const providers = await Provider.find({})
+      .select('practiceName teamMembers')
+      .lean();
+    
+    const results = providers.map(p => ({
+      id: p._id,
+      name: p.practiceName,
+      teamMembers: p.teamMembers.map(tm => ({
+        name: tm.name,
+        calendarConnected: tm.calendar?.connected || false,
+        calendarProvider: tm.calendar?.provider || 'none',
+        syncStatus: tm.calendar?.syncStatus || 'disconnected',
+        syncError: tm.calendar?.syncError || null,
+        lastSync: tm.calendar?.lastSyncAt || null
+      }))
+    }));
+    
+    res.json({ providers: results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
