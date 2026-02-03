@@ -37,7 +37,7 @@ router.get('/provider/:providerId', async (req, res) => {
       .sort({ 'confirmation.requestedAt': -1 })
       .limit(parseInt(limit))
       .skip(parseInt(offset))
-      .populate('patient.id', 'firstName lastName email phone')
+      // Patient is embedded, not a reference
       .lean();
     
     // Get counts
