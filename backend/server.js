@@ -41,6 +41,14 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
+// Initialize payment policy cron jobs (after DB connection)
+setTimeout(() => {
+  console.log('🔄 Initializing payment cron jobs...');
+  startRetryFailedPaymentsCron();
+  startAutoCompleteBookingsCron();
+}, 1000); // Wait 1 second for DB to connect
+
+
 // CORS Configuration - Allow all origins explicitly
 app.use(cors({
   origin: '*',
@@ -150,4 +158,5 @@ server.listen(PORT, () => {
 
 // Business hours management route
 const providersHoursRoutes = require('./routes/providers_hours');
+const { startRetryFailedPaymentsCron, startAutoCompleteBookingsCron } = require('./cron/retryFailedPayments');
 app.use('/api/providers', providersHoursRoutes);

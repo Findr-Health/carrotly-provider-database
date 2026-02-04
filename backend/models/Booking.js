@@ -153,54 +153,6 @@ const bookingSchema = new mongoose.Schema({
   },
 
   // ==================== PAYMENT ====================
-  payment: {
-    mode: { 
-      type: String, 
-      enum: ['prepay', 'hold', 'at_visit', 'card_on_file'],
-      default: 'prepay'
-    },
-    status: {
-      type: String,
-      enum: ['pending', 'held', 'captured', 'refunded', 'partial_refund', 'failed', 'cancelled'],
-      default: 'pending'
-    },
-    
-    // Amounts (all in cents)
-    originalAmount: Number,
-    capturedAmount: Number,
-    refundedAmount: { type: Number, default: 0 },
-    
-    // Stripe references
-    stripeCustomerId: String,
-    paymentMethodId: String,
-    paymentIntentId: { type: String, index: true },
-    
-    // Hold-specific fields (for request bookings)
-    hold: {
-      createdAt: Date,
-      expiresAt: Date,         // Stripe 7-day limit
-      capturedAt: Date,
-      cancelledAt: Date,
-      cancelReason: String
-    },
-    
-    // Refund tracking
-    refunds: [{
-      refundId: String,
-      amount: Number,
-      reason: String,
-      initiatedBy: String,     // 'patient', 'provider', 'admin', 'system'
-      createdAt: { type: Date, default: Date.now }
-    }],
-    
-    // Platform fees (10% + $1.50, capped at $35)
-    platformFee: {
-      percentage: { type: Number, default: 10 },
-      flatFee: { type: Number, default: 150 },     // $1.50 in cents
-      maxFee: { type: Number, default: 3500 },     // $35 cap in cents
-      calculatedFee: Number
-    }
-  },
 
   // ==================== CALENDAR INTEGRATION ====================
   calendar: {
@@ -280,7 +232,164 @@ const bookingSchema = new mongoose.Schema({
 
   // ==================== VERSION (Optimistic Locking) ====================
   version: { type: Number, default: 1 }
+,
 
+  // ==================== PAYMENT TRACKING (80/20 Binary) ====================
+  payment: {
+  // Total amounts
+  totalAmount: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  depositAmount: {
+    type: Number,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return v === this.totalAmount * 0.80;
+      },
+      message: 'Deposit must be exactly 80% of total amount'
+    }
+  },
+  finalAmount: {
+    type: Number,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return v === this.totalAmount * 0.20;
+      },
+      message: 'Final amount must be exactly 20% of total amount'
+    }
+  },
+  
+  // Deposit payment (charged at booking)
+  depositPaymentIntentId: {
+    type: String,
+    index: true
+  },
+  depositChargedAt: Date,
+  depositStatus: {
+    type: String,
+    enum: ['pending', 'succeeded', 'failed', 'cancelled'],
+    default: 'pending'
+  },
+  
+  // Final payment (charged after service)
+  finalPaymentIntentId: {
+    type: String,
+    index: true
+  },
+  finalChargedAt: Date,
+  finalStatus: {
+    type: String,
+    enum: ['pending', 'succeeded', 'failed', 'not_required'],
+    default: 'pending'
+  },
+  
+  // Refunds
+  refundId: String,
+  refundAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  refundedAt: Date,
+  refundReason: String,
+  
+  // Adjustments (if provider adds services)
+  adjustments: [{
+    name: String,
+    amount: Number,
+    addedAt: Date,
+    reason: String
+  }],
+  adjustmentTotal: {
+    type: Number,
+    default: 0
+  },
+  
+  // Platform fee
+  platformFee: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 35 // Fee cap
+  },
+  platformFeePercent: {
+    type: Number,
+    default: 10
+  },
+  platformFeeFlat: {
+    type: Number,
+    default: 1.50
+  },
+  
+  // Provider payout
+  providerPayout: {
+    type: Number,
+    min: 0
+  },
+  providerPayoutId: String, // Stripe Transfer ID
+  providerPayoutAt: Date,
+  
+  // Payment status (overall)
+  status: {
+    type: String,
+    enum: [
+      'pending',
+      'deposit_charged',
+      'completed',
+      'refunded',
+      'partially_refunded',
+      'payment_failed',
+      'final_payment_failed',
+      'disputed'
+    ],
+    default: 'pending',
+    index: true
+  },
+  
+  // Stripe metadata
+  paymentMethodId: String, // For charging final payment
+  stripeCustomerId: String,
+  
+  // Dispute tracking
+  disputeId: String,
+  disputeReason: String,
+  disputeStatus: String,
+  disputedAt: Date
+},
+
+  // ==================== CANCELLATION TRACKING (48-Hour Threshold) ====================
+  cancellation: {
+  cancelledAt: Date,
+  cancelledBy: {
+    type: String,
+    enum: ['patient', 'provider', 'admin', 'system']
+  },
+  reason: String,
+  hoursBeforeAppointment: Number,
+  refundEligible: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Provider cancellation tracking
+  providerCancellationCount: {
+    type: Number,
+    default: 0
+  },
+  providerLastCancellation: Date,
+  providerWarningIssued: {
+    type: Boolean,
+    default: false
+  },
+  providerSuspended: {
+    type: Boolean,
+    default: false
+  }
+}
 }, {
   timestamps: true  // Adds createdAt, updatedAt
 });

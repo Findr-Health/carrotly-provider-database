@@ -393,6 +393,41 @@ router.post('/', async (req, res) => {
         console.error('Payment error:', paymentError);
         booking.status = 'payment_failed';
         booking.payment.status = 'failed';
+
+        // ==================== CHARGE 80% DEPOSIT ====================
+        const paymentResult = await PaymentService.chargeDeposit({
+          totalAmount: service.price,
+          customerId: patient.stripeCustomerId,
+          paymentMethodId: req.body.paymentMethodId,
+          bookingId: booking._id,
+          serviceName: service.name,
+          providerName: provider.businessName || provider.practiceName
+        });
+        
+        if (!paymentResult.success) {
+          return res.status(402).json({ 
+            error: 'Payment failed',
+            message: paymentResult.error,
+            code: paymentResult.errorCode
+          });
+        }
+        
+        // Update booking with payment details
+        booking.payment = {
+          totalAmount: service.price,
+          depositAmount: paymentResult.depositAmount,
+          finalAmount: paymentResult.finalAmount,
+          depositPaymentIntentId: paymentResult.paymentIntentId,
+          depositChargedAt: paymentResult.chargedAt,
+          depositStatus: 'succeeded',
+          platformFee: paymentResult.platformFee,
+          providerPayout: service.price - paymentResult.platformFee,
+          paymentMethodId: req.body.paymentMethodId,
+          stripeCustomerId: patient.stripeCustomerId,
+          status: 'deposit_charged'
+        };
+        
+
         await booking.save();
         
         // Log event
@@ -1396,6 +1431,35 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
     }
 
     // Cancel booking
+    
+    
+    // Process cancellation with 48-hour binary logic
+    const cancellationResult = await PaymentService.processCancellation(
+      booking,
+      'patient',
+      req.body.reason || 'No reason provided'
+    );
+    
+    if (!cancellationResult.success) {
+      return res.status(500).json({ 
+        error: 'Cancellation failed',
+        message: cancellationResult.error 
+      });
+    }
+    
+    // Update payment and cancellation fields
+    booking.payment.refundAmount = cancellationResult.refunded;
+    booking.payment.refundId = cancellationResult.refundId;
+    booking.payment.refundedAt = cancellationResult.refunded > 0 ? new Date() : null;
+    
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      cancelledBy: 'patient',
+      reason: req.body.reason || 'No reason provided',
+      hoursBeforeAppointment: cancellationResult.hoursBeforeAppointment,
+      refundEligible: cancellationResult.refundEligible
+    };
+    
     booking.status = 'cancelled_patient';
     booking.cancelledAt = new Date();
     booking.notes = booking.notes || {};
@@ -1438,6 +1502,9 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
     try {
       const pushService = require('../services/pushNotificationService');
       const User = require('../models/User');
+const PaymentService = require('../services/PaymentService');
+const { calculatePlatformFee, generateFeeBreakdown } = require('../utils/platformFee');
+
       
       const user = await User.findById(booking.userId);
       const provider = await Provider.findById(booking.providerId);
@@ -1472,5 +1539,79 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
     });
   }
 });
+
+
+// ==================== COMPLETE BOOKING (80/20 Policy: Charge Final 20%) ====================
+router.post('/:id/complete', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('provider', 'stripeAccountId businessName')
+      .populate('patient', 'name email stripeCustomerId');
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    if (booking.status === 'completed') {
+      return res.status(400).json({ error: 'Booking already completed' });
+    }
+    
+    // Charge final 20% payment
+    const finalResult = await PaymentService.chargeFinalPayment(booking);
+    
+    if (!finalResult.success) {
+      booking.payment.finalStatus = 'failed';
+      booking.payment.status = 'final_payment_failed';
+      await booking.save();
+      
+      return res.status(402).json({ 
+        error: 'Final payment failed',
+        message: finalResult.error,
+        requiresRetry: finalResult.requiresRetry
+      });
+    }
+    
+    // Update booking
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    booking.payment.finalPaymentIntentId = finalResult.paymentIntentId;
+    booking.payment.finalChargedAt = finalResult.chargedAt;
+    booking.payment.finalStatus = 'succeeded';
+    booking.payment.status = 'completed';
+    await booking.save();
+    
+    // Transfer to provider
+    const transferResult = await PaymentService.transferToProvider(booking);
+    
+    if (transferResult.success) {
+      booking.payment.providerPayoutId = transferResult.transferId;
+      booking.payment.providerPayoutAt = transferResult.transferredAt;
+      await booking.save();
+    }
+    
+    res.json({ 
+      success: true,
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status
+      },
+      payment: {
+        finalCharged: finalResult.finalAmount,
+        totalCharged: booking.payment.totalAmount,
+        platformFee: booking.payment.platformFee,
+        providerReceives: booking.payment.providerPayout
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Complete booking error:', error);
+    res.status(500).json({ 
+      error: 'Failed to complete booking',
+      message: error.message 
+    });
+  }
+});
+
 
 module.exports = router;
