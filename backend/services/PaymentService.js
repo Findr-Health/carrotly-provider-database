@@ -47,7 +47,7 @@ class PaymentService {
           platformFee: platformFee.toString()
         },
         description: `Findr Health - ${serviceName} at ${providerName} - Deposit (80%)`,
-        statement_descriptor: 'FINDR*Deposit',
+        statement_descriptor_suffix: 'Deposit',
         
         // Error handling
         error_on_requires_action: false,
@@ -209,7 +209,7 @@ class PaymentService {
           adjustmentTotal: (booking.payment.adjustmentTotal || 0).toString()
         },
         description: `Findr Health - ${booking.service.name} - Final Payment (20%)`,
-        statement_descriptor: 'FINDR*Final'
+        statement_descriptor_suffix: 'Final'
       });
       
       console.log(`✅ Final payment charged: $${finalAmount}`);
