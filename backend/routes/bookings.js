@@ -391,7 +391,7 @@ router.post('/', async (req, res) => {
         if (!paymentResult.success) {
           booking.status = 'payment_failed';
           booking.payment.status = 'payment_failed';
-          await booking.save();
+          await booking.save({ validateBeforeSave: false });
           
           return res.status(402).json({ 
             error: 'Payment failed',
@@ -412,7 +412,7 @@ router.post('/', async (req, res) => {
         console.error('Payment processing error:', paymentError);
         booking.status = 'payment_failed';
         booking.payment.status = 'payment_failed';
-        await booking.save();
+        await booking.save({ validateBeforeSave: false });
         
         return res.status(500).json({
           error: 'Payment processing failed',
@@ -472,7 +472,7 @@ router.post('/', async (req, res) => {
 
     
     // Save booking
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     // Log creation event
     await logEvent(booking, 'created', {
@@ -879,7 +879,7 @@ router.post('/:id/confirm', authenticateProvider, async (req, res) => {
     booking.dateTime.confirmedStart = booking.dateTime.requestedStart;
     booking.dateTime.confirmedEnd = booking.dateTime.requestedEnd;
     
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     // Log event
     await logEvent(booking, 'confirmed', {
@@ -964,7 +964,7 @@ router.post('/:id/decline', authenticateProvider, async (req, res) => {
     booking.confirmation.declineReason = reason;
     booking.notes.cancellationReason = reason;
     
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     // Log event
     await logEvent(booking, 'declined', {
@@ -1066,7 +1066,7 @@ router.post('/:id/reschedule', authenticateProvider, async (req, res) => {
       message
     });
     
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     // Log event
     await logEvent(booking, 'reschedule_proposed', {
@@ -1152,7 +1152,7 @@ router.post('/:id/accept-reschedule', async (req, res) => {
       }
     }
     
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     // Log event
     await logEvent(booking, 'reschedule_accepted', {
@@ -1228,7 +1228,7 @@ router.post('/:id/decline-reschedule', async (req, res) => {
       booking.reschedule.history[lastHistoryIndex].accepted = false;
     }
     
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     // Log event
     await logEvent(booking, 'reschedule_declined', {
@@ -1339,7 +1339,7 @@ router.post('/:id/cancel-patient', authenticateUser, async (req, res) => {
       hoursBeforeAppointment: refundCalc.hoursUntilAppointment
     };
     
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     // TODO: Delete calendar event if exists
     // TODO: Send notification to provider
@@ -1426,7 +1426,7 @@ router.post('/:id/cancel', async (req, res) => {
     booking.status = newStatus;
     booking.notes.cancellationReason = reason;
     
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     // Log event
     await logEvent(booking, 'cancelled', {
@@ -1554,7 +1554,7 @@ router.post('/:bookingId/accept-suggested-time', async (req, res) => {
       }
     }
 
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
 
     // Emit WebSocket event if service is available
     if (global.realtimeService) {
@@ -1657,7 +1657,7 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
       }
     }
 
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
 
     // Emit WebSocket event if service is available
     if (global.realtimeService) {
@@ -1750,7 +1750,7 @@ router.post('/:id/cancel-patient-test', async (req, res) => {
       hoursBeforeAppointment: refundCalc.hoursUntilAppointment
     };
     
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
     
     res.json({
       success: true,
