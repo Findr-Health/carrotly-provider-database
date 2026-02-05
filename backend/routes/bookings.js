@@ -275,20 +275,20 @@ router.post('/', async (req, res) => {
         try {
           isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30, teamMemberId);
           bookingType = isAvailable ? 'instant' : 'request';
-          console.log(`📅 Team member ${selectedTeamMember.name} calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
+          console.log(`📅 Team member ${selectedTeamMember.name} calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`));
         } catch (error) {
           console.error('Calendar availability check failed:', error);
           bookingType = 'request'; // Fallback to request on error
         }
       } else {
-        console.log(`📋 Team member ${selectedTeamMember?.name || teamMemberName || 'unknown'} has no calendar - request booking`);
+        console.log(`📋 Team member ${selectedTeamMember?.name || teamMemberName || 'unknown'} has no calendar - request booking`));
       }
     } else if (provider.calendarConnected) {
       // Fallback to provider-level calendar (legacy)
       try {
         isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30);
         bookingType = isAvailable ? 'instant' : 'request';
-        console.log(`📅 Provider-level calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
+        console.log(`📅 Provider-level calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`));
       } catch (error) {
         console.error('Calendar availability check failed:', error);
         bookingType = 'request'; // Fallback to request on error
@@ -375,6 +375,7 @@ router.post('/', async (req, res) => {
     }
     
     // ==================== CHARGE 80% DEPOSIT ====================
+    try {
     if (paymentMethodId && servicePrice > 0) {
       const paymentResult = await PaymentService.chargeDeposit({
         totalAmount: servicePrice,
@@ -408,6 +409,17 @@ router.post('/', async (req, res) => {
       booking.payment.status = 'deposit_charged';
       
       console.log(`✅ Deposit charged: ${paymentResult.depositAmount} (${booking.payment.status})`);
+    } catch (paymentError) {
+      console.error('Payment processing error:', paymentError);
+      booking.status = 'payment_failed';
+      booking.payment.status = 'payment_failed';
+      await booking.save();
+      
+      return res.status(500).json({
+        error: 'Payment processing failed',
+        message: paymentError.message
+      });
+    }
     }
     
     // Set final status
@@ -450,7 +462,7 @@ router.post('/', async (req, res) => {
         );
         
         if (calendarEvent) {
-          console.log(`✅ Calendar event created: ${calendarEvent.id || 'success'}`);
+          console.log(`✅ Calendar event created: ${calendarEvent.id || 'success'}`));
         }
         
       } catch (calendarError) {
@@ -1600,7 +1612,7 @@ router.post('/:bookingId/accept-suggested-time', async (req, res) => {
       }
     }
 
-    console.log(`✅ Booking ${bookingId} confirmed - suggested time accepted`);
+    console.log(`✅ Booking ${bookingId} confirmed - suggested time accepted`));
 
     // Send push notification to user
     try {
@@ -1731,7 +1743,7 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
       }
     }
 
-    console.log(`❌ Booking ${bookingId} cancelled - suggested times declined`);
+    console.log(`❌ Booking ${bookingId} cancelled - suggested times declined`));
 
     // Send push notification to user
     try {
