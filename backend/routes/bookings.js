@@ -374,95 +374,40 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Process payment
-    if (stripe && paymentMethodId && servicePrice > 0) {
-      try {
-        const paymentIntentParams = {
-          amount: servicePrice,
-          currency: 'usd',
-          customer: patient.stripeCustomerId,
-          payment_method: paymentMethodId,
-          confirm: true,
-          automatic_payment_methods: {
-            enabled: true,
-            allow_redirects: 'never'
-          },
-          metadata: {
-            bookingId: booking._id.toString(),
-            bookingNumber: booking.bookingNumber,
-            providerId: providerId,
-            patientId: patientId
-          }
-        };
-        
-        // For request bookings, use manual capture (hold)
-        if (bookingType === 'request') {
-          paymentIntentParams.capture_method = 'manual';
-        }
-        
-        const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
-        
-        booking.payment.paymentIntentId = paymentIntent.id;
-        booking.payment.status = bookingType === 'request' ? 'held' : 'captured';
-        
-        if (bookingType === 'request') {
-          booking.payment.hold = {
-            createdAt: new Date(),
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-          };
-        }
-        
-      } catch (paymentError) {
-        console.error('Payment error:', paymentError);
+    // ==================== CHARGE 80% DEPOSIT ====================
+    if (paymentMethodId && servicePrice > 0) {
+      const paymentResult = await PaymentService.chargeDeposit({
+        totalAmount: servicePrice,
+        customerId: patient.stripeCustomerId,
+        paymentMethodId: paymentMethodId,
+        bookingId: booking._id,
+        serviceName: serviceName,
+        providerName: provider.practiceName || provider.businessName
+      });
+      
+      if (!paymentResult.success) {
         booking.status = 'payment_failed';
-        booking.payment.status = 'failed';
-
-        // ==================== CHARGE 80% DEPOSIT ====================
-        const paymentResult = await PaymentService.chargeDeposit({
-          totalAmount: service.price,
-          customerId: patient.stripeCustomerId,
-          paymentMethodId: req.body.paymentMethodId,
-          bookingId: booking._id,
-          serviceName: service.name,
-          providerName: provider.businessName || provider.practiceName
-        });
-        
-        if (!paymentResult.success) {
-          return res.status(402).json({ 
-            error: 'Payment failed',
-            message: paymentResult.error,
-            code: paymentResult.errorCode
-          });
-        }
-        
-        // Update booking with payment details
-        booking.payment = {
-          totalAmount: service.price,
-          depositAmount: paymentResult.depositAmount,
-          finalAmount: paymentResult.finalAmount,
-          depositPaymentIntentId: paymentResult.paymentIntentId,
-          depositChargedAt: paymentResult.chargedAt,
-          depositStatus: 'succeeded',
-          platformFee: paymentResult.platformFee,
-          providerPayout: service.price - paymentResult.platformFee,
-          paymentMethodId: req.body.paymentMethodId,
-          stripeCustomerId: patient.stripeCustomerId,
-          status: 'deposit_charged'
-        };
-        
-
+        booking.payment.status = 'payment_failed';
         await booking.save();
         
-        // Log event
-        await logEvent(booking, 'payment_failed', { 
-          error: paymentError.message 
-        });
-        
-        return res.status(400).json({
+        return res.status(402).json({ 
           error: 'Payment failed',
-          message: paymentError.message
+          message: paymentResult.error,
+          code: paymentResult.errorCode
         });
       }
+      
+      // Update payment fields (don't overwrite entire object)
+      booking.payment.depositPaymentIntentId = paymentResult.paymentIntentId;
+      booking.payment.depositChargedAt = paymentResult.chargedAt;
+      booking.payment.depositStatus = 'succeeded';
+      booking.payment.platformFee = paymentResult.platformFee;
+      booking.payment.providerPayout = servicePrice - paymentResult.platformFee;
+      booking.payment.paymentMethodId = paymentMethodId;
+      booking.payment.stripeCustomerId = patient.stripeCustomerId;
+      booking.payment.status = 'deposit_charged';
+      
+      console.log(`✅ Deposit charged: ${paymentResult.depositAmount} (${booking.payment.status})`);
     }
     
     // Set final status
@@ -903,10 +848,10 @@ router.post('/:id/confirm', authenticateProvider, async (req, res) => {
     const previousStatus = booking.status;
     
     // Capture payment if held
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
       try {
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'captured';
+        booking.payment.status = 'deposit_charged';
         booking.payment.hold.capturedAt = new Date();
       } catch (captureError) {
         console.error('Payment capture error:', captureError);
@@ -1029,10 +974,10 @@ router.post('/:id/decline', authenticateProvider, async (req, res) => {
     const previousStatus = booking.status;
     
     // Cancel payment hold if exists
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
       try {
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'cancelled';
+        booking.payment.status = 'refunded';
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Provider declined';
       } catch (cancelError) {
@@ -1222,10 +1167,10 @@ router.post('/:id/accept-reschedule', async (req, res) => {
     booking.reschedule.current = null;
     
     // Capture payment if still held
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
       try {
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'captured';
+        booking.payment.status = 'deposit_charged';
         booking.payment.hold.capturedAt = new Date();
       } catch (captureError) {
         console.error('Payment capture error:', captureError);
@@ -1290,10 +1235,10 @@ router.post('/:id/decline-reschedule', async (req, res) => {
     const previousStatus = booking.status;
     
     // Cancel payment hold
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
       try {
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'cancelled';
+        booking.payment.status = 'refunded';
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Patient declined reschedule';
       } catch (cancelError) {
@@ -1489,17 +1434,17 @@ router.post('/:id/cancel', async (req, res) => {
     
     // Handle payment
     if (stripe && booking.payment.paymentIntentId) {
-      if (booking.payment.status === 'held') {
+      if (booking.payment.status === 'pending') {
         // Release hold
         try {
           await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-          booking.payment.status = 'cancelled';
+          booking.payment.status = 'refunded';
           booking.payment.hold.cancelledAt = new Date();
           booking.payment.hold.cancelReason = reason || 'Booking cancelled';
         } catch (e) {
           console.error('Failed to cancel payment hold:', e);
         }
-      } else if (booking.payment.status === 'captured') {
+      } else if (booking.payment.status === 'deposit_charged') {
         // TODO: Handle refund based on cancellation policy
         // For now, just mark as needing refund
         console.log('TODO: Process refund for captured payment');
@@ -1626,11 +1571,11 @@ router.post('/:bookingId/accept-suggested-time', async (req, res) => {
     booking.isRequest = false;
     
     // Capture payment if it was on hold
-    if (booking.payment?.paymentIntentId && booking.payment?.status === 'held') {
+    if (booking.payment?.paymentIntentId && booking.payment?.status === 'pending') {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'captured';
+        booking.payment.status = 'deposit_charged';
         booking.payment.capturedAt = new Date();
       } catch (stripeError) {
         console.error('Payment capture error:', stripeError);
@@ -1756,11 +1701,11 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
     booking.notes.cancellationReason = 'Patient declined suggested times';
 
     // Release payment hold
-    if (booking.payment?.paymentIntentId && booking.payment?.status === 'held') {
+    if (booking.payment?.paymentIntentId && booking.payment?.status === 'pending') {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'cancelled';
+        booking.payment.status = 'refunded';
         booking.payment.hold = booking.payment.hold || {};
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Declined suggested times';

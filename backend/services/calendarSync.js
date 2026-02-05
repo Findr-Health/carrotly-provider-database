@@ -278,18 +278,22 @@ class CalendarSyncService {
       }
 
       const calendar = teamMember.calendar;
-      const appointmentDate = new Date(booking.appointmentDate);
-      const [hours, minutes] = booking.appointmentTime.split(':');
-      appointmentDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      // Use dateTime.confirmedStart (for instant) or requestedStart (for requests)
+      const appointmentStart = booking.dateTime.confirmedStart || booking.dateTime.requestedStart;
+      const appointmentEnd = booking.dateTime.confirmedEnd || booking.dateTime.requestedEnd;
+      
+      if (!appointmentStart || !appointmentEnd) {
+        console.log('⚠️  No appointment time set, skipping event creation');
+        return null;
+      }
 
-      const appointmentEnd = new Date(appointmentDate.getTime() + (booking.service.duration * 60000));
 
       // HIPAA COMPLIANT: Generic event title
       const event = {
         summary: 'Healthcare Appointment',
-        description: `Findr Health Booking #${booking.confirmationCode}\nService: ${booking.service.name}`,
+        description: `Findr Health Booking #${booking.bookingNumber}\nService: ${booking.service.name}`,
         start: {
-          dateTime: appointmentDate.toISOString(),
+          dateTime: appointmentStart.toISOString(),
           timeZone: provider.timezone || 'America/Denver'
         },
         end: {
