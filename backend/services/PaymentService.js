@@ -35,6 +35,10 @@ class PaymentService {
         payment_method: paymentMethodId,
         confirm: true,
         capture_method: 'automatic', // Charge immediately
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'never'
+        },
         metadata: {
           bookingId: bookingId.toString(),
           paymentType: 'deposit',
@@ -189,6 +193,10 @@ class PaymentService {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(finalAmount * 100),
         currency: 'usd',
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'never'
+        },
         customer: booking.patient.stripeCustomerId,
         payment_method: booking.payment.paymentMethodId,
         confirm: true,
