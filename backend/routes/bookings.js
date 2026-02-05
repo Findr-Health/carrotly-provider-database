@@ -335,8 +335,12 @@ router.post('/', async (req, res) => {
       
       payment: {
         mode: paymentMode,
-        status: 'pending',
-        originalAmount: servicePrice || 0
+        totalAmount: servicePrice || 0,
+        depositAmount: Math.round((servicePrice || 0) * 0.80 * 100) / 100,
+        finalAmount: Math.round((servicePrice || 0) * 0.20 * 100) / 100,
+        platformFee: Math.round((servicePrice || 0) * 0.029 * 100) / 100, // 2.9% Stripe fee
+        depositStatus: 'pending',
+        finalStatus: 'pending'
       },
       
       location: {
