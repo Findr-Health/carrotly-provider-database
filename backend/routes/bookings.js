@@ -336,9 +336,9 @@ router.post('/', async (req, res) => {
       payment: {
         mode: paymentMode,
         totalAmount: servicePrice || 0,
-        depositAmount: Math.round((servicePrice || 0) * 0.80 * 100) / 100,
-        finalAmount: Math.round((servicePrice || 0) * 0.20 * 100) / 100,
-        platformFee: Math.round((servicePrice || 0) * 0.029 * 100) / 100,
+        depositAmount: (servicePrice || 0) * 0.80,
+        finalAmount: (servicePrice || 0) * 0.20,
+        platformFee: (servicePrice || 0) * 0.029,
         depositStatus: 'pending',
         finalStatus: 'pending',
         status: 'pending'
@@ -375,57 +375,47 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Process payment
-    if (stripe && paymentMethodId && servicePrice > 0) {
+    // ==================== CHARGE 80% DEPOSIT ====================
+    if (paymentMethodId && servicePrice > 0) {
       try {
-        const paymentIntentParams = {
-          amount: servicePrice,
-          currency: 'usd',
-          customer: patient.stripeCustomerId,
-          payment_method: paymentMethodId,
-          confirm: true,
-          automatic_payment_methods: {
-            enabled: true,
-            allow_redirects: 'never'
-          },
-          metadata: {
-            bookingId: booking._id.toString(),
-            bookingNumber: booking.bookingNumber,
-            providerId: providerId,
-            patientId: patientId
-          }
-        };
+        const PaymentService = require('../services/PaymentService');
+        const paymentResult = await PaymentService.chargeDeposit({
+          totalAmount: servicePrice,
+          customerId: patient.stripeCustomerId,
+          paymentMethodId: paymentMethodId,
+          bookingId: booking._id,
+          serviceName: serviceName,
+          providerName: provider.practiceName || provider.businessName
+        });
         
-        // For request bookings, use manual capture (hold)
-        if (bookingType === 'request') {
-          paymentIntentParams.capture_method = 'manual';
+        if (!paymentResult.success) {
+          booking.status = 'payment_failed';
+          booking.payment.status = 'payment_failed';
+          await booking.save();
+          
+          return res.status(402).json({ 
+            error: 'Payment failed',
+            message: paymentResult.error,
+            code: paymentResult.errorCode
+          });
         }
         
-        const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+        // Update payment fields (don't overwrite entire object)
+        booking.payment.depositPaymentIntentId = paymentResult.paymentIntentId;
+        booking.payment.depositChargedAt = paymentResult.chargedAt;
+        booking.payment.depositStatus = 'succeeded';
+        booking.payment.status = 'deposit_charged';
         
-        booking.payment.paymentIntentId = paymentIntent.id;
-        booking.payment.status = bookingType === 'request' ? 'held' : 'captured';
-        
-        if (bookingType === 'request') {
-          booking.payment.hold = {
-            createdAt: new Date(),
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-          };
-        }
+        console.log(`✅ Deposit charged: ${paymentResult.depositAmount} (${booking.payment.status})`);
         
       } catch (paymentError) {
-        console.error('Payment error:', paymentError);
+        console.error('Payment processing error:', paymentError);
         booking.status = 'payment_failed';
         booking.payment.status = 'payment_failed';
         await booking.save();
         
-        // Log event
-        await logEvent(booking, 'payment_failed', { 
-          error: paymentError.message 
-        });
-        
-        return res.status(400).json({
-          error: 'Payment failed',
+        return res.status(500).json({
+          error: 'Payment processing failed',
           message: paymentError.message
         });
       }
