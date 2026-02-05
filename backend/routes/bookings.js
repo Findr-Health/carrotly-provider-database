@@ -23,7 +23,6 @@ const calendarSync = require('../services/calendarSync');
 
 
 const { authenticateToken } = require('../middleware/auth');
-const NotificationService = require('../services/NotificationService');
 const express = require('express');
 const { fromZonedTime } = require('date-fns-tz');
 const router = express.Router();
@@ -275,20 +274,20 @@ router.post('/', async (req, res) => {
         try {
           isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30, teamMemberId);
           bookingType = isAvailable ? 'instant' : 'request';
-          console.log(`📅 Team member ${selectedTeamMember.name} calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`));
+          console.log(`📅 Team member ${selectedTeamMember.name} calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
         } catch (error) {
           console.error('Calendar availability check failed:', error);
           bookingType = 'request'; // Fallback to request on error
         }
       } else {
-        console.log(`📋 Team member ${selectedTeamMember?.name || teamMemberName || 'unknown'} has no calendar - request booking`));
+        console.log(`📋 Team member ${selectedTeamMember?.name || teamMemberName || 'unknown'} has no calendar - request booking`);
       }
     } else if (provider.calendarConnected) {
       // Fallback to provider-level calendar (legacy)
       try {
         isAvailable = await checkTimeSlotAvailability(provider, requestedStart, serviceDuration || 30);
         bookingType = isAvailable ? 'instant' : 'request';
-        console.log(`📅 Provider-level calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`));
+        console.log(`📅 Provider-level calendar: ${isAvailable ? 'AVAILABLE' : 'BUSY'} → ${bookingType} booking`);
       } catch (error) {
         console.error('Calendar availability check failed:', error);
         bookingType = 'request'; // Fallback to request on error
@@ -335,12 +334,8 @@ router.post('/', async (req, res) => {
       
       payment: {
         mode: paymentMode,
-        totalAmount: servicePrice || 0,
-        depositAmount: Math.round((servicePrice || 0) * 0.80 * 100) / 100,
-        finalAmount: Math.round((servicePrice || 0) * 0.20 * 100) / 100,
-        platformFee: Math.round((servicePrice || 0) * 0.029 * 100) / 100, // 2.9% Stripe fee
-        depositStatus: 'pending',
-        finalStatus: 'pending'
+        status: 'pending',
+        originalAmount: servicePrice || 0
       },
       
       location: {
@@ -374,52 +369,60 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // ==================== CHARGE 80% DEPOSIT ====================
-    try {
-    if (paymentMethodId && servicePrice > 0) {
-      const paymentResult = await PaymentService.chargeDeposit({
-        totalAmount: servicePrice,
-        customerId: patient.stripeCustomerId,
-        paymentMethodId: paymentMethodId,
-        bookingId: booking._id,
-        serviceName: serviceName,
-        providerName: provider.practiceName || provider.businessName
-      });
-      
-      if (!paymentResult.success) {
+    // Process payment
+    if (stripe && paymentMethodId && servicePrice > 0) {
+      try {
+        const paymentIntentParams = {
+          amount: servicePrice,
+          currency: 'usd',
+          customer: patient.stripeCustomerId,
+          payment_method: paymentMethodId,
+          confirm: true,
+          automatic_payment_methods: {
+            enabled: true,
+            allow_redirects: 'never'
+          },
+          metadata: {
+            bookingId: booking._id.toString(),
+            bookingNumber: booking.bookingNumber,
+            providerId: providerId,
+            patientId: patientId
+          }
+        };
+        
+        // For request bookings, use manual capture (hold)
+        if (bookingType === 'request') {
+          paymentIntentParams.capture_method = 'manual';
+        }
+        
+        const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+        
+        booking.payment.paymentIntentId = paymentIntent.id;
+        booking.payment.status = bookingType === 'request' ? 'held' : 'captured';
+        
+        if (bookingType === 'request') {
+          booking.payment.hold = {
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+          };
+        }
+        
+      } catch (paymentError) {
+        console.error('Payment error:', paymentError);
         booking.status = 'payment_failed';
-        booking.payment.status = 'payment_failed';
+        booking.payment.status = 'failed';
         await booking.save();
         
-        return res.status(402).json({ 
+        // Log event
+        await logEvent(booking, 'payment_failed', { 
+          error: paymentError.message 
+        });
+        
+        return res.status(400).json({
           error: 'Payment failed',
-          message: paymentResult.error,
-          code: paymentResult.errorCode
+          message: paymentError.message
         });
       }
-      
-      // Update payment fields (don't overwrite entire object)
-      booking.payment.depositPaymentIntentId = paymentResult.paymentIntentId;
-      booking.payment.depositChargedAt = paymentResult.chargedAt;
-      booking.payment.depositStatus = 'succeeded';
-      booking.payment.platformFee = paymentResult.platformFee;
-      booking.payment.providerPayout = servicePrice - paymentResult.platformFee;
-      booking.payment.paymentMethodId = paymentMethodId;
-      booking.payment.stripeCustomerId = patient.stripeCustomerId;
-      booking.payment.status = 'deposit_charged';
-      
-      console.log(`✅ Deposit charged: ${paymentResult.depositAmount} (${booking.payment.status})`);
-    } catch (paymentError) {
-      console.error('Payment processing error:', paymentError);
-      booking.status = 'payment_failed';
-      booking.payment.status = 'payment_failed';
-      await booking.save();
-      
-      return res.status(500).json({
-        error: 'Payment processing failed',
-        message: paymentError.message
-      });
-    }
     }
     
     // Set final status
@@ -462,7 +465,7 @@ router.post('/', async (req, res) => {
         );
         
         if (calendarEvent) {
-          console.log(`✅ Calendar event created: ${calendarEvent.id || 'success'}`));
+          console.log(`✅ Calendar event created: ${calendarEvent.id || 'success'}`);
         }
         
       } catch (calendarError) {
@@ -484,103 +487,9 @@ router.post('/', async (req, res) => {
       userId: patientId
     });
     
-
-    // Send notifications based on booking type
-    try {
-      if (bookingType === 'instant') {
-        // Instant booking - send confirmation to patient
-        await NotificationService.send({
-          recipient: {
-            id: patient._id,
-            type: 'user',
-            email: patient.email,
-            name: patient.name,
-            fcmToken: patient.fcmToken
-          },
-          template: 'booking_confirmed_patient',
-          data: {
-            patientName: patient.name,
-            providerName: provider.practiceName,
-            serviceName: booking.service.name,
-            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
-              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
-            }),
-            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
-              hour: 'numeric', minute: '2-digit' 
-            }),
-            confirmationCode: booking.bookingNumber,
-            providerAddress: provider.location?.formattedAddress,
-            bookingId: booking._id.toString()
-          },
-          channels: ['email', 'push']
-        });
-        
-        console.log('📧 Sent instant booking confirmation to patient');
-        
-      } else {
-        // Request booking - notify both parties
-        
-        // 1. Confirm request received to patient
-        await NotificationService.send({
-          recipient: {
-            id: patient._id,
-            type: 'user',
-            email: patient.email,
-            name: patient.name,
-            fcmToken: patient.fcmToken
-          },
-          template: 'booking_request_sent',
-          data: {
-            patientName: patient.name,
-            providerName: provider.practiceName,
-            serviceName: booking.service.name,
-            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
-              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
-            }),
-            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
-              hour: 'numeric', minute: '2-digit' 
-            }),
-            amount: booking.service.price,
-            bookingId: booking._id.toString()
-          },
-          channels: ['email', 'push']
-        });
-        
-        // 2. Notify provider of new request
-        await NotificationService.send({
-          recipient: {
-            id: provider._id,
-            type: 'provider',
-            email: provider.email,
-            name: provider.practiceName,
-            fcmToken: provider.fcmToken
-          },
-          template: 'new_booking_request',
-          data: {
-            providerName: provider.practiceName,
-            patientName: patient.name,
-            serviceName: booking.service.name,
-            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
-              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
-            }),
-            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
-              hour: 'numeric', minute: '2-digit' 
-            }),
-            amount: booking.service.price,
-            expiresAt: booking.confirmation.expiresAt.toLocaleDateString('en-US', { 
-              weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
-            }),
-            bookingId: booking._id.toString()
-          },
-          channels: ['email', 'push']
-        });
-        
-        console.log('📧 Sent booking request notifications to patient and provider');
-      }
-    } catch (notificationError) {
-      console.error('Failed to send booking notifications:', notificationError);
-      // Don't fail the booking - notifications are non-critical
-    }
+    // TODO: Send notifications
+    // - If instant: Send confirmation to patient, notify provider
+    // - If request: Send request notification to provider
     
     res.status(201).json({
       success: true,
@@ -860,10 +769,10 @@ router.post('/:id/confirm', authenticateProvider, async (req, res) => {
     const previousStatus = booking.status;
     
     // Capture payment if held
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
       try {
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'deposit_charged';
+        booking.payment.status = 'captured';
         booking.payment.hold.capturedAt = new Date();
       } catch (captureError) {
         console.error('Payment capture error:', captureError);
@@ -898,47 +807,8 @@ router.post('/:id/confirm', authenticateProvider, async (req, res) => {
       $set: { 'bookingStats.lastBookingAt': new Date() }
     });
     
-
-    // Send confirmation notification to patient
-    try {
-      const populatedBooking = await Booking.findById(booking._id)
-        .populate('patient')
-        .populate('provider');
-      
-      if (populatedBooking) {
-        await NotificationService.send({
-          recipient: {
-            id: populatedBooking.patient._id,
-            type: 'user',
-            email: populatedBooking.patient.email,
-            name: populatedBooking.patient.name,
-            fcmToken: populatedBooking.patient.fcmToken
-          },
-          template: 'booking_confirmed_patient',
-          data: {
-            patientName: populatedBooking.patient.name,
-            providerName: populatedBooking.provider.practiceName,
-            serviceName: populatedBooking.service.name,
-            appointmentDate: populatedBooking.dateTime.confirmedStart.toLocaleDateString('en-US', { 
-              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
-            }),
-            appointmentTime: populatedBooking.dateTime.confirmedStart.toLocaleTimeString('en-US', { 
-              hour: 'numeric', minute: '2-digit' 
-            }),
-            confirmationCode: populatedBooking.bookingNumber,
-            providerAddress: populatedBooking.provider.location?.formattedAddress,
-            bookingId: populatedBooking._id.toString()
-          },
-          channels: ['email', 'push']
-        });
-        
-        console.log('�� Sent provider confirmation notification to patient');
-      }
-    } catch (notificationError) {
-      console.error('Failed to send confirmation notification:', notificationError);
-      // Don't fail the confirmation - notifications are non-critical
-    }
-    
+    // TODO: Send confirmation notification to patient
+    // TODO: Create calendar event if provider has calendar connected
     
     res.json({
       success: true,
@@ -986,10 +856,10 @@ router.post('/:id/decline', authenticateProvider, async (req, res) => {
     const previousStatus = booking.status;
     
     // Cancel payment hold if exists
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
       try {
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'refunded';
+        booking.payment.status = 'cancelled';
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Provider declined';
       } catch (cancelError) {
@@ -1179,10 +1049,10 @@ router.post('/:id/accept-reschedule', async (req, res) => {
     booking.reschedule.current = null;
     
     // Capture payment if still held
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
       try {
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'deposit_charged';
+        booking.payment.status = 'captured';
         booking.payment.hold.capturedAt = new Date();
       } catch (captureError) {
         console.error('Payment capture error:', captureError);
@@ -1247,10 +1117,10 @@ router.post('/:id/decline-reschedule', async (req, res) => {
     const previousStatus = booking.status;
     
     // Cancel payment hold
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
       try {
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'refunded';
+        booking.payment.status = 'cancelled';
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Patient declined reschedule';
       } catch (cancelError) {
@@ -1446,17 +1316,17 @@ router.post('/:id/cancel', async (req, res) => {
     
     // Handle payment
     if (stripe && booking.payment.paymentIntentId) {
-      if (booking.payment.status === 'pending') {
+      if (booking.payment.status === 'held') {
         // Release hold
         try {
           await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-          booking.payment.status = 'refunded';
+          booking.payment.status = 'cancelled';
           booking.payment.hold.cancelledAt = new Date();
           booking.payment.hold.cancelReason = reason || 'Booking cancelled';
         } catch (e) {
           console.error('Failed to cancel payment hold:', e);
         }
-      } else if (booking.payment.status === 'deposit_charged') {
+      } else if (booking.payment.status === 'captured') {
         // TODO: Handle refund based on cancellation policy
         // For now, just mark as needing refund
         console.log('TODO: Process refund for captured payment');
@@ -1583,11 +1453,11 @@ router.post('/:bookingId/accept-suggested-time', async (req, res) => {
     booking.isRequest = false;
     
     // Capture payment if it was on hold
-    if (booking.payment?.paymentIntentId && booking.payment?.status === 'pending') {
+    if (booking.payment?.paymentIntentId && booking.payment?.status === 'held') {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'deposit_charged';
+        booking.payment.status = 'captured';
         booking.payment.capturedAt = new Date();
       } catch (stripeError) {
         console.error('Payment capture error:', stripeError);
@@ -1612,7 +1482,7 @@ router.post('/:bookingId/accept-suggested-time', async (req, res) => {
       }
     }
 
-    console.log(`✅ Booking ${bookingId} confirmed - suggested time accepted`));
+    console.log(`✅ Booking ${bookingId} confirmed - suggested time accepted`);
 
     // Send push notification to user
     try {
@@ -1678,46 +1548,17 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
     }
 
     // Cancel booking
-    
-    
-    // Process cancellation with 48-hour binary logic
-    const cancellationResult = await PaymentService.processCancellation(
-      booking,
-      'patient',
-      req.body.reason || 'No reason provided'
-    );
-    
-    if (!cancellationResult.success) {
-      return res.status(500).json({ 
-        error: 'Cancellation failed',
-        message: cancellationResult.error 
-      });
-    }
-    
-    // Update payment and cancellation fields
-    booking.payment.refundAmount = cancellationResult.refunded;
-    booking.payment.refundId = cancellationResult.refundId;
-    booking.payment.refundedAt = cancellationResult.refunded > 0 ? new Date() : null;
-    
-    booking.cancellation = {
-      cancelledAt: new Date(),
-      cancelledBy: 'patient',
-      reason: req.body.reason || 'No reason provided',
-      hoursBeforeAppointment: cancellationResult.hoursBeforeAppointment,
-      refundEligible: cancellationResult.refundEligible
-    };
-    
     booking.status = 'cancelled_patient';
     booking.cancelledAt = new Date();
     booking.notes = booking.notes || {};
     booking.notes.cancellationReason = 'Patient declined suggested times';
 
     // Release payment hold
-    if (booking.payment?.paymentIntentId && booking.payment?.status === 'pending') {
+    if (booking.payment?.paymentIntentId && booking.payment?.status === 'held') {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'refunded';
+        booking.payment.status = 'cancelled';
         booking.payment.hold = booking.payment.hold || {};
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Declined suggested times';
@@ -1743,15 +1584,12 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
       }
     }
 
-    console.log(`❌ Booking ${bookingId} cancelled - suggested times declined`));
+    console.log(`❌ Booking ${bookingId} cancelled - suggested times declined`);
 
     // Send push notification to user
     try {
       const pushService = require('../services/pushNotificationService');
       const User = require('../models/User');
-const PaymentService = require('../services/PaymentService');
-const { calculatePlatformFee, generateFeeBreakdown } = require('../utils/platformFee');
-
       
       const user = await User.findById(booking.userId);
       const provider = await Provider.findById(booking.providerId);
@@ -1786,80 +1624,6 @@ const { calculatePlatformFee, generateFeeBreakdown } = require('../utils/platfor
     });
   }
 });
-
-
-// ==================== COMPLETE BOOKING (80/20 Policy: Charge Final 20%) ====================
-router.post('/:id/complete', async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('provider', 'stripeAccountId businessName')
-      .populate('patient', 'name email stripeCustomerId');
-    
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-    
-    if (booking.status === 'completed') {
-      return res.status(400).json({ error: 'Booking already completed' });
-    }
-    
-    // Charge final 20% payment
-    const finalResult = await PaymentService.chargeFinalPayment(booking);
-    
-    if (!finalResult.success) {
-      booking.payment.finalStatus = 'failed';
-      booking.payment.status = 'final_payment_failed';
-      await booking.save();
-      
-      return res.status(402).json({ 
-        error: 'Final payment failed',
-        message: finalResult.error,
-        requiresRetry: finalResult.requiresRetry
-      });
-    }
-    
-    // Update booking
-    booking.status = 'completed';
-    booking.completedAt = new Date();
-    booking.payment.finalPaymentIntentId = finalResult.paymentIntentId;
-    booking.payment.finalChargedAt = finalResult.chargedAt;
-    booking.payment.finalStatus = 'succeeded';
-    booking.payment.status = 'completed';
-    await booking.save();
-    
-    // Transfer to provider
-    const transferResult = await PaymentService.transferToProvider(booking);
-    
-    if (transferResult.success) {
-      booking.payment.providerPayoutId = transferResult.transferId;
-      booking.payment.providerPayoutAt = transferResult.transferredAt;
-      await booking.save();
-    }
-    
-    res.json({ 
-      success: true,
-      booking: {
-        _id: booking._id,
-        bookingNumber: booking.bookingNumber,
-        status: booking.status
-      },
-      payment: {
-        finalCharged: finalResult.finalAmount,
-        totalCharged: booking.payment.totalAmount,
-        platformFee: booking.payment.platformFee,
-        providerReceives: booking.payment.providerPayout
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Complete booking error:', error);
-    res.status(500).json({ 
-      error: 'Failed to complete booking',
-      message: error.message 
-    });
-  }
-});
-
 
 module.exports = router;
 
