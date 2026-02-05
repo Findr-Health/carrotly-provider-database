@@ -23,6 +23,7 @@ const calendarSync = require('../services/calendarSync');
 
 
 const { authenticateToken } = require('../middleware/auth');
+const NotificationService = require('../services/NotificationService');
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
@@ -504,9 +505,103 @@ router.post('/', async (req, res) => {
       userId: patientId
     });
     
-    // TODO: Send notifications
-    // - If instant: Send confirmation to patient, notify provider
-    // - If request: Send request notification to provider
+
+    // Send notifications based on booking type
+    try {
+      if (bookingType === 'instant') {
+        // Instant booking - send confirmation to patient
+        await NotificationService.send({
+          recipient: {
+            id: patient._id,
+            type: 'user',
+            email: patient.email,
+            name: patient.name,
+            fcmToken: patient.fcmToken
+          },
+          template: 'booking_confirmed_patient',
+          data: {
+            patientName: patient.name,
+            providerName: provider.practiceName,
+            serviceName: booking.service.name,
+            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+            }),
+            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
+              hour: 'numeric', minute: '2-digit' 
+            }),
+            confirmationCode: booking.bookingNumber,
+            providerAddress: provider.location?.formattedAddress,
+            bookingId: booking._id.toString()
+          },
+          channels: ['email', 'push']
+        });
+        
+        console.log('📧 Sent instant booking confirmation to patient');
+        
+      } else {
+        // Request booking - notify both parties
+        
+        // 1. Confirm request received to patient
+        await NotificationService.send({
+          recipient: {
+            id: patient._id,
+            type: 'user',
+            email: patient.email,
+            name: patient.name,
+            fcmToken: patient.fcmToken
+          },
+          template: 'booking_request_sent',
+          data: {
+            patientName: patient.name,
+            providerName: provider.practiceName,
+            serviceName: booking.service.name,
+            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+            }),
+            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
+              hour: 'numeric', minute: '2-digit' 
+            }),
+            amount: booking.service.price,
+            bookingId: booking._id.toString()
+          },
+          channels: ['email', 'push']
+        });
+        
+        // 2. Notify provider of new request
+        await NotificationService.send({
+          recipient: {
+            id: provider._id,
+            type: 'provider',
+            email: provider.email,
+            name: provider.practiceName,
+            fcmToken: provider.fcmToken
+          },
+          template: 'new_booking_request',
+          data: {
+            providerName: provider.practiceName,
+            patientName: patient.name,
+            serviceName: booking.service.name,
+            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+            }),
+            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
+              hour: 'numeric', minute: '2-digit' 
+            }),
+            amount: booking.service.price,
+            expiresAt: booking.confirmation.expiresAt.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
+            }),
+            bookingId: booking._id.toString()
+          },
+          channels: ['email', 'push']
+        });
+        
+        console.log('📧 Sent booking request notifications to patient and provider');
+      }
+    } catch (notificationError) {
+      console.error('Failed to send booking notifications:', notificationError);
+      // Don't fail the booking - notifications are non-critical
+    }
     
     res.status(201).json({
       success: true,
@@ -810,8 +905,47 @@ router.post('/:id/confirm', authenticateProvider, async (req, res) => {
       $set: { 'bookingStats.lastBookingAt': new Date() }
     });
     
-    // TODO: Send confirmation notification to patient
-    // TODO: Create calendar event if provider has calendar connected
+
+    // Send confirmation notification to patient
+    try {
+      const populatedBooking = await Booking.findById(booking._id)
+        .populate('patient')
+        .populate('provider');
+      
+      if (populatedBooking) {
+        await NotificationService.send({
+          recipient: {
+            id: populatedBooking.patient._id,
+            type: 'user',
+            email: populatedBooking.patient.email,
+            name: populatedBooking.patient.name,
+            fcmToken: populatedBooking.patient.fcmToken
+          },
+          template: 'booking_confirmed_patient',
+          data: {
+            patientName: populatedBooking.patient.name,
+            providerName: populatedBooking.provider.practiceName,
+            serviceName: populatedBooking.service.name,
+            appointmentDate: populatedBooking.dateTime.confirmedStart.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+            }),
+            appointmentTime: populatedBooking.dateTime.confirmedStart.toLocaleTimeString('en-US', { 
+              hour: 'numeric', minute: '2-digit' 
+            }),
+            confirmationCode: populatedBooking.bookingNumber,
+            providerAddress: populatedBooking.provider.location?.formattedAddress,
+            bookingId: populatedBooking._id.toString()
+          },
+          channels: ['email', 'push']
+        });
+        
+        console.log('�� Sent provider confirmation notification to patient');
+      }
+    } catch (notificationError) {
+      console.error('Failed to send confirmation notification:', notificationError);
+      // Don't fail the confirmation - notifications are non-critical
+    }
+    
     
     res.json({
       success: true,
