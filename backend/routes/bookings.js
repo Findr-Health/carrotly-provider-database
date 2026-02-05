@@ -471,6 +471,7 @@ router.post('/', async (req, res) => {
     }
 
     
+    console.log("🔍 DEBUG: Reached after calendar block");
     // Save booking
     await booking.save({ validateBeforeSave: false });
     
