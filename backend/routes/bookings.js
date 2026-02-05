@@ -23,6 +23,7 @@ const calendarSync = require('../services/calendarSync');
 
 
 const { authenticateToken } = require('../middleware/auth');
+const NotificationService = require('../services/NotificationService');
 const express = require('express');
 const { fromZonedTime } = require('date-fns-tz');
 const router = express.Router();
@@ -334,8 +335,13 @@ router.post('/', async (req, res) => {
       
       payment: {
         mode: paymentMode,
-        status: 'pending',
-        originalAmount: servicePrice || 0
+        totalAmount: servicePrice || 0,
+        depositAmount: Math.round((servicePrice || 0) * 0.80 * 100) / 100,
+        finalAmount: Math.round((servicePrice || 0) * 0.20 * 100) / 100,
+        platformFee: Math.round((servicePrice || 0) * 0.029 * 100) / 100,
+        depositStatus: 'pending',
+        finalStatus: 'pending',
+        status: 'pending'
       },
       
       location: {
@@ -410,7 +416,7 @@ router.post('/', async (req, res) => {
       } catch (paymentError) {
         console.error('Payment error:', paymentError);
         booking.status = 'payment_failed';
-        booking.payment.status = 'failed';
+        booking.payment.status = 'payment_failed';
         await booking.save();
         
         // Log event
@@ -487,9 +493,102 @@ router.post('/', async (req, res) => {
       userId: patientId
     });
     
-    // TODO: Send notifications
-    // - If instant: Send confirmation to patient, notify provider
-    // - If request: Send request notification to provider
+    // Send notifications based on booking type
+    try {
+      if (bookingType === 'instant') {
+        // Instant booking - send confirmation to patient
+        await NotificationService.send({
+          recipient: {
+            id: patient._id,
+            type: 'user',
+            email: patient.email,
+            name: patient.name,
+            fcmToken: patient.fcmToken
+          },
+          template: 'booking_confirmed_patient',
+          data: {
+            patientName: patient.name,
+            providerName: provider.practiceName,
+            serviceName: booking.service.name,
+            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+            }),
+            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
+              hour: 'numeric', minute: '2-digit' 
+            }),
+            confirmationCode: booking.bookingNumber,
+            providerAddress: provider.location?.formattedAddress,
+            bookingId: booking._id.toString()
+          },
+          channels: ['email', 'push']
+        });
+        
+        console.log('📧 Sent instant booking confirmation to patient');
+        
+      } else {
+        // Request booking - notify both parties
+        
+        // 1. Confirm request received to patient
+        await NotificationService.send({
+          recipient: {
+            id: patient._id,
+            type: 'user',
+            email: patient.email,
+            name: patient.name,
+            fcmToken: patient.fcmToken
+          },
+          template: 'booking_request_sent',
+          data: {
+            patientName: patient.name,
+            providerName: provider.practiceName,
+            serviceName: booking.service.name,
+            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+            }),
+            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
+              hour: 'numeric', minute: '2-digit' 
+            }),
+            amount: booking.service.price,
+            bookingId: booking._id.toString()
+          },
+          channels: ['email', 'push']
+        });
+        
+        // 2. Notify provider of new request
+        await NotificationService.send({
+          recipient: {
+            id: provider._id,
+            type: 'provider',
+            email: provider.email,
+            name: provider.practiceName,
+            fcmToken: provider.fcmToken
+          },
+          template: 'new_booking_request',
+          data: {
+            providerName: provider.practiceName,
+            patientName: patient.name,
+            serviceName: booking.service.name,
+            appointmentDate: requestedStart.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+            }),
+            appointmentTime: requestedStart.toLocaleTimeString('en-US', { 
+              hour: 'numeric', minute: '2-digit' 
+            }),
+            amount: booking.service.price,
+            expiresAt: booking.confirmation.expiresAt.toLocaleDateString('en-US', { 
+              weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
+            }),
+            bookingId: booking._id.toString()
+          },
+          channels: ['email', 'push']
+        });
+        
+        console.log('📧 Sent booking request notifications to patient and provider');
+      }
+    } catch (notificationError) {
+      console.error('Failed to send booking notifications:', notificationError);
+      // Don't fail the booking - notifications are non-critical
+    }
     
     res.status(201).json({
       success: true,
@@ -769,10 +868,10 @@ router.post('/:id/confirm', authenticateProvider, async (req, res) => {
     const previousStatus = booking.status;
     
     // Capture payment if held
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
       try {
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'captured';
+        booking.payment.status = 'deposit_charged';
         booking.payment.hold.capturedAt = new Date();
       } catch (captureError) {
         console.error('Payment capture error:', captureError);
@@ -856,10 +955,10 @@ router.post('/:id/decline', authenticateProvider, async (req, res) => {
     const previousStatus = booking.status;
     
     // Cancel payment hold if exists
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
       try {
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'cancelled';
+        booking.payment.status = 'refunded';
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Provider declined';
       } catch (cancelError) {
@@ -1049,10 +1148,10 @@ router.post('/:id/accept-reschedule', async (req, res) => {
     booking.reschedule.current = null;
     
     // Capture payment if still held
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
       try {
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'captured';
+        booking.payment.status = 'deposit_charged';
         booking.payment.hold.capturedAt = new Date();
       } catch (captureError) {
         console.error('Payment capture error:', captureError);
@@ -1117,10 +1216,10 @@ router.post('/:id/decline-reschedule', async (req, res) => {
     const previousStatus = booking.status;
     
     // Cancel payment hold
-    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'held') {
+    if (stripe && booking.payment.paymentIntentId && booking.payment.status === 'pending') {
       try {
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'cancelled';
+        booking.payment.status = 'refunded';
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Patient declined reschedule';
       } catch (cancelError) {
@@ -1316,17 +1415,17 @@ router.post('/:id/cancel', async (req, res) => {
     
     // Handle payment
     if (stripe && booking.payment.paymentIntentId) {
-      if (booking.payment.status === 'held') {
+      if (booking.payment.status === 'pending') {
         // Release hold
         try {
           await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-          booking.payment.status = 'cancelled';
+          booking.payment.status = 'refunded';
           booking.payment.hold.cancelledAt = new Date();
           booking.payment.hold.cancelReason = reason || 'Booking cancelled';
         } catch (e) {
           console.error('Failed to cancel payment hold:', e);
         }
-      } else if (booking.payment.status === 'captured') {
+      } else if (booking.payment.status === 'deposit_charged') {
         // TODO: Handle refund based on cancellation policy
         // For now, just mark as needing refund
         console.log('TODO: Process refund for captured payment');
@@ -1453,11 +1552,11 @@ router.post('/:bookingId/accept-suggested-time', async (req, res) => {
     booking.isRequest = false;
     
     // Capture payment if it was on hold
-    if (booking.payment?.paymentIntentId && booking.payment?.status === 'held') {
+    if (booking.payment?.paymentIntentId && booking.payment?.status === 'pending') {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         await stripe.paymentIntents.capture(booking.payment.paymentIntentId);
-        booking.payment.status = 'captured';
+        booking.payment.status = 'deposit_charged';
         booking.payment.capturedAt = new Date();
       } catch (stripeError) {
         console.error('Payment capture error:', stripeError);
@@ -1554,11 +1653,11 @@ router.post('/:bookingId/decline-suggested-times', async (req, res) => {
     booking.notes.cancellationReason = 'Patient declined suggested times';
 
     // Release payment hold
-    if (booking.payment?.paymentIntentId && booking.payment?.status === 'held') {
+    if (booking.payment?.paymentIntentId && booking.payment?.status === 'pending') {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         await stripe.paymentIntents.cancel(booking.payment.paymentIntentId);
-        booking.payment.status = 'cancelled';
+        booking.payment.status = 'refunded';
         booking.payment.hold = booking.payment.hold || {};
         booking.payment.hold.cancelledAt = new Date();
         booking.payment.hold.cancelReason = 'Declined suggested times';
