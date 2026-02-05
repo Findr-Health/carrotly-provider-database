@@ -19,6 +19,16 @@
  */
 
 const { generateBookingNumber } = require('../utils/bookingNumberGenerator');
+
+// Temporary booking number generator (no DB lookup to avoid connection issues)
+function generateSimpleBookingNumber() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `FH-${year}-${timestamp}${random}`;
+}
+
 const calendarSync = require('../services/calendarSync');
 
 
@@ -295,8 +305,13 @@ router.post('/', async (req, res) => {
       }
     }
     const paymentMode = bookingType === 'request' ? 'hold' : 'prepay';
+
+    // Generate booking number without DB lookup
+    const bookingNumber = generateSimpleBookingNumber();
+
     // Create booking object
     const booking = new Booking({
+      bookingNumber,
       patient: patientId,
       provider: providerId,
       
