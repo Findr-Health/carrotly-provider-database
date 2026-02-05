@@ -93,7 +93,7 @@ router.get('/:bookingId', adminAuth, async (req, res) => {
     const booking = await Booking.findById(req.params.bookingId)
       .populate('userId', 'firstName lastName email phone')
       .populate('providerId', 'practiceName contactInfo address')
-      .populate('reviewId');
+      .populate('reviewId')
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -132,7 +132,7 @@ router.patch('/:bookingId/status', adminAuth, async (req, res) => {
       updateData,
       { new: true }
     ).populate('userId', 'firstName lastName email')
-     .populate('providerId', 'practiceName');
+     .populate('providerId', 'practiceName')
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });

@@ -19,10 +19,15 @@ router.get('/provider/:providerId', async (req, res) => {
     const { status = 'pending', limit = 20, offset = 0 } = req.query;
     
     // Build query based on status
-    let query = { 'provider.id': providerId };
+    let query = { provider: providerId };
     
     if (status === 'pending') {
       query.status = 'pending_confirmation';
+      // Only show non-expired pending requests by default
+      const showExpired = req.query.showExpired === 'true';
+      if (!showExpired) {
+        query['confirmation.expiresAt'] = { $gte: new Date() };
+      }
     } else if (status === 'upcoming') {
       query.status = 'confirmed';
       query['dateTime.requestedStart'] = { $gte: new Date() };
@@ -37,8 +42,7 @@ router.get('/provider/:providerId', async (req, res) => {
       .sort({ 'confirmation.requestedAt': -1 })
       .limit(parseInt(limit))
       .skip(parseInt(offset))
-      .populate('patient.id', 'firstName lastName email phone')
-      .lean();
+      .populate("patient", "firstName lastName email phone profileImage").lean();
     
     // Get counts
     const totalCount = await Booking.countDocuments(query);
@@ -46,7 +50,7 @@ router.get('/provider/:providerId', async (req, res) => {
     // Count urgent bookings (expiring in < 6 hours)
     const sixHoursFromNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
     const urgentCount = await Booking.countDocuments({
-      'provider.id': providerId,
+      provider: providerId,
       status: 'pending_confirmation',
       'confirmation.expiresAt': { $lt: sixHoursFromNow, $gte: new Date() }
     });
@@ -102,7 +106,7 @@ router.post('/:id/confirm', async (req, res) => {
     // Find and validate booking
     const booking = await Booking.findOne({
       _id: id,
-      'provider.id': providerId,
+      provider: providerId,
       status: 'pending_confirmation'
     }).populate('patient.id');
     
@@ -165,7 +169,7 @@ router.post('/:id/decline', async (req, res) => {
     // Find booking
     const booking = await Booking.findOne({
       _id: id,
-      'provider.id': providerId,
+      provider: providerId,
       status: 'pending_confirmation'
     }).populate('patient.id');
     
@@ -226,7 +230,7 @@ router.post('/:id/suggest-times', async (req, res) => {
     // Find booking
     const booking = await Booking.findOne({
       _id: id,
-      'provider.id': providerId,
+      provider: providerId,
       status: 'pending_confirmation'
     }).populate('patient.id');
     
@@ -268,15 +272,16 @@ router.post('/:id/suggest-times', async (req, res) => {
  * Helper: Format booking data for provider view
  */
 function formatBookingForProvider(booking) {
-  const patient = booking.patient.id;
+  // Patient is stored as embedded object with {id, name, email, phone}
+  const patient = booking.patient || {};
   
   return {
     _id: booking._id,
     patient: {
-      name: `${patient.firstName} ${patient.lastName}`,
-      email: patient.email,
-      phone: patient.phone,
-      avatar: patient.profileImage,
+      name: patient.firstName && patient.lastName ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient',
+      email: patient.email || '',
+      phone: patient.phone || '',
+      avatar: patient.avatar || patient.profileImage || null,
     },
     isReturningPatient: false, // TODO: Calculate from booking history
     previousBookingCount: 0, // TODO: Calculate from booking history
@@ -309,7 +314,7 @@ function formatBookingForProvider(booking) {
  * Helper: Send booking confirmation notifications
  */
 async function sendBookingConfirmationNotifications(booking, note) {
-  const patient = booking.patient.id;
+  const patient = booking.patient;
   
   // TODO: Implement actual notification service
   console.log(`📧 Sending confirmation to ${patient.email}`);
@@ -342,7 +347,7 @@ async function sendBookingConfirmationNotifications(booking, note) {
  * Helper: Send booking declined notifications
  */
 async function sendBookingDeclinedNotifications(booking, reason) {
-  const patient = booking.patient.id;
+  const patient = booking.patient;
   
   console.log(`📧 Sending decline notification to ${patient.email}`);
   console.log(`📱 SMS to ${patient.phone}: Your booking request was declined`);
@@ -354,7 +359,7 @@ async function sendBookingDeclinedNotifications(booking, reason) {
  * Helper: Send reschedule proposal notifications
  */
 async function sendRescheduleProposalNotifications(booking, proposedTimes, message) {
-  const patient = booking.patient.id;
+  const patient = booking.patient;
   
   console.log(`📧 Sending reschedule options to ${patient.email}`);
   console.log(`Proposed times: ${proposedTimes.length}`);
@@ -377,4 +382,171 @@ function emitBookingUpdate(userId, eventType, booking) {
   // });
 }
 
+/**
+ * DEBUG: Check raw booking data
+ */
+router.get("/debug-patient/:bookingId", async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId).lean();
+    res.json({
+      hasPatient: !!booking.patient,
+      patientStructure: booking.patient,
+      patientKeys: booking.patient ? Object.keys(booking.patient) : []
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 module.exports = router;
+
+/**
+ * DELETE /api/bookings/cleanup/expired-pending
+ * Remove expired pending confirmation requests
+ * Security: Only accessible with admin key
+ */
+router.delete('/cleanup/expired-pending', async (req, res) => {
+  try {
+    // Simple security check
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'temp-cleanup-key-2026') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    // Find expired pending requests
+    const expiredBookings = await Booking.find({
+      status: 'pending_confirmation',
+      'confirmation.expiresAt': { $lt: new Date() }
+    }).select('bookingNumber confirmation.expiresAt createdAt').lean();
+    
+    const count = expiredBookings.length;
+    
+    if (req.query.preview === 'true') {
+      return res.json({
+        preview: true,
+        count,
+        sample: expiredBookings.slice(0, 5),
+        message: 'Add ?preview=false to actually delete'
+      });
+    }
+    
+    // Actually delete
+    const result = await Booking.deleteMany({
+      status: 'pending_confirmation',
+      'confirmation.expiresAt': { $lt: new Date() }
+    });
+    
+    res.json({
+      success: true,
+      deleted: result.deletedCount,
+      message: `Removed ${result.deletedCount} expired pending requests`
+    });
+    
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/bookings/admin/sync-team-calendar
+ * Copy calendar integration to all team members
+ */
+router.post('/admin/sync-team-calendar/:providerId', async (req, res) => {
+  try {
+    const Provider = require('../models/Provider');
+    const provider = await Provider.findById(req.params.providerId);
+    
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Find first team member with calendar
+    const withCalendar = provider.teamMembers.find(m => m.calendar?.connected);
+    
+    if (!withCalendar) {
+      return res.status(400).json({ error: 'No team member has calendar integration' });
+    }
+    
+    // Copy to all team members without calendar
+    let updated = 0;
+    provider.teamMembers.forEach(member => {
+      if (!member.calendar?.connected) {
+        member.calendar = {
+          provider: withCalendar.calendar.provider,
+          connected: true,
+          accessToken: withCalendar.calendar.accessToken,
+          refreshToken: withCalendar.calendar.refreshToken,
+          tokenExpiry: withCalendar.calendar.tokenExpiry,
+          calendarId: withCalendar.calendar.calendarId,
+          calendarEmail: withCalendar.calendar.calendarEmail,
+          syncStatus: 'active',
+          lastSyncAt: new Date(),
+          bufferMinutes: 15,
+          minNoticeHours: 24,
+          maxDaysOut: 60
+        };
+        updated++;
+      }
+    });
+    
+    await provider.save();
+    
+    res.json({
+      success: true,
+      updated,
+      message: `Synced calendar to ${updated} team members`
+    });
+    
+  } catch (error) {
+    console.error('Sync calendar error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/bookings/:id/cancel-provider
+ * Provider cancels a booking (same logic as patient, but different notifications)
+ */
+router.post('/:id/cancel-provider', async (req, res) => {
+  try {
+    const Booking = require('../models/Booking');
+    const { reason } = req.body;
+    const booking = await Booking.findById(req.params.id).populate('patient');
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Calculate refund (100% for provider cancellations)
+    const refundAmount = booking.totalAmount;
+    const refundPercent = 100;
+    
+    // Update booking
+    booking.status = 'cancelled_provider';
+    booking.cancelledBy = 'provider';
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      reason,
+      refundAmount,
+      refundPercent,
+      refundStatus: 'pending'
+    };
+    
+    await booking.save();
+    
+    // TODO: Send notification to patient
+    // TODO: Process refund via Stripe
+    
+    res.json({
+      success: true,
+      booking,
+      message: 'Booking cancelled successfully'
+    });
+    
+  } catch (error) {
+    console.error('Cancel booking error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});

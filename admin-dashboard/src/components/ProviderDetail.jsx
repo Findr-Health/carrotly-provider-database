@@ -1005,56 +1005,57 @@ export default function ProviderDetail() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">📄 Cancellation Policy</h2>
           
-          {provider.cancellationPolicy ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <span className={'px-4 py-2 rounded-full text-sm font-semibold ' +
-                  (provider.cancellationPolicy.type === 'flexible' ? 'bg-green-100 text-green-800' :
-                   provider.cancellationPolicy.type === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
-                   provider.cancellationPolicy.type === 'strict' ? 'bg-red-100 text-red-800' :
-                   'bg-purple-100 text-purple-800')
-                }>
-                  {(provider.cancellationPolicy.type || 'moderate').charAt(0).toUpperCase() + 
-                   (provider.cancellationPolicy.type || 'moderate').slice(1)} Policy
-                </span>
+          <div className="bg-teal-50 border border-teal-200 rounded-lg p-5 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="px-3 py-1 bg-teal-600 text-white text-sm font-semibold rounded-full">
+                Standard 24-Hour Policy
+              </span>
+              <span className="text-xs text-teal-700">(All Providers)</span>
+            </div>
+            
+            <p className="text-sm text-teal-700 mb-4">
+              All providers on Findr Health use our standard cancellation policy to ensure consistency for patients.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-start gap-2">
+                <span className="text-green-600 font-bold mt-0.5">✓</span>
+                <div>
+                  <span className="text-sm text-gray-700">24+ hours before:</span>
+                  <span className="ml-2 text-sm font-semibold text-green-600">Full refund (100%)</span>
+                </div>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <label className="block text-xs text-gray-500 mb-1">Hours Notice</label>
-                  <p className="text-lg font-semibold text-gray-900">{provider.cancellationPolicy.hoursNotice || 24}h</p>
+              <div className="flex items-start gap-2">
+                <span className="text-yellow-600 font-bold mt-0.5">✓</span>
+                <div>
+                  <span className="text-sm text-gray-700">12-24 hours before:</span>
+                  <span className="ml-2 text-sm font-semibold text-yellow-600">75% refund (25% fee)</span>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <label className="block text-xs text-gray-500 mb-1">On-Time Refund</label>
-                  <p className="text-lg font-semibold text-green-600">{provider.cancellationPolicy.refundPercentage ?? 100}%</p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-orange-600 font-bold mt-0.5">✓</span>
+                <div>
+                  <span className="text-sm text-gray-700">Less than 12 hours:</span>
+                  <span className="ml-2 text-sm font-semibold text-orange-600">50% refund (50% fee)</span>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <label className="block text-xs text-gray-500 mb-1">Late Refund</label>
-                  <p className="text-lg font-semibold text-orange-600">{provider.cancellationPolicy.lateRefundPercentage ?? 0}%</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <label className="block text-xs text-gray-500 mb-1">No-Show Fee</label>
-                  <p className="text-lg font-semibold text-red-600">{provider.cancellationPolicy.noShowFee ?? 100}%</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <label className="block text-xs text-gray-500 mb-1">Reschedule</label>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {provider.cancellationPolicy.allowReschedule ? '✓ Allowed' : '✗ Not Allowed'}
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <label className="block text-xs text-gray-500 mb-1">Reschedule Notice</label>
-                  <p className="text-lg font-semibold text-gray-900">{provider.cancellationPolicy.rescheduleHoursNotice || 24}h</p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-red-600 font-bold mt-0.5">✓</span>
+                <div>
+                  <span className="text-sm text-gray-700">No-show:</span>
+                  <span className="ml-2 text-sm font-semibold text-red-600">Full charge (0% refund)</span>
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <span className="text-3xl mb-2 block">📄</span>
-              <p className="text-gray-700 font-medium">No Policy Set</p>
-              <p className="text-gray-500 text-sm mt-1">Using default moderate policy (24h notice, 100% refund)</p>
-            </div>
-          )}
+          </div>
+          
+          <p className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded p-3">
+            <span className="font-medium text-blue-900">Note:</span> Providers retain the right to waive cancellation fees on a case-by-case basis. 
+            When a provider cancels a booking, the patient always receives a full refund.
+          </p>
         </div>
       )}
 

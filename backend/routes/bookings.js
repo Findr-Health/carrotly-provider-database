@@ -25,6 +25,7 @@ const calendarSync = require('../services/calendarSync');
 const { authenticateToken } = require('../middleware/auth');
 const NotificationService = require('../services/NotificationService');
 const express = require('express');
+const { fromZonedTime } = require('date-fns-tz');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
@@ -134,6 +135,12 @@ router.post('/reserve-slot', async (req, res) => {
     // Try to reserve the slot
     const reservation = await SlotReservation.reserveSlot({
       provider: providerId,
+      
+      teamMember: teamMemberId && selectedTeamMember ? {
+        memberId: teamMemberId,
+        name: selectedTeamMember.name || teamMemberName,
+        title: selectedTeamMember.title
+      } : undefined,
       startTime: start,
       endTime: end,
       serviceId: serviceId || 'default',
@@ -242,10 +249,15 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Provider not found' });
     }
     
-    // Calculate times
-    const requestedStart = new Date(startTime);
+    // Calculate times - convert from patient timezone to UTC
+    const patientTz = req.headers['x-timezone'] || 'America/Denver';
+    console.log('🕐 BOOKING TIME DEBUG:', { rawStartTime: startTime, patientTz, hasTimezoneHeader: !!req.headers['x-timezone'] });
+    
+    // Parse time in patient's timezone, then convert to UTC for storage
+    const requestedStart = fromZonedTime(startTime, patientTz);
+    console.log('🕐 CONVERTED:', { requestedStart: requestedStart.toISOString() });
     const requestedEnd = endTime 
-      ? new Date(endTime) 
+      ? fromZonedTime(endTime, patientTz)
       : new Date(requestedStart.getTime() + (serviceDuration || 30) * 60 * 1000);
     
     // Check calendar availability if connected
@@ -287,6 +299,12 @@ router.post('/', async (req, res) => {
     const booking = new Booking({
       patient: patientId,
       provider: providerId,
+      
+      teamMember: teamMemberId && selectedTeamMember ? {
+        memberId: teamMemberId,
+        name: selectedTeamMember.name || teamMemberName,
+        title: selectedTeamMember.title
+      } : undefined,
       bookingType,
       status: 'pending_payment',
       
@@ -633,11 +651,25 @@ router.post('/', async (req, res) => {
  * GET /api/bookings/:id
  * Get booking details
  */
+/**
+ * GET /api/bookings/cancellation-policy
+ * Get cancellation policy details for display
+ */
+router.get('/cancellation-policy', (req, res) => {
+  const { getPolicyDetails } = require('../utils/cancellationPolicy');
+  
+  res.json({
+    success: true,
+    policy: getPolicyDetails(),
+    note: 'This standard 24-hour policy applies to all providers on Findr Health'
+  });
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('patient', 'firstName lastName email phone')
-      .populate('provider', 'practiceName email phone address photos');
+      .populate('provider', 'practiceName email phone address photos')
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -1306,6 +1338,126 @@ router.post('/:id/decline-reschedule', async (req, res) => {
 });
 
 /**
+ * POST /api/bookings/:id/cancel-patient
+ * Patient cancels their booking with refund based on standard 24hr policy
+ */
+router.post('/:id/cancel-patient', authenticateUser, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const { calculateRefund } = require('../utils/cancellationPolicy');
+    
+    const booking = await Booking.findById(req.params.id)
+      .populate('provider', 'practiceName email')
+      .populate('patient', 'firstName lastName email');
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Authorization - only patient can cancel their booking
+    if (booking.patient._id.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Not authorized to cancel this booking' });
+    }
+    
+    // Check if already cancelled
+    if (booking.status.includes('cancelled')) {
+      return res.status(400).json({ error: 'Booking already cancelled' });
+    }
+    
+    // Calculate refund based on standard policy
+    const refundCalc = calculateRefund(
+      booking.dateTime.requestedStart,
+      booking.payment.originalAmount || booking.service.price
+    );
+    
+    // Process refund via Stripe if payment exists
+    let stripeRefund = null;
+    if (booking.payment.paymentIntentId && refundCalc.refundAmount > 0) {
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        stripeRefund = await stripe.refunds.create({
+          payment_intent: booking.payment.paymentIntentId,
+          amount: Math.round(refundCalc.refundAmount * 100), // Convert to cents
+          reason: 'requested_by_customer',
+          metadata: {
+            bookingId: booking._id.toString(),
+            bookingNumber: booking.bookingNumber,
+            refundPercentage: refundCalc.refundPercentage,
+            feePercentage: refundCalc.feePercentage
+          }
+        });
+        
+        booking.payment.refunds = booking.payment.refunds || [];
+        booking.payment.refunds.push({
+          refundId: stripeRefund.id,
+          amount: refundCalc.refundAmount,
+          percentage: refundCalc.refundPercentage,
+          processedAt: new Date(),
+          reason: 'patient_cancellation'
+        });
+      } catch (stripeError) {
+        console.error('Stripe refund error:', stripeError);
+        return res.status(500).json({ 
+          error: 'Failed to process refund',
+          details: stripeError.message 
+        });
+      }
+    }
+    
+    // Update booking status
+    const previousStatus = booking.status;
+    booking.status = 'cancelled_patient';
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      cancelledBy: 'patient',
+      reason: reason || 'Patient requested cancellation',
+      refundAmount: refundCalc.refundAmount,
+      refundPercentage: refundCalc.refundPercentage,
+      feeAmount: refundCalc.feeAmount,
+      feePercentage: refundCalc.feePercentage,
+      policy: refundCalc.policyDescription,
+      hoursBeforeAppointment: refundCalc.hoursUntilAppointment
+    };
+    
+    await booking.save();
+    
+    // TODO: Delete calendar event if exists
+    // TODO: Send notification to provider
+    // TODO: Send confirmation email to patient
+    
+    console.log('✅ Booking cancelled by patient', {
+      bookingNumber: booking.bookingNumber,
+      refundAmount: refundCalc.refundAmount,
+      feeAmount: refundCalc.feeAmount,
+      stripeRefundId: stripeRefund?.id
+    });
+    
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      booking: {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        status: booking.status,
+        cancellation: booking.cancellation
+      },
+      refund: {
+        amount: refundCalc.refundAmount,
+        percentage: refundCalc.refundPercentage,
+        feeAmount: refundCalc.feeAmount,
+        feePercentage: refundCalc.feePercentage,
+        description: refundCalc.policyDescription,
+        stripeRefundId: stripeRefund?.id
+      }
+    });
+    
+  } catch (error) {
+    console.error('Patient cancel error:', error);
+    res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
+/**
  * POST /api/bookings/:id/cancel
  * Cancel a booking (patient or provider)
  */
@@ -1749,3 +1901,136 @@ router.post('/:id/complete', async (req, res) => {
 
 
 module.exports = router;
+
+
+/**
+ * TEST ONLY: Cancel booking without auth
+ * DELETE THIS AFTER TESTING
+ */
+router.post('/:id/cancel-patient-test', async (req, res) => {
+  try {
+    const { calculateRefund } = require('../utils/cancellationPolicy');
+    const Booking = require('../models/Booking');
+    
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    const refundCalc = calculateRefund(
+      booking.dateTime.requestedStart,
+      booking.payment.originalAmount || booking.service.price
+    );
+    
+    booking.status = 'cancelled_patient';
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      cancelledBy: 'patient',
+      reason: 'TEST CANCELLATION',
+      refundAmount: refundCalc.refundAmount,
+      refundPercentage: refundCalc.refundPercentage,
+      feeAmount: refundCalc.feeAmount,
+      feePercentage: refundCalc.feePercentage,
+      policy: refundCalc.policyDescription,
+      hoursBeforeAppointment: refundCalc.hoursUntilAppointment
+    };
+    
+    await booking.save();
+    
+    res.json({
+      success: true,
+      booking,
+      refund: refundCalc,
+      note: 'TEST MODE - No Stripe refund processed'
+    });
+    
+  } catch (error) {
+    console.error('Test cancel error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DEBUG: Find booking by confirmation number
+ */
+router.get('/debug/:bookingNumber', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ 
+      bookingNumber: req.params.bookingNumber 
+    }).populate('provider', 'practiceName').populate('patient', 'firstName lastName');
+    
+    if (!booking) {
+      return res.json({ found: false, searched: req.params.bookingNumber });
+    }
+    
+    res.json({
+      found: true,
+      booking: {
+        id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        provider: {
+          id: booking.provider?._id,
+          name: booking.provider?.practiceName
+        },
+        patient: {
+          id: booking.patient?._id,
+          name: `${booking.patient?.firstName} ${booking.patient?.lastName}`
+        },
+        service: booking.service,
+        status: booking.status,
+        dateTime: booking.dateTime,
+        createdAt: booking.createdAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DEBUG: Test upcoming query
+ */
+router.get('/debug-upcoming/:providerId', async (req, res) => {
+  try {
+    const providerId = req.params.providerId;
+    const now = new Date();
+    
+    // Test different queries
+    const allBookings = await Booking.find({ provider: providerId });
+    const confirmedBookings = await Booking.find({ 
+      provider: providerId,
+      status: 'confirmed' 
+    });
+    const futureBookings = await Booking.find({
+      provider: providerId,
+      'dateTime.requestedStart': { $gte: now }
+    });
+    const upcomingQuery = {
+      provider: providerId,
+      status: { $in: ['confirmed', 'pending_confirmation'] },
+      'dateTime.requestedStart': { $gte: now }
+    };
+    const upcomingBookings = await Booking.find(upcomingQuery);
+    
+    res.json({
+      currentTime: now,
+      providerId,
+      counts: {
+        all: allBookings.length,
+        confirmed: confirmedBookings.length,
+        future: futureBookings.length,
+        upcoming: upcomingBookings.length
+      },
+      upcomingQuery,
+      sampleBooking: allBookings[0] ? {
+        id: allBookings[0]._id,
+        status: allBookings[0].status,
+        requestedStart: allBookings[0].dateTime?.requestedStart,
+        provider: allBookings[0].provider
+      } : null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});

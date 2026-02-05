@@ -26,9 +26,15 @@ class CalendarSyncService {
         throw new Error('Provider not found');
       }
 
-      const teamMember = provider.teamMembers.id(teamMemberId);
-      if (!teamMember || !teamMember.calendar?.connected) {
-        throw new Error('Calendar not connected');
+      // Handle virtual provider-calendar member
+      let teamMember;
+      if (teamMemberId === null || teamMemberId === 'provider-calendar') {
+        teamMember = { _id: 'provider-calendar', calendar: provider.calendar };
+        // Don't check connected - we only need business hours
+      } else {
+        teamMember = provider.teamMembers.id(teamMemberId);
+        if (!teamMember || !teamMember.calendar?.connected) {
+      }
       }
 
       const calendar = teamMember.calendar;
@@ -144,16 +150,22 @@ class CalendarSyncService {
   /**
    * Generate available time slots
    */
-  async generateAvailableSlots(providerId, teamMemberId, date, serviceDuration = 60) {
+  async generateAvailableSlots(providerId, teamMemberId, date, serviceDuration = 60, calendarOverride = null) {
     try {
       const provider = await Provider.findById(providerId);
       if (!provider) {
         throw new Error('Provider not found');
       }
 
-      const teamMember = provider.teamMembers.id(teamMemberId);
-      if (!teamMember) {
-        throw new Error('Team member not found');
+      // Handle virtual provider-calendar member
+      let teamMember;
+      if (teamMemberId === null || teamMemberId === 'provider-calendar') {
+        teamMember = { _id: 'provider-calendar', calendar: provider.calendar };
+        // Don't check connected - we only need business hours
+      } else {
+        teamMember = provider.teamMembers.id(teamMemberId);
+        if (!teamMember) {
+      }
       }
 
       // Get business hours for this day
@@ -174,17 +186,22 @@ class CalendarSyncService {
       const dayEnd = new Date(date);
       dayEnd.setHours(closeHour, closeMin, 0, 0);
 
-      // Get busy blocks for this day
+      // Get busy blocks for this day (only if calendar integrated)
       let busyBlocks = [];
       
       if (teamMember.calendar?.connected) {
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-        
-        busyBlocks = await this.fetchBusyBlocks(providerId, teamMemberId, startOfDay, endOfDay);
+        try {
+          const startOfDay = new Date(date);
+          startOfDay.setHours(0, 0, 0, 0);
+          
+          const endOfDay = new Date(date);
+          endOfDay.setHours(23, 59, 59, 999);
+          
+          busyBlocks = await this.fetchBusyBlocks(providerId, teamMemberId, startOfDay, endOfDay);
+        } catch (error) {
+          console.log('Could not fetch busy blocks, continuing with business hours only:', error.message);
+          // Continue without busy blocks - just show all business hours
+        }
       }
 
       // Generate slots

@@ -34,6 +34,13 @@ const bookingSchema = new mongoose.Schema({
     index: true 
   },
 
+
+  // ==================== TEAM MEMBER (Optional) ====================
+  teamMember: {
+    memberId: String,  // ID from provider.teamMembers array
+    name: String,      // Snapshot at booking time
+    title: String      // Snapshot at booking time
+  },
   // ==================== SERVICE DETAILS ====================
   service: {
     serviceId: String,
@@ -428,10 +435,27 @@ bookingSchema.virtual('isTerminal').get(function() {
 
 // ==================== METHODS ====================
 bookingSchema.methods.generateBookingNumber = async function() {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const random = Math.random().toString(36).substring(2, 7).toUpperCase();
-  this.bookingNumber = `FH-${date}-${random}`;
-  return this.bookingNumber;
+  const maxRetries = 5;
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    const date = new Date();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const bookingNumber = `FH-${month}${day}-${random}`;
+    
+    // Check for collision
+    const existing = await this.constructor.findOne({ bookingNumber });
+    if (!existing) {
+      this.bookingNumber = bookingNumber;
+      return this.bookingNumber;
+    }
+    
+    attempt++;
+  }
+  
+  throw new Error('Failed to generate unique booking number after 5 attempts');
 };
 
 bookingSchema.methods.calculatePlatformFee = function() {

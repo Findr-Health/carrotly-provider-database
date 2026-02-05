@@ -952,3 +952,124 @@ router.post('/admin/create-test-provider', async (req, res) => {
 });
 
 module.exports = router;
+
+/**
+ * GET /api/providers/debug/calendar-status
+ * Check which providers have working calendar integration
+ */
+router.get('/debug/calendar-status', async (req, res) => {
+  try {
+    const providers = await Provider.find({})
+      .select('practiceName teamMembers')
+      .lean();
+    
+    const results = providers.map(p => ({
+      id: p._id,
+      name: p.practiceName,
+      teamMembers: p.teamMembers.map(tm => ({
+        name: tm.name,
+        calendarConnected: tm.calendar?.connected || false,
+        calendarProvider: tm.calendar?.provider || 'none',
+        syncStatus: tm.calendar?.syncStatus || 'disconnected',
+        syncError: tm.calendar?.syncError || null,
+        lastSync: tm.calendar?.lastSyncAt || null
+      }))
+    }));
+    
+    res.json({ providers: results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/providers/admin/sync-calendar-all
+ * Copy calendar from Long Island City PT to all providers without calendars
+ */
+router.post('/admin/sync-calendar-all', async (req, res) => {
+  try {
+    // Get the source provider with working calendar
+    const source = await Provider.findById('697a98f3a04e359abfda111f');
+    const sourceCalendar = source.teamMembers[0].calendar;
+    
+    // Find all providers without calendar
+    const providers = await Provider.find({
+      $or: [
+        { 'calendar.connected': { $ne: true } },
+        { calendar: null },
+        { calendar: { $exists: false } }
+      ]
+    });
+    
+    let updated = 0;
+    for (const provider of providers) {
+      provider.calendar = {
+        provider: sourceCalendar.provider,
+        connected: true,
+        accessToken: sourceCalendar.accessToken,
+        refreshToken: sourceCalendar.refreshToken,
+        tokenExpiry: sourceCalendar.tokenExpiry,
+        calendarId: sourceCalendar.calendarId,
+        calendarEmail: sourceCalendar.calendarEmail,
+        syncStatus: 'active',
+        lastSyncAt: new Date(),
+        bufferMinutes: 15,
+        minNoticeHours: 24,
+        maxDaysOut: 60
+      };
+      
+      await provider.save();
+      updated++;
+    }
+    
+    res.json({
+      success: true,
+      updated,
+      message: `Added calendar to ${updated} providers`
+    });
+    
+  } catch (error) {
+    console.error('Sync all calendars error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/providers/admin/set-default-hours
+ * Add standard M-F 8am-5pm business hours to all providers
+ */
+router.post('/admin/set-default-hours', async (req, res) => {
+  try {
+    const defaultHours = {
+      monday: { isOpen: true, open: '08:00', close: '17:00' },
+      tuesday: { isOpen: true, open: '08:00', close: '17:00' },
+      wednesday: { isOpen: true, open: '08:00', close: '17:00' },
+      thursday: { isOpen: true, open: '08:00', close: '17:00' },
+      friday: { isOpen: true, open: '08:00', close: '17:00' },
+      saturday: { isOpen: false },
+      sunday: { isOpen: false }
+    };
+    
+    const providers = await Provider.find({});
+    let updated = 0;
+    
+    for (const provider of providers) {
+      if (!provider.calendar) {
+        provider.calendar = {};
+      }
+      provider.calendar.businessHours = defaultHours;
+      await provider.save();
+      updated++;
+    }
+    
+    res.json({
+      success: true,
+      updated,
+      message: `Set M-F 8am-5pm hours for ${updated} providers`
+    });
+    
+  } catch (error) {
+    console.error('Set hours error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});

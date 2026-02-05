@@ -46,8 +46,19 @@ router.get('/:providerId', async (req, res) => {
     const requestDate = new Date(date);
     const serviceDuration = parseInt(duration);
 
-    // Get team members
+    // Get team members - if none, use provider's own calendar
     let teamMembers = provider.teamMembers.filter(m => m.acceptsBookings !== false);
+    
+    // Fallback: If no team members, create virtual member from provider calendar
+    if (teamMembers.length === 0 && provider.calendar) {
+      teamMembers = [{
+        _id: 'provider-calendar',
+        name: provider.practiceName || 'Provider',
+        title: 'Provider',
+        acceptsBookings: true,
+        calendar: provider.calendar
+      }];
+    }
 
     // Filter by specific member if requested
     if (memberId) {
@@ -62,11 +73,15 @@ router.get('/:providerId', async (req, res) => {
 
     for (const member of teamMembers) {
       try {
+        // For virtual provider-calendar member, pass provider ID as both params
+        const memberIdToUse = member._id === 'provider-calendar' ? null : member._id;
+        
         const slots = await calendarSync.generateAvailableSlots(
           providerId,
-          member._id,
+          memberIdToUse,
           requestDate,
-          serviceDuration
+          serviceDuration,
+          member.calendar // Pass calendar directly for virtual members
         );
 
         availability.push({
@@ -79,12 +94,13 @@ router.get('/:providerId', async (req, res) => {
         });
 
       } catch (error) {
-        console.error(`Error generating slots for member ${member._id}:`, error);
+        console.error(`Error generating slots for member ${member._id}:`, error.message);
+        console.error('Full error:', error);
         // Continue with other members
         availability.push({
           teamMemberId: member._id,
           teamMemberName: member.name,
-          error: 'Failed to load availability',
+          error: error.message || 'Failed to load availability',
           slots: []
         });
       }
