@@ -1849,3 +1849,4 @@ router.get('/debug-upcoming/:providerId', async (req, res) => {
     res.status(500).json({ error: error.message, stack: error.stack });
   }
 });
+// Force redeploy
