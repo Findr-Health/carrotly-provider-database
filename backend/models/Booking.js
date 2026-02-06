@@ -501,23 +501,23 @@ bookingSchema.statics.getPendingCount = async function(providerId) {
 };
 
 // ==================== PRE-SAVE HOOKS ====================
-bookingSchema.pre('save', async function(next) {
-  // Generate booking number if not set
-  if (!this.bookingNumber) {
-    await this.generateBookingNumber();
-  }
-  
-  // Calculate platform fee if amount is set
-  if (this.payment?.originalAmount || this.service?.price) {
-    this.calculatePlatformFee();
-  }
-  
-  // Increment version
-  if (this.isModified() && !this.isNew) {
-    this.version = (this.version || 0) + 1;
-  }
-  
-  next();
+// bookingSchema.pre('save', async function(next) {
+//   // Generate booking number if not set
+//   if (!this.bookingNumber) {
+//     await this.generateBookingNumber();
+//   }
+//   
+//   // Calculate platform fee if amount is set
+//   if (this.payment?.originalAmount || this.service?.price) {
+//     this.calculatePlatformFee();
+//   }
+//   
+//   // Increment version
+//   if (this.isModified() && !this.isNew) {
+//     this.version = (this.version || 0) + 1;
+//   }
+//   
+//   next();
 });
 
 // Ensure virtuals are included in JSON output
