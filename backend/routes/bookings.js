@@ -486,17 +486,9 @@ router.post('/', async (req, res) => {
     }
 
     
-    console.log("🔍 DEBUG: Reached after calendar block");
     // Save booking
     // REPLACED WITH DIAGNOSTIC CODE - SEE BELOW
-    console.log("🔍 About to save booking...");
-    console.log("📊 Booking data:", {
-      hasBookingNumber: !!booking.bookingNumber,
-      hasTotalAmount: !!booking.payment?.totalAmount,
-      hasDepositAmount: !!booking.payment?.depositAmount,
-      hasFinalAmount: !!booking.payment?.finalAmount,
       status: booking.status
-    });
     
     try {
       const savePromise = booking.save({ validateBeforeSave: false });
@@ -516,7 +508,6 @@ router.post('/', async (req, res) => {
     }
     
     // Log creation event
-    console.log("🔍 About to call logEvent...");
     await logEvent(booking, 'created', {
       bookingType,
       newStatus: booking.status
@@ -524,13 +515,10 @@ router.post('/', async (req, res) => {
       type: 'patient',
       userId: patientId
     });
-    console.log("✅ logEvent completed");
     
-    console.log("🔍 About to send notifications, bookingType:", bookingType);
     try {
       if (bookingType === 'instant') {
         // Instant booking - send confirmation to patient
-        console.log("📧 Sending notification...");
         await NotificationService.send({
           recipient: {
             id: patient._id,
@@ -557,14 +545,11 @@ router.post('/', async (req, res) => {
           channels: ['email', 'push']
         });
         
-        console.log('📧 Sent instant booking confirmation to patient');
         
       } else {
         // Request booking - notify both parties
         
         // 1. Confirm request received to patient
-        console.log("📧 Sending notification...");
-        console.log("📧 Sending notification...");
         await NotificationService.send({
           recipient: {
             id: patient._id,
@@ -591,8 +576,6 @@ router.post('/', async (req, res) => {
         });
         
         // 2. Notify provider of new request
-        console.log("📧 Sending notification...");
-        console.log("📧 Sending notification...");
         await NotificationService.send({
           recipient: {
             id: provider._id,
@@ -621,7 +604,6 @@ router.post('/', async (req, res) => {
           channels: ['email', 'push']
         });
         
-        console.log('📧 Sent booking request notifications to patient and provider');
       }
       console.log("✅ Notification sent successfully");
     } catch (notificationError) {
@@ -630,7 +612,6 @@ router.post('/', async (req, res) => {
       // Don't fail the booking - notifications are non-critical
     }
     
-    console.log("🚀 About to send response to client");
     res.status(201).json({
       success: true,
       booking: {
