@@ -518,8 +518,8 @@ bookingSchema.statics.getPendingCount = async function(providerId) {
 //   }
 //   
 //   next();
-});
-
+// });
+// 
 // Ensure virtuals are included in JSON output
 bookingSchema.set('toJSON', { virtuals: true });
 bookingSchema.set('toObject', { virtuals: true });
