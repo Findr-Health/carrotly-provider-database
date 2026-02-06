@@ -743,6 +743,53 @@ class NotificationService {
   // PUSH NOTIFICATIONS
   // ============================================================================
   
+
+  getPushConfig(template, data) {
+    const messages = {
+      'booking_request_sent': {
+        title: 'Request Sent!',
+        body: `Your booking request has been sent to ${data.providerName}`
+      },
+      'booking_confirmed_patient': {
+        title: 'Booking Confirmed! ✅',
+        body: `Your appointment with ${data.providerName} is confirmed`
+      },
+      'booking_declined_patient': {
+        title: 'Booking Update',
+        body: 'Your booking request could not be accommodated'
+      },
+      'reschedule_proposed_patient': {
+        title: 'New Time Proposed 📅',
+        body: `${data.providerName} suggested a different time`
+      },
+      'booking_expired_patient': {
+        title: 'Request Expired',
+        body: 'Your booking request expired. No charge was made.'
+      },
+      'new_booking_request': {
+        title: 'New Booking Request! 🔔',
+        body: `${data.patientName} wants to book ${data.serviceName}`
+      },
+      'reschedule_accepted_provider': {
+        title: 'Reschedule Accepted ✅',
+        body: `${data.patientName} accepted your proposed time`
+      },
+      'reschedule_declined_provider': {
+        title: 'Reschedule Declined',
+        body: `${data.patientName} declined the proposed time`
+      },
+      'booking_cancelled_provider': {
+        title: 'Booking Cancelled',
+        body: `${data.patientName} cancelled their ${data.serviceName} booking`
+      },
+      'booking_expiring_reminder': {
+        title: '⚠️ Request Expiring Soon!',
+        body: `Respond to ${data.patientName}'s request before it expires`
+      }
+    };
+    return messages[template] || null;
+  }
+
   async sendPush(fcmToken, template, data) {
     // Firebase Admin SDK required
     // This is a placeholder - implement when Firebase is configured
