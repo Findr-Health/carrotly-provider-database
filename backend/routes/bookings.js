@@ -526,17 +526,6 @@ router.post('/', async (req, res) => {
     });
     console.log("✅ logEvent completed");
     
-    // Send notifications based on booking type
-    console.log("⚠️ NOTIFICATIONS BYPASSED FOR DEBUGGING");
-    // Early return - skip all notifications
-    return res.status(201).json({
-      success: true,
-      booking: {
-        _id: booking._id,
-        bookingNumber: booking.bookingNumber,
-        status: booking.status
-      }
-    });
     console.log("🔍 About to send notifications, bookingType:", bookingType);
     try {
       if (bookingType === 'instant') {
@@ -575,6 +564,7 @@ router.post('/', async (req, res) => {
         
         // 1. Confirm request received to patient
         console.log("📧 Sending notification...");
+        console.log("📧 Sending notification...");
         await NotificationService.send({
           recipient: {
             id: patient._id,
@@ -601,6 +591,7 @@ router.post('/', async (req, res) => {
         });
         
         // 2. Notify provider of new request
+        console.log("📧 Sending notification...");
         console.log("📧 Sending notification...");
         await NotificationService.send({
           recipient: {
