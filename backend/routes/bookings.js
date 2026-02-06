@@ -488,7 +488,32 @@ router.post('/', async (req, res) => {
     
     console.log("🔍 DEBUG: Reached after calendar block");
     // Save booking
-    await booking.save({ validateBeforeSave: false });
+    // REPLACED WITH DIAGNOSTIC CODE - SEE BELOW
+    console.log("🔍 About to save booking...");
+    console.log("📊 Booking data:", {
+      hasBookingNumber: !!booking.bookingNumber,
+      hasTotalAmount: !!booking.payment?.totalAmount,
+      hasDepositAmount: !!booking.payment?.depositAmount,
+      hasFinalAmount: !!booking.payment?.finalAmount,
+      status: booking.status
+    });
+    
+    try {
+      const savePromise = booking.save({ validateBeforeSave: false });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("SAVE_TIMEOUT_10S")), 10000)
+      );
+      
+      await Promise.race([savePromise, timeoutPromise]);
+      console.log("✅ Booking saved successfully");
+    } catch (saveError) {
+      console.error("❌ SAVE FAILED:", {
+        name: saveError.name,
+        message: saveError.message,
+        stack: saveError.stack?.split("\n").slice(0, 5)
+      });
+      throw saveError;
+    }
     
     // Log creation event
     await logEvent(booking, 'created', {
