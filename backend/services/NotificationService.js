@@ -99,14 +99,25 @@ class NotificationService {
   async sendEmail(recipient, template, data) {
     const emailConfig = this.getEmailTemplate(template, data);
     
-    await this.emailTransporter.sendMail({
+    // Wrap email send with 5-second timeout
+    const sendPromise = this.emailTransporter.sendMail({
       from: `"Findr Health" <${process.env.GMAIL_USER || 'noreply@findrhealth.com'}>`,
       to: recipient.email,
       subject: emailConfig.subject,
       html: emailConfig.html
     });
     
-    console.log(`[NotificationService] Email sent: ${template} to ${recipient.email}`);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Email send timeout after 5s')), 5000)
+    );
+    
+    try {
+      await Promise.race([sendPromise, timeoutPromise]);
+      console.log(`[NotificationService] Email sent: ${template} to ${recipient.email}`);
+    } catch (error) {
+      console.error(`[NotificationService] Email failed: ${error.message}`);
+      throw error; // Re-throw so caller can handle
+    }
   }
   
   getEmailTemplate(template, data) {
