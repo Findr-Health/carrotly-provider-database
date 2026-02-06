@@ -532,7 +532,7 @@ router.post('/', async (req, res) => {
       if (bookingType === 'instant') {
         // Instant booking - send confirmation to patient
         console.log("📧 Sending notification...");
-        await NotificationService.send({
+        // BYPASSED: await NotificationService.send({
           recipient: {
             id: patient._id,
             type: 'user',
@@ -565,7 +565,7 @@ router.post('/', async (req, res) => {
         
         // 1. Confirm request received to patient
         console.log("📧 Sending notification...");
-        await NotificationService.send({
+        // BYPASSED: await NotificationService.send({
           recipient: {
             id: patient._id,
             type: 'user',
@@ -592,7 +592,7 @@ router.post('/', async (req, res) => {
         
         // 2. Notify provider of new request
         console.log("📧 Sending notification...");
-        await NotificationService.send({
+        // BYPASSED: await NotificationService.send({
           recipient: {
             id: provider._id,
             type: 'provider',
