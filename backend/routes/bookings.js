@@ -516,6 +516,7 @@ router.post('/', async (req, res) => {
     }
     
     // Log creation event
+    console.log("🔍 About to call logEvent...");
     await logEvent(booking, 'created', {
       bookingType,
       newStatus: booking.status
@@ -523,6 +524,7 @@ router.post('/', async (req, res) => {
       type: 'patient',
       userId: patientId
     });
+    console.log("✅ logEvent completed");
     
     // Send notifications based on booking type
     try {
