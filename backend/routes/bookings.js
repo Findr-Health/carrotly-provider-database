@@ -527,9 +527,11 @@ router.post('/', async (req, res) => {
     console.log("✅ logEvent completed");
     
     // Send notifications based on booking type
+    console.log("🔍 About to send notifications, bookingType:", bookingType);
     try {
       if (bookingType === 'instant') {
         // Instant booking - send confirmation to patient
+        console.log("📧 Sending notification...");
         await NotificationService.send({
           recipient: {
             id: patient._id,
@@ -562,6 +564,7 @@ router.post('/', async (req, res) => {
         // Request booking - notify both parties
         
         // 1. Confirm request received to patient
+        console.log("📧 Sending notification...");
         await NotificationService.send({
           recipient: {
             id: patient._id,
@@ -588,6 +591,7 @@ router.post('/', async (req, res) => {
         });
         
         // 2. Notify provider of new request
+        console.log("📧 Sending notification...");
         await NotificationService.send({
           recipient: {
             id: provider._id,
@@ -618,11 +622,14 @@ router.post('/', async (req, res) => {
         
         console.log('📧 Sent booking request notifications to patient and provider');
       }
+      console.log("✅ Notification sent successfully");
     } catch (notificationError) {
+      console.log("⚠️ Notification failed but continuing:", notificationError.message);
       console.error('Failed to send booking notifications:', notificationError);
       // Don't fail the booking - notifications are non-critical
     }
     
+    console.log("🚀 About to send response to client");
     res.status(201).json({
       success: true,
       booking: {
