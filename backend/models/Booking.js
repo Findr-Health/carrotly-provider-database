@@ -254,7 +254,7 @@ const bookingSchema = new mongoose.Schema({
     required: true,
     validate: {
       validator: function(v) {
-        const expected = this.totalAmount * 0.80;
+        const expected = this.payment.totalAmount * 0.80;
         return Math.abs(v - expected) < 0.01; // Allow 1 cent tolerance for floating point
       },
       message: 'Deposit must be 80% of total amount (within 1 cent)'
@@ -265,7 +265,7 @@ const bookingSchema = new mongoose.Schema({
     required: true,
     validate: {
       validator: function(v) {
-        const expected = this.totalAmount * 0.20;
+        const expected = this.payment.totalAmount * 0.20;
         return Math.abs(v - expected) < 0.01; // Allow 1 cent tolerance for floating point
       },
       message: 'Final amount must be 20% of total amount (within 1 cent)'
