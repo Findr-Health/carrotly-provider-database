@@ -37,125 +37,144 @@ class OCRService {
    * @returns {Promise<object>} Extracted text and metadata
    */
   async extractText(imageSource, options = {}) {
-    try {
-      console.log('[OCR] Starting text extraction...');
-      const startTime = Date.now();
-      
-      // Prepare image for Vision API
-      let request;
-      if (imageSource.startsWith('http')) {
-        // Image URL (Cloudinary, etc.)
-        request = {
-          image: { source: { imageUri: imageSource } }
-        };
-      } else if (imageSource.startsWith('data:image')) {
-        // Base64 image
-        const base64Data = imageSource.split(',')[1];
-        request = {
-          image: { content: base64Data }
-        };
-      } else {
-        // Assume base64 without prefix
-        request = {
-          image: { content: imageSource }
-        };
-      }
-      
-      // Call Vision API for document text detection
-      // Using DOCUMENT_TEXT_DETECTION for better accuracy on documents
-      const [result] = await this.client.documentTextDetection(request);
-      
-      const processingTime = Date.now() - startTime;
-      console.log(`[OCR] Text extraction completed in ${processingTime}ms`);
-      
-      // Extract full text and structured data
-      const fullTextAnnotation = result.fullTextAnnotation;
-      
-      if (!fullTextAnnotation || !fullTextAnnotation.text) {
-        console.warn('[OCR] No text detected in image');
-        return {
-          success: false,
-          error: 'No text detected in image',
-          confidence: 0,
-          rawText: '',
-          processingTime
-        };
-      }
-      
-      const rawText = fullTextAnnotation.text;
-      const pages = fullTextAnnotation.pages || [];
-      
-      // Calculate average confidence
-      let totalConfidence = 0;
-      let wordCount = 0;
-      
-      pages.forEach(page => {
-        page.blocks?.forEach(block => {
-          block.paragraphs?.forEach(paragraph => {
-            paragraph.words?.forEach(word => {
-              if (word.confidence) {
-                totalConfidence += word.confidence;
-                wordCount++;
-              }
-            });
+  try {
+    console.log('[OCR] Starting text extraction...');
+    const startTime = Date.now();
+    
+    // Prepare image for Vision API
+    let request;
+    if (imageSource.startsWith('http')) {
+      // Image URL (Cloudinary, etc.)
+      request = {
+        image: { source: { imageUri: imageSource } }
+      };
+    } else if (imageSource.startsWith('data:image')) {
+      // Base64 image
+      const base64Data = imageSource.split(',')[1];
+      request = {
+        image: { content: base64Data }
+      };
+    } else {
+      // Assume base64 without prefix
+      request = {
+        image: { content: imageSource }
+      };
+    }
+    
+    // Call Vision API with timeout (30 seconds)
+    console.log('[OCR] Calling Google Vision API...');
+    const timeoutMs = 30000; // 30 seconds
+    
+    const result = await Promise.race([
+      this.client.documentTextDetection(request),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('OCR timeout after 30 seconds')), timeoutMs)
+      )
+    ]);
+    
+    const [visionResult] = result;
+    
+    const processingTime = Date.now() - startTime;
+    console.log(`[OCR] Text extraction completed in ${processingTime}ms`);
+    
+    // Extract full text and structured data
+    const fullTextAnnotation = visionResult.fullTextAnnotation;
+    
+    if (!fullTextAnnotation || !fullTextAnnotation.text) {
+      console.warn('[OCR] No text detected in image');
+      return {
+        success: false,
+        error: 'No text detected in image',
+        confidence: 0,
+        rawText: '',
+        processingTime
+      };
+    }
+    
+    const rawText = fullTextAnnotation.text;
+    const pages = fullTextAnnotation.pages || [];
+    
+    // Calculate average confidence
+    let totalConfidence = 0;
+    let wordCount = 0;
+    
+    pages.forEach(page => {
+      page.blocks?.forEach(block => {
+        block.paragraphs?.forEach(paragraph => {
+          paragraph.words?.forEach(word => {
+            if (word.confidence) {
+              totalConfidence += word.confidence;
+              wordCount++;
+            }
           });
         });
       });
-      
-      const averageConfidence = wordCount > 0 ? totalConfidence / wordCount : 0;
-      
-      // Quality assessment
-      const quality = this.assessQuality(averageConfidence, rawText);
-      
-      console.log(`[OCR] Confidence: ${(averageConfidence * 100).toFixed(1)}%`);
-      console.log(`[OCR] Quality: ${quality.assessment}`);
-      console.log(`[OCR] Extracted ${rawText.length} characters`);
-      
-      return {
-        success: true,
-        rawText: rawText,
-        confidence: averageConfidence,
-        quality: quality,
-        metadata: {
-          wordCount: wordCount,
-          characterCount: rawText.length,
-          pageCount: pages.length,
-          processingTime: processingTime,
-          timestamp: new Date()
-        },
-        structured: this.extractStructuredData(pages)
-      };
-      
-    } catch (error) {
-      console.error('[OCR] Error during text extraction:', error);
-      
-      // Handle specific errors
-      if (error.code === 3) {
-        return {
-          success: false,
-          error: 'Invalid image format or corrupted image',
-          rawText: '',
-          confidence: 0
-        };
-      }
-      
-      if (error.message?.includes('API key not valid')) {
-        return {
-          success: false,
-          error: 'Google Cloud Vision API key is invalid or not configured',
-          rawText: '',
-          confidence: 0
-        };
-      }
-      
+    });
+    
+    const averageConfidence = wordCount > 0 ? totalConfidence / wordCount : 0;
+    
+    // Quality assessment
+    const quality = this.assessQuality(averageConfidence, rawText);
+    
+    console.log(`[OCR] Confidence: ${(averageConfidence * 100).toFixed(1)}%`);
+    console.log(`[OCR] Quality: ${quality.assessment}`);
+    console.log(`[OCR] Extracted ${rawText.length} characters`);
+    
+    return {
+      success: true,
+      rawText: rawText,
+      confidence: averageConfidence,
+      quality: quality,
+      metadata: {
+        wordCount: wordCount,
+        characterCount: rawText.length,
+        pageCount: pages.length,
+        processingTime: processingTime,
+        timestamp: new Date()
+      },
+      structured: this.extractStructuredData(pages)
+    };
+    
+  } catch (error) {
+    console.error('[OCR] Error during text extraction:', error);
+    
+    // Handle timeout
+    if (error.message?.includes('timeout')) {
       return {
         success: false,
-        error: error.message || 'OCR extraction failed',
+        error: 'OCR processing timed out. Please try again with a clearer image.',
         rawText: '',
         confidence: 0
       };
     }
+    
+    // Handle specific errors
+    if (error.code === 3) {
+      return {
+        success: false,
+        error: 'Invalid image format or corrupted image',
+        rawText: '',
+        confidence: 0
+      };
+    }
+    
+    if (error.message?.includes('API key not valid')) {
+      return {
+        success: false,
+        error: 'Google Cloud Vision API key is invalid or not configured',
+        rawText: '',
+        confidence: 0
+      };
+    }
+    
+    return {
+      success: false,
+      error: error.message || 'OCR processing failed',
+      rawText: '',
+      confidence: 0
+    };
   }
+}
   
   /**
    * Assess OCR quality
