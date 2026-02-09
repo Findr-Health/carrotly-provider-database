@@ -58,14 +58,14 @@ router.post('/analyze', authenticateToken, upload.single('image'), async (req, r
     // Get user location (optional)
     const userLocation = req.body.userLocation || req.user.location || 'National Average';
     
-    console.log(`[API] Processing bill for user: ${req.user._id}`);
+    console.log(`[API] Processing bill for user: ${req.user.userId}`);
     console.log(`[API] File size: ${req.file.size} bytes`);
     console.log(`[API] User location: ${userLocation}`);
     
     // Process bill (this is async but we respond immediately)
     const result = await processingService.processBill(
       req.file,  // ✅ CORRECT - full file object with buffer, mimetype, etc.
-      req.user._id,
+      req.user.userId,
       { userLocation: userLocation }
     );
     
@@ -107,7 +107,7 @@ router.get('/bills/:id', authenticateToken, async (req, res) => {
     
     const result = await processingService.getBillAnalysis(
       req.params.id,
-      req.user._id
+      req.user.userId
     );
     
     if (!result.success) {
@@ -140,11 +140,11 @@ router.get('/bills/:id', authenticateToken, async (req, res) => {
  */
 router.get('/bills', authenticateToken, async (req, res) => {
   try {
-    console.log(`[API] GET /clarity-price/bills for user: ${req.user._id}`);
+    console.log(`[API] GET /clarity-price/bills for user: ${req.user.userId}`);
     
     const limit = parseInt(req.query.limit) || 50;
     
-    const result = await processingService.getUserBills(req.user._id, { limit });
+    const result = await processingService.getUserBills(req.user.userId, { limit });
     
     if (!result.success) {
       return res.status(500).json({
@@ -186,7 +186,7 @@ router.put('/bills/:id/feedback', authenticateToken, async (req, res) => {
     
     const bill = await Bill.findOne({
       _id: req.params.id,
-      userId: req.user._id
+      userId: req.user.userId
     });
     
     if (!bill) {
@@ -240,7 +240,7 @@ router.put('/bills/:id/interaction', authenticateToken, async (req, res) => {
   try {
     const bill = await Bill.findOne({
       _id: req.params.id,
-      userId: req.user._id
+      userId: req.user.userId
     });
     
     if (!bill) {
@@ -292,7 +292,7 @@ router.delete('/bills/:id', authenticateToken, async (req, res) => {
     
     const bill = await Bill.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user._id
+      userId: req.user.userId
     });
     
     if (!bill) {
@@ -329,10 +329,10 @@ router.delete('/bills/:id', authenticateToken, async (req, res) => {
  */
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    console.log(`[API] GET /clarity-price/stats for user: ${req.user._id}`);
+    console.log(`[API] GET /clarity-price/stats for user: ${req.user.userId}`);
     
     const bills = await Bill.find({
-      userId: req.user._id,
+      userId: req.user.userId,
       'processing.status': 'complete'
     }).select('summary.potentialSavings createdAt');
     
