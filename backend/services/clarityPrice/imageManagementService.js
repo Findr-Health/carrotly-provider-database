@@ -33,66 +33,71 @@ class ImageManagementService {
   }
   
   /**
-   * Upload bill image with auto-delete
-   * 
-   * @param {string|Buffer} imageData - File path, URL, or Buffer
-   * @param {object} options - Upload options
-   * @returns {Promise<object>} Upload result with deletion info
-   */
-  async uploadBillImage(imageData, options = {}) {
-    try {
-      console.log('[ImageMgmt] Uploading bill image to Cloudinary...');
-      const startTime = Date.now();
-      
-      // Calculate expiration time (24 hours from now)
-      const expirationTime = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
-      
-      // Upload configuration
-      const uploadConfig = {
-        folder: this.temporaryFolder,
-        resource_type: 'auto', // Handles images and PDFs
-        access_mode: 'authenticated', // Requires signed URLs
-        type: 'upload',
-        ...options,
-        
-        // CRITICAL: Set expiration
-        // Note: Cloudinary doesn't have built-in auto-delete, so we track this ourselves
-        // and run a cleanup job
-        tags: ['temp-bill', `expires:${expirationTime}`]
-      };
-      
-      // Upload to Cloudinary
-      const result = await cloudinary.uploader.upload(imageData, uploadConfig);
-      
-      const uploadTime = Date.now() - startTime;
-      console.log(`[ImageMgmt] Upload completed in ${uploadTime}ms`);
-      console.log(`[ImageMgmt] Public ID: ${result.public_id}`);
-      console.log(`[ImageMgmt] Scheduled deletion: ${new Date(expirationTime * 1000).toISOString()}`);
-      
-      return {
-        success: true,
-        cloudinaryPublicId: result.public_id,
-        secureUrl: result.secure_url,
-        format: result.format,
-        bytes: result.bytes,
-        uploadedAt: new Date(),
-        scheduledDeletionAt: new Date(expirationTime * 1000),
-        expiresIn: '24 hours',
-        metadata: {
-          width: result.width,
-          height: result.height,
-          resourceType: result.resource_type
-        }
-      };
-      
-    } catch (error) {
-      console.error('[ImageMgmt] Error uploading image:', error);
-      return {
-        success: false,
-        error: error.message || 'Image upload failed'
-      };
+ * Upload bill image with auto-delete
+ * 
+ * @param {string|Buffer|object} imageData - File path, URL, Buffer, or Multer file object
+ * @param {object} options - Upload options
+ * @returns {Promise<object>} Upload result with deletion info
+ */
+async uploadBillImage(imageData, options = {}) {
+  try {
+    console.log('[ImageMgmt] Uploading bill image to Cloudinary...');
+    const startTime = Date.now();
+    
+    // Handle Multer file object (from req.file)
+    let uploadData = imageData;
+    if (imageData && imageData.buffer && imageData.mimetype) {
+      console.log('[ImageMgmt] Detected Multer file object, using buffer');
+      uploadData = imageData.buffer;
     }
+    
+    // Calculate expiration time (24 hours from now)
+    const expirationTime = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
+    
+    // Upload configuration
+    const uploadConfig = {
+      folder: this.temporaryFolder,
+      resource_type: 'auto', // Handles images and PDFs
+      access_mode: 'authenticated', // Requires signed URLs
+      type: 'upload',
+      ...options,
+      
+      // CRITICAL: Set expiration
+      tags: ['temp-bill', `expires:${expirationTime}`]
+    };
+    
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(uploadData, uploadConfig);
+    
+    const uploadTime = Date.now() - startTime;
+    console.log(`[ImageMgmt] Upload completed in ${uploadTime}ms`);
+    console.log(`[ImageMgmt] Public ID: ${result.public_id}`);
+    console.log(`[ImageMgmt] Scheduled deletion: ${new Date(expirationTime * 1000).toISOString()}`);
+    
+    return {
+      success: true,
+      cloudinaryPublicId: result.public_id,
+      secureUrl: result.secure_url,
+      format: result.format,
+      bytes: result.bytes,
+      uploadedAt: new Date(),
+      scheduledDeletionAt: new Date(expirationTime * 1000),
+      expiresIn: '24 hours',
+      metadata: {
+        width: result.width,
+        height: result.height,
+        resourceType: result.resource_type
+      }
+    };
+    
+  } catch (error) {
+    console.error('[ImageMgmt] Error uploading image:', error);
+    return {
+      success: false,
+      error: error.message || 'Image upload failed'
+    };
   }
+}
   
   /**
    * Delete image immediately
