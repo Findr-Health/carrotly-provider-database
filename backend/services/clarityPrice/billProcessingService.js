@@ -9,6 +9,7 @@ const { getExplanationService } = require('./explanationService');
 const { getImageManagementService } = require('./imageManagementService');
 const Bill = require('../../models/clarityPrice/Bill');
 const PricingIntelligence = require('../../models/clarityPrice/PricingIntelligence');
+const User = require('../../models/User'); 
 
 /**
  * Bill Processing Service
@@ -85,6 +86,56 @@ class BillProcessingService {
       
       await billRecord.save();
       console.log(`[BillProcessor] Bill record created: ${billRecord._id}`);
+
+      const User = require('../../models/User'); // Add at top of file if not there
+const user = await User.findById(userId);
+
+if (!user) {
+  throw new Error('User not found');
+}
+
+// Count user's previous bills
+const billCount = await Bill.countDocuments({
+  userId: userId,
+  'processing.status': 'complete'
+});
+
+const isFirstBill = billCount === 0;
+const isMember = user.isMember || false;
+
+// Calculate fee
+let feeCharged = 0;
+if (!isMember) {
+  feeCharged = isFirstBill ? 49 : 150;
+}
+
+console.log(`[BillProcessor] User membership: ${isMember}, First bill: ${isFirstBill}, Fee: $${feeCharged}`);
+
+billRecord = new Bill({
+  userId: userId,
+  
+  // ADD THESE FIELDS:
+  userWasMember: isMember,
+  isFirstBill: isFirstBill,
+  feeCharged: feeCharged,
+  guaranteeApplies: !isMember, // Only non-members get $100 guarantee
+  
+  // Existing fields:
+  imageMetadata: {
+    cloudinaryPublicId: uploadResult.cloudinaryPublicId,
+    uploadedAt: uploadResult.uploadedAt,
+    scheduledDeletionAt: uploadResult.scheduledDeletionAt,
+    deleted: false
+  },
+  processing: {
+    status: 'ocr',
+    startedAt: new Date()
+  },
+  region: {
+    metro: options.userLocation || 'National Average',
+    costOfLivingFactor: 1.0
+  }
+});
       
       // =========================================
       // STEP 3: OCR TEXT EXTRACTION
@@ -184,6 +235,20 @@ class BillProcessingService {
       if (!explanationResult.success) {
         console.warn('[BillProcessor] Explanation generation failed, using fallback');
       }
+      const explanationResult = await this.explanationService.generateAnalysis({
+  provider: billRecord.summary,
+  lineItems: billRecord.lineItems,
+  summary: pricingResult.summary,
+  regional: pricingResult.regional,
+  
+  // ADD THIS:
+  userContext: {
+    isMember: billRecord.userWasMember,
+    isFirstBill: billRecord.isFirstBill,
+    fee: billRecord.feeCharged,
+    billCount: billCount
+  }
+});
       
       // Update bill record with AI analysis
       billRecord.aiAnalysis = {

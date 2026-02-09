@@ -112,6 +112,41 @@ const billSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+
+    // Membership tracking
+  userWasMember: {
+    type: Boolean,
+    required: true,
+    default: false
+  },
+  
+  isFirstBill: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Fee calculation
+  feeCharged: {
+    type: Number,
+    default: 0
+  },
+  
+  guaranteeApplies: {
+    type: Boolean,
+    default: true  // $100 savings guarantee
+  },
+  
+  // Negotiation tracking (for future use)
+  negotiationStatus: {
+    type: String,
+    enum: ['pending', 'in_progress', 'completed', 'user_declined'],
+    default: 'pending'
+  },
+  
+  assignedNegotiator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   
   // Image handling (TEMPORARY ONLY)
   imageMetadata: {

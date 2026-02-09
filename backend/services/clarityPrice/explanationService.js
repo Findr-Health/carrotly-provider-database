@@ -37,7 +37,7 @@ class ExplanationService {
       console.log('[Explanation] Generating bill analysis with Claude AI...');
       const startTime = Date.now();
       
-      // Build comprehensive analysis prompt
+      // Build comprehensive analysis prompt (now includes userContext)
       const prompt = this.buildAnalysisPrompt(billData);
       
       // Call Claude API
@@ -98,10 +98,15 @@ class ExplanationService {
    * @returns {string} Formatted prompt
    */
   buildAnalysisPrompt(billData) {
-    const { summary, lineItems, regional, provider } = billData;
-    
-    // Build line items summary
-    const itemsSummary = lineItems.map(item => `
+  const { summary, lineItems, regional, provider, userContext } = billData;
+  
+  // Extract membership info
+  const isMember = userContext?.isMember || false;
+  const isFirstBill = userContext?.isFirstBill || false;
+  const fee = userContext?.fee || 0;
+  
+  // Build line items summary
+  const itemsSummary = lineItems.map(item => `
 - ${item.description}
   Billed: $${item.billedAmount.toFixed(2)}
   Category: ${item.category}
@@ -110,9 +115,19 @@ class ExplanationService {
   Confidence: ${item.analysis.confidenceTier === 1 ? 'High' : item.analysis.confidenceTier === 2 ? 'Medium' : 'Low'}
   Suggested prompt pay: $${item.negotiationGuidance.suggestedRange.opening?.toFixed(2) || 'N/A'}
   Typical discount range: ${item.negotiationGuidance.discountRange}
-    `).join('\n');
-    
-    return `You are a friendly medical billing advocate helping a patient understand their bill.
+  `).join('\n');
+  
+  // Build membership context
+  const membershipContext = isMember 
+    ? `USER IS A FINDR MEMBER ($15/month) - Bill negotiation is INCLUDED (no additional fee)`
+    : isFirstBill
+      ? `USER IS NOT A MEMBER - This is their FIRST bill negotiation (Fee: $49 with $100 savings guarantee)`
+      : `USER IS NOT A MEMBER - This is bill #${userContext?.billCount || 2}+ (Fee: $150 with $100 savings guarantee)`;
+  
+  return `You are Clarity, Findr Health's medical bill analyzer.
+
+MEMBERSHIP STATUS:
+${membershipContext}
 
 BILL SUMMARY:
 Provider: ${provider?.name || 'Healthcare provider'}
@@ -131,7 +146,7 @@ ${regional?.description || 'National average pricing'}
 TASK: Generate a helpful, empowering analysis. Return ONLY valid JSON:
 
 {
-  "explanation": "2-3 paragraphs in friendly, conversational language. Explain what this bill is for, which charges are notable, and what opportunities exist. Be encouraging and non-punitive. Frame as 'you may be able to' not 'you should demand.' Acknowledge that some providers may have already applied discounts. Use specific dollar amounts from the analysis.",
+  "explanation": "2-3 paragraphs in friendly, conversational language. Explain what this bill is for, which charges are notable, and what opportunities exist. Be encouraging and non-punitive. Frame as 'you may be able to' not 'you should demand.' Acknowledge that some providers may have already applied discounts. Use specific dollar amounts from the analysis. ${!isMember ? 'IMPORTANT: At the end, mention that Findr can negotiate this bill for them.' : 'IMPORTANT: Remind them that as a member, they can request negotiation at no additional cost.'}",
   
   "negotiationScript": "Word-for-word script for calling the provider. Make it confident but polite. Structure as a conversation with specific dollar amounts. Include: (1) Friendly opening, (2) Current situation, (3) Your offer (specific $amount), (4) Justification (Medicare rates, prompt payment), (5) What to say if they refuse, (6) Closing. Format with clear sections using line breaks.",
   
@@ -140,8 +155,20 @@ TASK: Generate a helpful, empowering analysis. Return ONLY valid JSON:
     "Each should be a complete sentence with specific details",
     "Focus on opportunities and facts, not accusations",
     "Include specific dollar amounts where relevant",
+    ${!isMember ? '"Include a final insight about Findr\'s $100 savings guarantee",' : '"Include a final insight about unlimited member negotiation"'}
     "Examples: 'Lab work is billed at 4x Medicare rate - this is common and often negotiable', 'Paying today could save $200-$350 based on typical prompt pay discounts'"
-  ]
+  ],
+  
+  "nextSteps": {
+    "title": "${isMember ? 'Your Member Benefits' : isFirstBill ? 'Try Findr Risk-Free' : 'Let Findr Negotiate'}",
+    "description": "${isMember 
+      ? 'As a Findr member, you get unlimited bill negotiations at no extra cost. We handle the calls, you save the money.'
+      : isFirstBill
+        ? 'First bill: $49 with our $100 savings guarantee. If we don\'t save you at least $100, you get a full refund. Zero risk.'
+        : 'Additional bills: $150 with our $100 savings guarantee. We handle everything, you just approve the final amount.'}",
+    "cta": "${isMember ? 'Request Negotiation (Free)' : 'Start Negotiation ($' + fee + ')'}",
+    "guarantee": "${!isMember ? 'Guaranteed to save at least $100 or full refund' : 'Unlimited negotiations included in membership'}"
+  }
 }
 
 TONE GUIDELINES:
@@ -166,7 +193,7 @@ DO NOT:
 - Use angry or confrontational language
 
 Return ONLY the JSON. No markdown, no explanation.`;
-  }
+}
   
   /**
    * Generate quick script for a single line item
