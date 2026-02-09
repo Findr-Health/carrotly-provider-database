@@ -179,7 +179,7 @@ const billSchema = new mongoose.Schema({
     serviceDate: Date,             // For user reference only
     totalBilled: {
       type: Number,
-      required: true,
+      default: 0,     
       min: 0
     },
     totalEstimatedFair: Number,
