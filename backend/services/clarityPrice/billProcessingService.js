@@ -62,32 +62,12 @@ class BillProcessingService {
         throw new Error('Image upload failed: ' + uploadResult.error);
       }
       
-      // =========================================
-      // STEP 2: CREATE BILL RECORD
-      // =========================================
-      console.log('[BillProcessor] Step 2/7: Creating bill record...');
-      billRecord = new Bill({
-        userId: userId,
-        imageMetadata: {
-          cloudinaryPublicId: uploadResult.cloudinaryPublicId,
-          uploadedAt: uploadResult.uploadedAt,
-          scheduledDeletionAt: uploadResult.scheduledDeletionAt,
-          deleted: false
-        },
-        processing: {
-          status: 'ocr',
-          startedAt: new Date()
-        },
-        region: {
-          metro: options.userLocation || 'National Average',
-          costOfLivingFactor: 1.0 // Will be updated by pricing service
-        }
-      });
-      
-      await billRecord.save();
-      console.log(`[BillProcessor] Bill record created: ${billRecord._id}`);
+    // =========================================
+// STEP 2: CREATE BILL RECORD + MEMBERSHIP LOGIC
+// =========================================
+console.log('[BillProcessor] Step 2/7: Creating bill record...');
 
-      const User = require('../../models/User'); // Add at top of file if not there
+// Get user and calculate membership fees
 const user = await User.findById(userId);
 
 if (!user) {
@@ -111,31 +91,39 @@ if (!isMember) {
 
 console.log(`[BillProcessor] User membership: ${isMember}, First bill: ${isFirstBill}, Fee: $${feeCharged}`);
 
+// Create bill record with membership fields
 billRecord = new Bill({
   userId: userId,
   
-  // ADD THESE FIELDS:
+  // Membership fields:
   userWasMember: isMember,
   isFirstBill: isFirstBill,
   feeCharged: feeCharged,
-  guaranteeApplies: !isMember, // Only non-members get $100 guarantee
+  guaranteeApplies: !isMember,
   
-  // Existing fields:
+  // Image metadata:
   imageMetadata: {
     cloudinaryPublicId: uploadResult.cloudinaryPublicId,
     uploadedAt: uploadResult.uploadedAt,
     scheduledDeletionAt: uploadResult.scheduledDeletionAt,
     deleted: false
   },
+  
+  // Processing:
   processing: {
     status: 'ocr',
     startedAt: new Date()
   },
+  
+  // Region:
   region: {
     metro: options.userLocation || 'National Average',
     costOfLivingFactor: 1.0
   }
 });
+
+await billRecord.save();
+console.log(`[BillProcessor] Bill record created: ${billRecord._id}`);
       
       // =========================================
       // STEP 3: OCR TEXT EXTRACTION
@@ -221,27 +209,16 @@ billRecord = new Bill({
       billRecord.processing.status = 'generating_explanation';
       await billRecord.save();
       
-      // =========================================
-      // STEP 6: GENERATE EXPLANATIONS
-      // =========================================
-      console.log('[BillProcessor] Step 6/7: Generating explanations...');
-      const explanationResult = await this.explanationService.generateExplanation({
-        provider: billRecord.summary,
-        lineItems: billRecord.lineItems,
-        summary: pricingResult.summary,
-        regional: pricingResult.regional
-      });
-      
-      if (!explanationResult.success) {
-        console.warn('[BillProcessor] Explanation generation failed, using fallback');
-      }
-      const explanationResult = await this.explanationService.generateAnalysis({
+     // =========================================
+// STEP 6: GENERATE EXPLANATIONS
+// =========================================
+console.log('[BillProcessor] Step 6/7: Generating explanations...');
+
+const explanationResult = await this.explanationService.generateAnalysis({
   provider: billRecord.summary,
   lineItems: billRecord.lineItems,
   summary: pricingResult.summary,
   regional: pricingResult.regional,
-  
-  // ADD THIS:
   userContext: {
     isMember: billRecord.userWasMember,
     isFirstBill: billRecord.isFirstBill,
@@ -249,8 +226,12 @@ billRecord = new Bill({
     billCount: billCount
   }
 });
-      
-      // Update bill record with AI analysis
+
+if (!explanationResult.success) {
+  console.warn('[BillProcessor] Explanation generation failed, using fallback');
+}
+
+// Update bill record with AI analysis
       billRecord.aiAnalysis = {
         plainLanguageExplanation: explanationResult.plainLanguageExplanation || 'Analysis unavailable',
         negotiationScript: explanationResult.negotiationScript || 'Script unavailable',
