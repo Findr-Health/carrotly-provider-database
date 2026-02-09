@@ -160,3 +160,4 @@ server.listen(PORT, () => {
 const providersHoursRoutes = require('./routes/providers_hours');
 const { startRetryFailedPaymentsCron, startAutoCompleteBookingsCron } = require('./cron/retryFailedPayments');
 app.use('/api/providers', providersHoursRoutes);
+app.use('/api', require('./routes/test-google'));
