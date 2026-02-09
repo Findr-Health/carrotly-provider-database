@@ -47,8 +47,15 @@ async uploadBillImage(imageData, options = {}) {
     // Handle Multer file object (from req.file)
     let uploadData = imageData;
     if (imageData && imageData.buffer && imageData.mimetype) {
-      console.log('[ImageMgmt] Detected Multer file object, using buffer');
-      uploadData = imageData.buffer;
+      console.log('[ImageMgmt] Detected Multer file object, converting buffer to data URI');
+      // Convert buffer to base64 data URI for Cloudinary
+      const base64 = imageData.buffer.toString('base64');
+      uploadData = `data:${imageData.mimetype};base64,${base64}`;
+    } else if (Buffer.isBuffer(imageData)) {
+      // Handle raw buffer
+      console.log('[ImageMgmt] Detected raw buffer, converting to data URI');
+      const base64 = imageData.toString('base64');
+      uploadData = `data:application/octet-stream;base64,${base64}`;
     }
     
     // Calculate expiration time (24 hours from now)
