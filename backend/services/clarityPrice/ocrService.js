@@ -60,7 +60,44 @@ class OCRService {
         image: { content: imageSource }
       };
     }
+    async extractText(imageSource, options = {}) {
+  try {
+    console.log('[OCR] Starting text extraction...');
+    const startTime = Date.now();
     
+    // ⚠️ TEMPORARY: Mock OCR data for testing pipeline
+    console.log('[OCR] ⚠️ USING MOCK DATA - Google Vision API temporarily disabled');
+    return {
+      success: true,
+      rawText: `BILLING STATEMENT
+Healthcare Clinic
+Patient Statement - Date: 01/25/2026
+
+CHARGES:
+Office Visit Level 3 (99213)          $102.00
+Comprehensive Metabolic Panel (80053)  $92.00  
+Lipid Panel (80061)                    $67.00
+
+TOTAL AMOUNT DUE: $261.00
+Payment due within 30 days`,
+      confidence: 0.95,
+      quality: { 
+        assessment: 'good', 
+        score: 95,
+        issues: []
+      },
+      metadata: {
+        wordCount: 45,
+        characterCount: 250,
+        pageCount: 1,
+        processingTime: Date.now() - startTime,
+        timestamp: new Date()
+      },
+      structured: {}
+    };
+    // END MOCK DATA
+    
+    // Original OCR code continues below...
     // Call Vision API with timeout (30 seconds)
     console.log('[OCR] Calling Google Vision API...');
     const timeoutMs = 30000; // 30 seconds
