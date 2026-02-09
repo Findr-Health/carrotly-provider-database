@@ -66,7 +66,7 @@ const lineItemSchema = new mongoose.Schema({
     },
     source: {
       type: String,
-      enum: ['medicare', 'category_pattern', 'historical', 'unknown'],
+      enum: ['medicare', 'category_pattern', 'historical', 'medicare_schedule', 'unknown'],
       default: 'unknown'
     }
   },
@@ -213,7 +213,7 @@ const billSchema = new mongoose.Schema({
   processing: {
     status: {
       type: String,
-      enum: ['uploading', 'ocr', 'parsing', 'analyzing', 'complete', 'error'],
+      enum: ['uploading', 'ocr', 'parsing', 'analyzing', 'complete', 'generating_explanation', 'complete', 'error'],
       default: 'uploading',
       index: true
     },
