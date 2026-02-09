@@ -30,6 +30,70 @@ const auth = async (req, res, next) => {
   }
 };
 
+// Quick auth for website users - creates account or logs in
+router.post('/quick-auth', async (req, res) => {
+  try {
+    const { email, firstName, lastName } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
+    
+    // Find or create user
+    let user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      console.log('[QuickAuth] Creating new user:', email);
+      
+      // Create new user with minimal required fields
+      user = await User.create({
+        email: email.toLowerCase(),
+        firstName: firstName || '',
+        lastName: lastName || '',
+        role: 'patient',
+        isMember: false,
+        // Add any other required fields from your User model
+        // For example, if password is required, generate a random one:
+        password: require('crypto').randomBytes(32).toString('hex')
+      });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email,
+        role: user.role 
+      },
+      JWT_SECRET,  // ✅ Use the constant defined at line 7
+      { expiresIn: JWT_EXPIRES_IN }  // ✅ Use the constant
+    );
+    
+    console.log('[QuickAuth] Auth successful for:', email);
+    
+    res.json({
+      success: true,
+      token: token,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isMember: user.isMember
+      }
+    });
+    
+  } catch (error) {
+    console.error('[QuickAuth] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Authentication failed'
+    });
+  }
+});
 // ==================== AUTHENTICATED USER ROUTES ====================
 /**
  * GET /api/users/me
