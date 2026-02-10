@@ -66,7 +66,7 @@ const lineItemSchema = new mongoose.Schema({
     },
     source: {
       type: String,
-      enum: ['medicare', 'category_pattern', 'historical', 'medicare_schedule', 'unknown'],
+      enum: ['medicare', 'category_pattern', 'historical', 'medicare_schedule', 'category_estimate', 'unknown'],
       default: 'unknown'
     }
   },
