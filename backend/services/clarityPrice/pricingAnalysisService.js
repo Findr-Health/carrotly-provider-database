@@ -401,6 +401,8 @@ class PricingAnalysisService {
    * @returns {object} Summary statistics
    */
   calculateSummary(analyzedItems, billTotals = {}) {
+  console.log('[Pricing] DEBUG: billTotals received:', JSON.stringify(billTotals, null, 2));
+
   // Calculate total charges
   const totalBilled = analyzedItems.reduce((sum, item) => 
     sum + (item.billedAmount * (item.quantity || 1)), 0
@@ -425,6 +427,9 @@ class PricingAnalysisService {
     // Calculate adjustments as difference
     insuranceAdjustments = totalBilled - patientResponsibility;
   }
+   console.log(`[Pricing] DEBUG: Patient responsibility: $${patientResponsibility}`);
+  console.log(`[Pricing] DEBUG: Insurance adjustments: $${insuranceAdjustments}`);
+  console.log(`[Pricing] DEBUG: Fair patient share will be: $${(patientResponsibility * (totalEstimatedFair / totalBilled)).toFixed(2)}`);
   
   // Calculate fair patient share (proportional to what's fair)
   const fairnessRatio = totalEstimatedFair / totalBilled;
