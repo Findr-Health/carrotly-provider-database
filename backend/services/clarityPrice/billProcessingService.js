@@ -209,6 +209,9 @@ console.log(`[BillProcessor] OCR complete: ${ocrResult.rawText.length} character
       billRecord.summary.totalEstimatedFair = pricingResult.summary.totalEstimatedFair;
       billRecord.summary.potentialSavings = pricingResult.summary.potentialSavings;
       billRecord.summary.savingsPercentage = pricingResult.summary.savingsPercentage;
+      billRecord.summary.patientResponsibility = pricingResult.summary.patientResponsibility;
+      billRecord.summary.fairPatientShare = pricingResult.summary.fairPatientShare;
+
       
       billRecord.region = {
         metro: pricingResult.regional.location,
