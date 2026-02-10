@@ -66,7 +66,7 @@ router.post('/analyze', authenticateToken, upload.single('image'), async (req, r
     const result = await processingService.processBill(
       req.file,  // ✅ CORRECT - full file object with buffer, mimetype, etc.
       req.user.userId,
-      { userLocation: userLocation }
+      { userLocation: userLocation, extractedText: req.body.extractedText }
     );
     
     if (!result.success) {

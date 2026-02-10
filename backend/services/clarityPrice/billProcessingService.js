@@ -126,29 +126,39 @@ await billRecord.save();
 console.log(`[BillProcessor] Bill record created: ${billRecord._id}`);
       
       // =========================================
-      // STEP 3: OCR TEXT EXTRACTION
-      // =========================================
-      console.log('[BillProcessor] Step 3/7: Extracting text with OCR...');
-      const ocrResult = await this.ocrService.extractText(uploadResult.secureUrl);
-      
-      if (!ocrResult.success) {
-        throw new Error('OCR extraction failed: ' + ocrResult.error);
-      }
-      
-      // Store OCR data (temporary, expires in 7 days)
-      billRecord.ocrData = {
-        extractedText: ocrResult.rawText,
-        confidence: ocrResult.confidence,
-        processedAt: new Date(),
-        retentionExpiry: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000))
-      };
-      
-      billRecord.processing.status = 'parsing';
-      await billRecord.save();
-      
-      // Extract patterns for parser hints
-      const patterns = this.ocrService.extractPatterns(ocrResult.rawText);
-      
+// STEP 3: OCR TEXT EXTRACTION
+// =========================================
+console.log('[BillProcessor] Step 3/7: Extracting text with OCR...');
+
+// Check if text was already extracted client-side
+let ocrResult;
+if (options.extractedText) {
+  console.log('[BillProcessor] ✅ Using client-provided OCR text');
+  console.log(`[BillProcessor] Text length: ${options.extractedText.length} characters`);
+  ocrResult = {
+    success: true,
+    rawText: options.extractedText,
+    confidence: 0.95, // Assume good quality from Google Vision
+    quality: { assessment: 'good', score: 95, issues: [] },
+    metadata: {
+      wordCount: options.extractedText.split(/\s+/).length,
+      characterCount: options.extractedText.length,
+      pageCount: 1,
+      processingTime: 0,
+      timestamp: new Date()
+    }
+  };
+} else {
+  console.log('[BillProcessor] No client text provided, using server-side OCR');
+  // Fallback to server-side OCR (currently mock data)
+  ocrResult = await this.ocrService.extractText(uploadResult.secureUrl);
+}
+
+if (!ocrResult.success) {
+  throw new Error('OCR extraction failed: ' + ocrResult.error);
+}
+
+console.log(`[BillProcessor] OCR complete: ${ocrResult.rawText.length} characters extracted`);
       // =========================================
       // STEP 4: PARSE BILL DATA
       // =========================================
