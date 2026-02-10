@@ -272,6 +272,8 @@ if (!explanationResult.success) {
           totalBilled: billRecord.summary.totalBilled,
           potentialSavings: billRecord.summary.potentialSavings,
           savingsPercentage: billRecord.summary.savingsPercentage,
+          patientResponsibility: billRecord.summary.patientResponsibility,
+          fairPatientShare: billRecord.summary.fairPatientShare,
           overallConfidence: billRecord.aiAnalysis.overallConfidence
         },
         processingTime: totalTime
