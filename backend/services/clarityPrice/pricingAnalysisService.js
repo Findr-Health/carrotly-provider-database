@@ -97,7 +97,7 @@ class PricingAnalysisService {
    * @param {string} userLocation - User's metro area (e.g., "Bozeman, MT")
    * @returns {object} Pricing analysis
    */
-  analyzePricing(lineItems, userLocation = 'National Average') {
+  analyzePricing(lineItems, userLocation = 'National Average', billSummary = {}) {
     console.log('[Pricing] Starting pricing analysis...');
     console.log(`[Pricing] Location: ${userLocation}`);
     console.log(`[Pricing] Analyzing ${lineItems.length} line items`);
@@ -111,7 +111,7 @@ class PricingAnalysisService {
     );
     
     // Calculate summary statistics
-    const summary = this.calculateSummary(analyzedItems);
+    const summary = this.calculateSummary(analyzedItems, billSummary);
     
     console.log(`[Pricing] Analysis complete`);
     console.log(`[Pricing] Total billed: $${summary.totalBilled.toFixed(2)}`);
@@ -400,44 +400,81 @@ class PricingAnalysisService {
    * @param {array} analyzedItems - Analyzed line items
    * @returns {object} Summary statistics
    */
-  calculateSummary(analyzedItems) {
-    const totalBilled = analyzedItems.reduce((sum, item) => 
-      sum + (item.billedAmount * (item.quantity || 1)), 0
-    );
-    
-    const totalEstimatedFair = analyzedItems.reduce((sum, item) => {
-      const opening = item.negotiationGuidance?.suggestedRange?.opening || item.billedAmount * 0.7;
-      return sum + (opening * (item.quantity || 1));
-    }, 0);
-    
-    const potentialSavings = totalBilled - totalEstimatedFair;
-    const savingsPercentage = (potentialSavings / totalBilled) * 100;
-    
-    // Count items by confidence tier
-    const confidenceDistribution = {
-      high: analyzedItems.filter(item => item.analysis.confidenceTier === 1).length,
-      medium: analyzedItems.filter(item => item.analysis.confidenceTier === 2).length,
-      low: analyzedItems.filter(item => item.analysis.confidenceTier === 3).length
-    };
-    
-    // Overall confidence
-    let overallConfidence = 'low';
-    if (confidenceDistribution.high >= analyzedItems.length * 0.7) {
-      overallConfidence = 'high';
-    } else if (confidenceDistribution.high + confidenceDistribution.medium >= analyzedItems.length * 0.5) {
-      overallConfidence = 'medium';
-    }
-    
-    return {
-      totalBilled: totalBilled,
-      totalEstimatedFair: totalEstimatedFair,
-      potentialSavings: potentialSavings,
-      savingsPercentage: savingsPercentage,
-      confidenceDistribution: confidenceDistribution,
-      overallConfidence: overallConfidence,
-      lineItemCount: analyzedItems.length
-    };
+  calculateSummary(analyzedItems, billTotals = {}) {
+  // Calculate total charges
+  const totalBilled = analyzedItems.reduce((sum, item) => 
+    sum + (item.billedAmount * (item.quantity || 1)), 0
+  );
+  
+  // Calculate total estimated fair price
+  const totalEstimatedFair = analyzedItems.reduce((sum, item) => {
+    const opening = item.negotiationGuidance?.suggestedRange?.opening || item.billedAmount * 0.7;
+    return sum + (opening * (item.quantity || 1));
+  }, 0);
+  
+  // Get patient responsibility from parsed bill (or calculate it)
+  let patientResponsibility = billTotals.patientResponsibility;
+  let insuranceAdjustments = 0;
+  
+  if (!patientResponsibility) {
+    // If not provided, calculate from insurance payments
+    const insurancePaid = billTotals.insurancePaid || 0;
+    insuranceAdjustments = insurancePaid;
+    patientResponsibility = Math.max(0, totalBilled - insurancePaid);
+  } else {
+    // Calculate adjustments as difference
+    insuranceAdjustments = totalBilled - patientResponsibility;
   }
+  
+  // Calculate fair patient share (proportional to what's fair)
+  const fairnessRatio = totalEstimatedFair / totalBilled;
+  const fairPatientShare = patientResponsibility * fairnessRatio;
+  
+  // Calculate realistic savings (what patient can actually save)
+  const potentialSavings = Math.max(0, patientResponsibility - fairPatientShare);
+  const savingsPercentage = patientResponsibility > 0 
+    ? (potentialSavings / patientResponsibility) * 100 
+    : 0;
+  
+  // Calculate total savings (for reference)
+  const totalPotentialSavings = totalBilled - totalEstimatedFair;
+  
+  // Count items by confidence tier
+  const confidenceDistribution = {
+    high: analyzedItems.filter(item => item.analysis.confidenceTier === 1).length,
+    medium: analyzedItems.filter(item => item.analysis.confidenceTier === 2).length,
+    low: analyzedItems.filter(item => item.analysis.confidenceTier === 3).length
+  };
+  
+  // Overall confidence
+  let overallConfidence = 'low';
+  if (confidenceDistribution.high >= analyzedItems.length * 0.7) {
+    overallConfidence = 'high';
+  } else if (confidenceDistribution.high + confidenceDistribution.medium >= analyzedItems.length * 0.5) {
+    overallConfidence = 'medium';
+  }
+  
+  return {
+    // Total bill amounts
+    totalBilled: totalBilled,
+    totalEstimatedFair: totalEstimatedFair,
+    totalPotentialSavings: totalPotentialSavings,
+    
+    // Insurance and patient amounts
+    insuranceAdjustments: insuranceAdjustments,
+    patientResponsibility: patientResponsibility,
+    fairPatientShare: Math.round(fairPatientShare * 100) / 100,
+    
+    // Realistic savings (what matters to the patient)
+    potentialSavings: Math.round(potentialSavings * 100) / 100,
+    savingsPercentage: Math.round(savingsPercentage * 10) / 10,
+    
+    // Confidence metrics
+    confidenceDistribution: confidenceDistribution,
+    overallConfidence: overallConfidence,
+    lineItemCount: analyzedItems.length
+  };
+}
   
   /**
    * Guess category from description

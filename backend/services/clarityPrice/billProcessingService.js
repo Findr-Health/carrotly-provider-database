@@ -190,7 +190,8 @@ console.log(`[BillProcessor] OCR complete: ${ocrResult.rawText.length} character
       console.log('[BillProcessor] Step 5/7: Analyzing pricing...');
       const pricingResult = this.pricingService.analyzePricing(
         parsedData.lineItems,
-        options.userLocation || 'National Average'
+        options.userLocation || 'National Average',
+        parsedData.totals || {}
       );
       
       // Update bill record with pricing analysis
