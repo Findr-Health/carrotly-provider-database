@@ -164,9 +164,9 @@ console.log(`[BillProcessor] OCR complete: ${ocrResult.rawText.length} character
       // =========================================
       console.log('[BillProcessor] Step 4/7: Parsing bill with AI...');
       const parseResult = await this.parsingService.parseBillWithRetry(
-      const parseResult = await this.parsingService.parseBillWithRetry(
         ocrResult.rawText
       );
+      if (!parseResult.success) {
         throw new Error('Bill parsing failed: ' + parseResult.error);
       }
       
