@@ -1,378 +1,388 @@
-# Findr Health - Developer Documentation
+# 🎨 ERICA JANE - Training Platform
 
-## Platform Overview
+Expert review system for training the Erica Jane fashion assessment agent.
 
-Findr Health is a **healthcare provider marketplace** connecting patients (buyers) with healthcare providers (sellers).
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         FINDR HEALTH ECOSYSTEM                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   SELLERS (Providers)                        BUYERS (Patients)              │
-│   ┌─────────────────────┐                   ┌─────────────────────┐        │
-│   │  Provider Portal    │                   │  Consumer App       │        │
-│   │  - Onboarding       │                   │  (IN DEVELOPMENT)   │        │
-│   │  - Dashboard        │                   │  - Search providers │        │
-│   │  - Edit Profile     │                   │  - View profiles    │        │
-│   │  - Analytics        │                   │  - Contact/Book     │        │
-│   └──────────┬──────────┘                   └──────────┬──────────┘        │
-│              │                                         │                    │
-│              │         ┌─────────────────┐             │                    │
-│              │         │   SHARED API    │             │                    │
-│              └────────►│   (Railway)     │◄────────────┘                    │
-│                        │                 │                                  │
-│              ┌────────►│   MongoDB       │                                  │
-│              │         └─────────────────┘                                  │
-│              │                                                              │
-│   ┌──────────┴──────────┐                                                   │
-│   │  Admin Dashboard    │                                                   │
-│   │  - Manage providers │                                                   │
-│   │  - Approve/Reject   │                                                   │
-│   │  - View analytics   │                                                   │
-│   └─────────────────────┘                                                   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+This platform allows Greg, Simon, and Erica (your fashion experts) to review Claude's fashion assessments and provide feedback to continuously improve the agent.
 
 ---
 
-## System Components
-
-| Component | Purpose | Status | URL |
-|-----------|---------|--------|-----|
-| **Provider Portal** | Providers create/manage profiles | ✅ Live | https://findrhealth-provider.vercel.app |
-| **Admin Dashboard** | Internal team manages providers | ✅ Live | https://admin-findrhealth-dashboard.vercel.app |
-| **Backend API** | Shared data layer | ✅ Live | https://fearless-achievement-production.up.railway.app |
-| **Consumer App** | Patients search/book providers | 🚧 In Development | TBD |
-
----
-
-## Data Flow
-
-### 1. Provider Onboarding (Seller Registration)
-```
-Provider visits portal → Searches business → Verifies ownership → Completes profile → Saved to database
-```
-
-### 2. Admin Review
-```
-Admin dashboard → Views new providers → Approves/rejects → Updates provider status
-```
-
-### 3. Patient Discovery (Consumer App)
-```
-Patient searches "dentist near me" → API returns matching providers → Patient views profile → Contacts provider
-```
-
-### 4. Ongoing Management
-```
-Provider logs into dashboard → Updates services/hours/photos → Changes sync to database → Consumer app shows updates
-```
-
----
-
-## Database Schema (MongoDB)
-
-### Provider Document
-```javascript
-{
-  _id: ObjectId,
-  placeId: String,              // Google Places ID (for verified businesses)
-  practiceName: String,
-  providerTypes: [String],      // ["Medical", "Dental", "Mental Health"]
-  
-  contactInfo: {
-    phone: String,
-    email: String,              // Also used for login
-    website: String
-  },
-  
-  address: {
-    street: String,
-    suite: String,
-    city: String,
-    state: String,
-    zip: String,
-    coordinates: { lat, lng }   // For geo-search
-  },
-  
-  services: [{
-    name: String,
-    category: String,
-    duration: Number,           // minutes
-    price: Number,
-    description: String
-  }],
-  
-  teamMembers: [{
-    name: String,
-    role: String,
-    bio: String,
-    photo: String
-  }],
-  
-  photos: [{
-    url: String,                // Base64 or URL
-    isPrimary: Boolean
-  }],
-  
-  credentials: {
-    licenseNumber: String,
-    licenseState: String,
-    npiNumber: String,
-    yearsExperience: Number,
-    insuranceAccepted: [String]
-  },
-  
-  hours: {
-    monday: { open: String, close: String },
-    // ... other days
-  },
-  
-  status: String,               // "pending", "active", "suspended"
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
----
-
-## API Endpoints
-
-**Base URL:** `https://fearless-achievement-production.up.railway.app/api`
-
-### Public Endpoints (for Consumer App)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/providers` | List all active providers |
-| `GET` | `/providers/:id` | Get single provider details |
-| `GET` | `/search?q=dentist&city=Bozeman` | Search providers |
-
-### Provider Endpoints (authenticated)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/providers` | Create new provider |
-| `PUT` | `/providers/:id` | Update provider profile |
-| `POST` | `/providers/login` | Provider login |
-| `POST` | `/providers/verify-login` | Verify login code |
-
-### Admin Endpoints (authenticated)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/providers` | List all providers (any status) |
-| `PUT` | `/admin/providers/:id` | Update provider (including status) |
-| `PATCH` | `/admin/providers/:id/status` | Change provider status |
-| `DELETE` | `/admin/providers/:id` | Delete provider |
-| `POST` | `/admin/login` | Admin login |
-
----
-
-## Consumer App Integration Guide
-
-### Searching Providers
-
-```javascript
-// Search by type and location
-const response = await fetch(
-  'https://fearless-achievement-production.up.railway.app/api/search?' + 
-  new URLSearchParams({
-    q: 'dentist',
-    city: 'Bozeman',
-    state: 'MT',
-    radius: 25  // miles
-  })
-);
-const providers = await response.json();
-```
-
-### Displaying Provider Profile
-
-```javascript
-// Get full provider details
-const response = await fetch(
-  `https://fearless-achievement-production.up.railway.app/api/providers/${providerId}`
-);
-const provider = await response.json();
-
-// Display: name, types, services, photos, contact info, hours
-```
-
-### Key Data Points for Consumer App
-
-| Display Element | Data Source |
-|-----------------|-------------|
-| Provider name | `provider.practiceName` |
-| Categories | `provider.providerTypes` |
-| Address | `provider.address` |
-| Services list | `provider.services` |
-| Photos/Gallery | `provider.photos` |
-| Team members | `provider.teamMembers` |
-| Contact button | `provider.contactInfo.phone/email` |
-| Map location | `provider.address.coordinates` |
-
----
-
-## Authentication
-
-### Provider Authentication (Current)
-- Email + 6-digit code verification
-- JWT token stored in localStorage
-- Future: Email + password
-
-### Admin Authentication
-- Email: `admin@findrhealth.com`
-- Password: `admin123`
-- JWT token with admin role
-
-### Consumer App Authentication (TBD)
-- Recommend: Email/password or social login
-- Optional: Guest browsing without account
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| **Provider Portal** | React 18 + TypeScript + Vite + Tailwind CSS |
-| **Admin Dashboard** | React 18 + JavaScript + Vite + Tailwind CSS |
-| **Backend API** | Node.js + Express |
-| **Database** | MongoDB Atlas |
-| **Hosting** | Vercel (frontends) + Railway (backend) |
-
----
-
-## Local Development Setup
+## 🚀 QUICK START
 
 ### Prerequisites
-- Node.js 18+
-- npm or yarn
-- Git
 
-### Provider Portal
+- Mac with Node.js 22+ installed ✅ (You have this!)
+- Anthropic API Key (Claude access)
+
+### Installation
+
+1. **Open Terminal** and navigate to the project:
 ```bash
-git clone https://github.com/wetherillt-punch/carrotly-provider-mvp.git
-cd carrotly-provider-mvp
-npm install
-npm run dev
-# Opens at http://localhost:5173
+cd ~/Desktop  # or wherever you want to put this
+# You'll copy the erica-jane-training folder here
 ```
 
-### Backend API
+2. **Install Backend Dependencies**:
 ```bash
-git clone https://github.com/Findr-Health/carrotly-provider-database.git
-cd carrotly-provider-database/backend
+cd erica-jane-training/backend
 npm install
-# Create .env file with MONGODB_URI
-npm run dev
-# Opens at http://localhost:3001
 ```
 
-### Admin Dashboard
+3. **Install Frontend Dependencies**:
 ```bash
-cd carrotly-provider-database/admin-dashboard
+cd ../frontend
 npm install
-npm run dev
-# Opens at http://localhost:5174
 ```
 
----
-
-## Environment Variables
-
-### Backend (.env)
+4. **Set Up Your API Key**:
+```bash
+cd ../backend
+cp .env.example .env
+nano .env  # or open in any text editor
 ```
-MONGODB_URI=mongodb+srv://...
-JWT_SECRET=your-secret-key
+
+Add your Anthropic API key:
+```
+ANTHROPIC_API_KEY=sk-ant-your-actual-key-here
 PORT=3001
 ```
 
-### Frontend (.env)
-```
-VITE_API_URL=https://fearless-achievement-production.up.railway.app/api
-VITE_GOOGLE_PLACES_API_KEY=your-key  # Optional, for address autocomplete
-```
+Save and exit (Ctrl+O, Enter, Ctrl+X for nano).
 
 ---
 
-## Deployment
+## 🏃 RUNNING THE PLATFORM
 
-| Component | Platform | Auto-Deploy |
-|-----------|----------|-------------|
-| Provider Portal | Vercel | Yes, on push to main |
-| Admin Dashboard | Vercel | Yes, on push to main |
-| Backend API | Railway | Yes, on push to main |
+### Start the Backend Server
+
+In one Terminal window:
+```bash
+cd erica-jane-training/backend
+npm start
+```
+
+You should see:
+```
+🎨 ═══════════════════════════════════════
+   ERICA JANE TRAINING PLATFORM
+   ═══════════════════════════════════════
+   🚀 Server running on http://localhost:3001
+   📊 API available at http://localhost:3001/api
+   ═══════════════════════════════════════
+```
+
+### Start the Frontend App
+
+In a **second** Terminal window:
+```bash
+cd erica-jane-training/frontend
+npm start
+```
+
+This will automatically open your browser to http://localhost:3000
 
 ---
 
-## Testing Credentials
+## 📱 HOW TO USE
 
-### Provider Portal
-- URL: https://findrhealth-provider.vercel.app/login
-- Click "Demo: Quick access" button
+### For Creating New Assessments:
 
-### Admin Dashboard
-- URL: https://admin-findrhealth-dashboard.vercel.app
-- Email: `admin@findrhealth.com`
-- Password: `admin123`
+1. **Upload a Photo** of an outfit
+2. **Select Mode**:
+   - **Default Mode**: Warm, sassy "gay best friend" feedback
+   - **Anna Wintour Mode**: Professional, exacting critique
+3. **Add User Context** (Optional):
+   - Name, age, style preference
+   - Helps personalize the assessment
+4. **Click "Get Assessment"** - Claude will analyze the photo
+5. **Review the Response** - This is where you teach Erica Jane!
+
+### For Expert Review (Greg, Simon, Erica):
+
+After getting an assessment, you'll see a review form:
+
+1. **Rate the Quality**:
+   - ✅ **Excellent**: Agent nailed it! Voice, advice, everything perfect
+   - 👍 **Good**: Solid assessment, minor improvements needed
+   - 🔧 **Needs Work**: Significant issues, not matching voice or giving poor advice
+
+2. **What Was Good?**: 
+   - Specific things the agent did well
+   - Example: "Great use of name, specific about the belt color, warm tone"
+
+3. **What Needs Improvement?**:
+   - What could be better
+   - Example: "Should have mentioned the shoe/bag coordination issue"
+
+4. **Fashion Notes**:
+   - Teach Erica Jane about fashion
+   - Example: "Navy and black CAN work together if done intentionally with texture contrast"
+
+5. **Is This a SLAY?**:
+   - Check this if the outfit genuinely deserves special recognition
+   - Should be rare (~10% of assessments)
+
+### View Training Progress:
+
+The **Stats Panel** at the top shows:
+- Total assessments created
+- How many have been reviewed
+- Quality distribution (Excellent/Good/Needs Work)
+- Number of "Slays" identified
 
 ---
 
-## Repository Structure
+## 📁 PROJECT STRUCTURE
 
 ```
-carrotly-provider-mvp/          # Provider Portal
-├── src/
-│   ├── pages/
-│   │   ├── Landing.tsx         # Entry point with New/Existing options
-│   │   ├── onboarding/         # Onboarding flow
-│   │   ├── Dashboard.tsx       # Provider dashboard
-│   │   ├── EditProfile.tsx     # Profile editor
-│   │   ├── Analytics.tsx       # Analytics dashboard
-│   │   └── ProviderLogin.tsx   # Login page
-│   ├── components/
-│   └── hooks/
-│       └── useProviderData.ts  # API integration hook
-
-carrotly-provider-database/     # Backend + Admin
-├── backend/
-│   ├── server.js               # Express server
+erica-jane-training/
+├── backend/                      # Node.js API server
+│   ├── server.js                # Main server
 │   ├── routes/
-│   │   ├── providers.js        # Provider API routes
-│   │   ├── admin.js            # Admin API routes
-│   │   └── search.js           # Search API routes
-│   ├── models/
-│   │   └── Provider.js         # Mongoose schema
-│   └── config/
-│       └── db.js               # MongoDB connection
-├── admin-dashboard/
-│   └── src/
-│       ├── components/
-│       │   ├── ProviderList.jsx
-│       │   └── ProviderDetail.jsx
-│       └── context/
-│           └── AuthContext.jsx
+│   │   └── assessments.js       # API endpoints
+│   ├── database/
+│   │   └── db.js                # SQLite database
+│   ├── uploads/                 # Photo storage
+│   ├── .env                     # Your API key (you create this)
+│   └── erica_jane_training.db   # Database (auto-created)
+│
+├── frontend/                     # React web app
+│   ├── src/
+│   │   ├── App.js               # Main application
+│   │   ├── components/
+│   │   │   ├── AssessmentCard.js
+│   │   │   └── StatsPanel.js
+│   │   └── styles/
+│   │       └── App.css          # Styling
+│   └── public/
+│       └── index.html
+│
+└── system-prompts/              # Erica Jane's personality & rules
+    ├── erica_jane_core_constitution.md
+    ├── erica_jane_default_mode.md
+    ├── erica_jane_anna_wintour_mode.md
+    ├── erica_jane_slay_criteria.md
+    └── erica_jane_knowledge_base_strategy.md
 ```
 
 ---
 
-## Support
+## 🎯 TRAINING WORKFLOW
 
-- **Technical Questions:** Create a GitHub issue
-- **Access Issues:** Contact Tim Wetherill
+### Week 1: Build the Dataset
+
+**Goal**: Create 30-50 assessments with expert reviews
+
+1. **Gather diverse outfit photos**:
+   - Different styles (casual, formal, streetwear)
+   - Different ages (20s, 30s, 40s, 50s+)
+   - Different body types
+   - Both modes (mostly Default, some Anna Wintour)
+
+2. **Run assessments** through the platform
+
+3. **Have Greg, Simon, and Erica review them**:
+   - Each person can review the same assessments
+   - Compare notes on what good looks like
+   - Identify patterns in what Erica Jane does well/poorly
+
+### Week 2: Refine the Prompts
+
+Based on expert feedback:
+
+1. **Identify common issues**:
+   - Is the tone too formal/casual?
+   - Missing fashion knowledge?
+   - Not using names enough?
+   - Too verbose/too brief?
+
+2. **Update system prompts**:
+   - Edit the `.md` files in `system-prompts/`
+   - Test with new assessments
+   - Compare to previous responses
+
+3. **Build "golden examples"**:
+   - Save the best assessments as reference
+   - Use them to show what "Excellent" looks like
+
+### Ongoing: Continuous Improvement
+
+- Weekly review sessions with experts
+- Track improvement in stats
+- Collect edge cases for the system prompts
+- Refine Slay criteria based on what you see
 
 ---
 
-## Roadmap
+## 🔧 TROUBLESHOOTING
 
-- [ ] Provider password authentication
-- [ ] Email notifications (verification, bookings)
-- [ ] Consumer app integration
-- [ ] Booking system
-- [ ] Payment processing
-- [ ] Reviews and ratings (consumer-generated)
-- [ ] AWS migration (see infrastructure roadmap)
+### Backend won't start
+
+**Error**: "Cannot find module..."
+```bash
+cd backend
+rm -rf node_modules
+npm install
+npm start
+```
+
+**Error**: "ANTHROPIC_API_KEY is not defined"
+- Make sure you created `.env` file in `backend/` folder
+- Check that your API key is correct
+- Don't include quotes around the key
+
+### Frontend won't start
+
+**Error**: Port 3000 already in use
+```bash
+# Kill the process
+lsof -ti:3000 | xargs kill -9
+npm start
+```
+
+**Error**: "Cannot find module..."
+```bash
+cd frontend
+rm -rf node_modules
+npm install
+npm start
+```
+
+### Can't connect to backend
+
+- Make sure backend is running (check Terminal window)
+- Backend should be on port 3001
+- Frontend makes requests to http://localhost:3001/api
+
+### Photos won't upload
+
+- Check file size (max 10MB)
+- Only JPEG, PNG, WebP supported
+- Try a different photo format
+
+---
+
+## 📊 API ENDPOINTS
+
+For reference, here's what the backend provides:
+
+```
+POST   /api/assess                    # Get assessment from Claude
+GET    /api/assessments               # Get all assessments
+GET    /api/assessments/:id           # Get single assessment
+POST   /api/assessments/:id/review    # Add expert review
+GET    /api/stats                     # Get training statistics
+POST   /api/upload                    # Upload photo file
+GET    /api/health                    # Check if API is running
+```
+
+---
+
+## 💾 DATABASE
+
+The platform uses SQLite (no setup needed!). The database file is created automatically at:
+```
+backend/erica_jane_training.db
+```
+
+**Tables**:
+- `assessments`: All outfit assessments and expert reviews
+- `prompt_versions`: Track system prompt changes over time
+
+**To view the database** (optional):
+```bash
+sqlite3 backend/erica_jane_training.db
+.schema    # See table structure
+SELECT * FROM assessments LIMIT 5;    # View recent assessments
+.quit
+```
+
+---
+
+## 🎓 TRAINING TIPS
+
+### For Expert Reviewers:
+
+**DO**:
+- ✅ Be specific in feedback ("mention the color coordination" not "be more helpful")
+- ✅ Teach fashion principles in the notes
+- ✅ Rate honestly - this helps the agent improve
+- ✅ Look for consistent issues across assessments
+- ✅ Celebrate when Erica Jane nails it!
+
+**DON'T**:
+- ❌ Rate everything "Excellent" (that doesn't help)
+- ❌ Be vague ("this is bad" vs. "tone is too harsh here")
+- ❌ Give conflicting feedback (align with other experts)
+- ❌ Overuse "Slay" - keep it special!
+
+### Calibration Session:
+
+Have all 3 experts review the same 10 assessments together:
+- Discuss ratings
+- Align on what "Excellent" vs "Good" means
+- Identify what matters most (tone, accuracy, usefulness)
+- Create shared understanding of quality
+
+---
+
+## 🔮 NEXT STEPS
+
+Once you have 50-100 expert-reviewed assessments:
+
+1. **Analyze patterns** in the feedback
+2. **Update system prompts** based on learnings
+3. **Test improvements** with new assessments
+4. **Begin mobile app development** (Phase 2 of roadmap)
+
+---
+
+## 🆘 GETTING HELP
+
+If you get stuck:
+
+1. **Check logs**:
+   - Backend Terminal window shows API errors
+   - Frontend Terminal shows React errors
+   - Browser console (F12) shows JavaScript errors
+
+2. **Ask for help**: Share the error message and what you were trying to do
+
+3. **Reset everything**:
+```bash
+# Stop both servers (Ctrl+C in each Terminal)
+cd backend
+rm erica_jane_training.db  # Deletes database (fresh start)
+npm start
+
+# In another Terminal
+cd ../frontend
+npm start
+```
+
+---
+
+## 📞 SUPPORT
+
+Questions? Issues? Let me know and I'll help you debug!
+
+**Important Files to Edit**:
+- System prompts: `system-prompts/*.md`
+- API key: `backend/.env`
+- Styling: `frontend/src/styles/App.css`
+
+**Don't Edit** (unless you know what you're doing):
+- `node_modules/` folders
+- Database file while server is running
+
+---
+
+## ✨ YOU'RE READY TO TRAIN!
+
+1. Start the backend server
+2. Start the frontend app
+3. Upload your first outfit photo
+4. Get an assessment from Erica Jane
+5. Add your expert review
+6. Repeat and watch the magic happen! 🎨👔
+
+Good luck training Erica Jane! This is the foundation of something amazing.

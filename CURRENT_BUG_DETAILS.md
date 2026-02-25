@@ -102,3 +102,12 @@ aa63e1e - fix: update payment amounts from PaymentService
 feaf325 - fix: complete booking migration
 44d5048 - fix: console.log syntax
 ```
+
+## DEBUGGING CHECKPOINT ADDED
+Added console.log after calendar block to determine if code execution reaches that point.
+
+## KEY OBSERVATION
+Railway logs show calendar event succeeds but code execution stops completely. No errors thrown, no timeout messages, just silent hang. This suggests either:
+- Unhandled promise rejection that's being swallowed
+- Mongoose hook that's blocking indefinitely
+- Memory issue causing process to freeze

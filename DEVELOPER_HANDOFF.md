@@ -34,6 +34,7 @@ Findr Health is a healthcare provider marketplace connecting patients with healt
 ---
 
 ## Architecture
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         FRONTEND                                 │
@@ -144,6 +145,7 @@ https://fearless-achievement-production.up.railway.app/api
 ## Database Schemas
 
 ### Provider Schema
+
 ```javascript
 {
   placeId: String,              // Google Places ID
@@ -212,6 +214,7 @@ https://fearless-achievement-production.up.railway.app/api
 ```
 
 ### User Schema (Consumer)
+
 ```javascript
 {
   firstName: String,            // Required
@@ -312,6 +315,7 @@ https://fearless-achievement-production.up.railway.app/api
 ## Authentication
 
 ### JWT Token Structure
+
 ```javascript
 // Provider Token
 {
@@ -453,6 +457,7 @@ This page needs to:
 #### API Integration Notes
 
 All API endpoints are ready. Example user registration:
+
 ```javascript
 const response = await fetch('https://fearless-achievement-production.up.railway.app/api/users/register', {
   method: 'POST',
