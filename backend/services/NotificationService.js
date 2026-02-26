@@ -61,11 +61,12 @@ class NotificationService {
     // Create in-app notification record
     try {
       if (recipient.id && recipient.type) {
+        const notifType = this.mapTemplateToNotificationType(template);
         const pushConfig = this.getPushConfig(template, data);
         await Notification.createNotification({
           recipientId: recipient.id,
           recipientType: recipient.type === "user" ? "User" : "Provider",
-          type: template,
+          type: notifType,
           title: pushConfig?.title || "Findr Health",
           body: pushConfig?.body || "You have a new notification",
           data: {
@@ -730,11 +731,44 @@ class NotificationService {
 </body>
 </html>`;
   }
+  mapTemplateToNotificationType(template) {
+    const map = {
+      'booking_request_sent': 'booking_request_received',
+      'new_booking_request': 'booking_request_received',
+      'booking_confirmed_patient': 'booking_confirmed',
+      'booking_declined_patient': 'booking_declined',
+      'booking_cancelled_provider': 'booking_cancelled_by_user',
+      'booking_cancelled_patient': 'booking_cancelled_by_provider',
+      'reschedule_proposed_patient': 'reschedule_proposed',
+      'reschedule_accepted_provider': 'reschedule_accepted',
+      'reschedule_declined_provider': 'reschedule_declined',
+      'booking_expired_patient': 'booking_expired',
+      'booking_expiring_reminder': 'booking_reminder'
+    };
+    return map[template] || 'booking_reminder';
+  }
 
   // ============================================================================
   // PUSH NOTIFICATIONS
   // ============================================================================
   
+
+    const map = {
+      'booking_request_sent': 'booking_request_received',
+      'new_booking_request': 'booking_request_received',
+      'booking_confirmed_patient': 'booking_confirmed',
+      'booking_declined_patient': 'booking_declined',
+      'booking_cancelled_provider': 'booking_cancelled_by_user',
+      'booking_cancelled_patient': 'booking_cancelled_by_provider',
+      'reschedule_proposed_patient': 'reschedule_proposed',
+      'reschedule_accepted_provider': 'reschedule_accepted',
+      'reschedule_declined_provider': 'reschedule_declined',
+      'booking_expired_patient': 'booking_expired',
+      'booking_expiring_reminder': 'booking_reminder'
+    };
+    return map[template] || 'booking_reminder';
+  }
+
   getPushConfig(template, data) {
     const messages = {
       'booking_request_sent': { title: 'Request Sent!', body: `Your booking request has been sent to ${data.providerName}` },
