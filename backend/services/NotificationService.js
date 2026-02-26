@@ -2,7 +2,7 @@
 // Findr Health Notification Service - Handles email, push, and SMS notifications
 
 const Notification = require('../models/Notification');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
 /**
  * NotificationService - Centralized notification handling
@@ -10,14 +10,8 @@ const nodemailer = require('nodemailer');
  */
 class NotificationService {
   constructor() {
-    // Email transporter (using existing GMAIL config from env)
-    this.emailTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD
-      }
-    });
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    this.fromEmail = process.env.FROM_EMAIL || 'noreply@findrhealth.com';
   }
 
   // ============================================================================
@@ -99,24 +93,22 @@ class NotificationService {
   async sendEmail(recipient, template, data) {
     const emailConfig = this.getEmailTemplate(template, data);
     
-    // Wrap email send with 5-second timeout
-    const sendPromise = this.emailTransporter.sendMail({
-      from: `"Findr Health" <${process.env.GMAIL_USER || 'noreply@findrhealth.com'}>`,
+    const msg = {
       to: recipient.email,
+      from: {
+        email: this.fromEmail,
+        name: 'Findr Health'
+      },
       subject: emailConfig.subject,
       html: emailConfig.html
-    });
-    
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Email send timeout after 5s')), 5000)
-    );
-    
+    };
+
     try {
-      await Promise.race([sendPromise, timeoutPromise]);
+      await sgMail.send(msg);
       console.log(`[NotificationService] Email sent: ${template} to ${recipient.email}`);
     } catch (error) {
-      console.error(`[NotificationService] Email failed: ${error.message}`);
-      throw error; // Re-throw so caller can handle
+      console.error(`[NotificationService] SendGrid error:`, error.response?.body?.errors || error.message);
+      throw error;
     }
   }
   
@@ -743,59 +735,27 @@ class NotificationService {
   // PUSH NOTIFICATIONS
   // ============================================================================
   
+  getPushConfig(template, data) {
+    const messages = {
+      'booking_request_sent': { title: 'Request Sent!', body: `Your booking request has been sent to ${data.providerName}` },
+      'booking_confirmed_patient': { title: 'Booking Confirmed! ✅', body: `Your appointment with ${data.providerName} is confirmed` },
+      'booking_declined_patient': { title: 'Booking Update', body: 'Your booking request could not be accommodated' },
+      'reschedule_proposed_patient': { title: 'New Time Proposed 📅', body: `${data.providerName} suggested a different time` },
+      'booking_expired_patient': { title: 'Request Expired', body: 'Your booking request expired. No charge was made.' },
+      'new_booking_request': { title: 'New Booking Request! 🔔', body: `${data.patientName} wants to book ${data.serviceName}` },
+      'reschedule_accepted_provider': { title: 'Reschedule Accepted ✅', body: `${data.patientName} accepted your proposed time` },
+      'reschedule_declined_provider': { title: 'Reschedule Declined', body: `${data.patientName} declined the proposed time` },
+      'booking_cancelled_provider': { title: 'Booking Cancelled', body: `${data.patientName} cancelled their ${data.serviceName} booking` },
+      'booking_cancelled_patient': { title: 'Booking Cancelled', body: `Your booking with ${data.providerName} has been cancelled` },
+      'booking_expiring_reminder': { title: '⚠️ Request Expiring Soon!', body: `Respond to ${data.patientName}\'s request before it expires` }
+    };
+    return messages[template] || { title: 'Findr Health', body: 'You have a new notification' };
+  }
+
   async sendPush(fcmToken, template, data) {
-    // Firebase Admin SDK required
-    // This is a placeholder - implement when Firebase is configured
     console.log(`[NotificationService] Push notification queued: ${template}`);
     
-    const messages = {
-      'booking_request_sent': {
-        title: 'Request Sent!',
-        body: `Your booking request has been sent to ${data.providerName}`
-      },
-      'booking_confirmed_patient': {
-        title: 'Booking Confirmed! ✅',
-        body: `Your appointment with ${data.providerName} is confirmed`
-      },
-      'booking_declined_patient': {
-        title: 'Booking Update',
-        body: 'Your booking request could not be accommodated'
-      },
-      'reschedule_proposed_patient': {
-        title: 'New Time Proposed 📅',
-        body: `${data.providerName} suggested a different time`
-      },
-      'booking_expired_patient': {
-        title: 'Request Expired',
-        body: 'Your booking request expired. No charge was made.'
-      },
-      'new_booking_request': {
-        title: 'New Booking Request! 🔔',
-        body: `${data.patientName} wants to book ${data.serviceName}`
-      },
-      'reschedule_accepted_provider': {
-        title: 'Reschedule Accepted ✅',
-        body: `${data.patientName} accepted your proposed time`
-      },
-      'reschedule_declined_provider': {
-        title: 'Reschedule Declined',
-        body: `${data.patientName} declined the proposed time`
-      },
-      'booking_cancelled_provider': {
-        title: 'Booking Cancelled',
-        body: `${data.patientName} cancelled their ${data.serviceName} booking`
-      },
-      'booking_expiring_reminder': {
-        title: '⚠️ Request Expiring Soon!',
-        body: `Respond to ${data.patientName}'s request before it expires`
-      }
-    };
-    
-    const config = messages[template];
-    if (!config) {
-      console.warn(`[NotificationService] Unknown push template: ${template}`);
-      return;
-    }
+    const config = this.getPushConfig(template, data);
     
     // TODO: Implement Firebase Admin SDK
     // await admin.messaging().send({
