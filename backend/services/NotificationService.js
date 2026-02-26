@@ -748,27 +748,6 @@ class NotificationService {
     return map[template] || 'booking_reminder';
   }
 
-  // ============================================================================
-  // PUSH NOTIFICATIONS
-  // ============================================================================
-  
-
-    const map = {
-      'booking_request_sent': 'booking_request_received',
-      'new_booking_request': 'booking_request_received',
-      'booking_confirmed_patient': 'booking_confirmed',
-      'booking_declined_patient': 'booking_declined',
-      'booking_cancelled_provider': 'booking_cancelled_by_user',
-      'booking_cancelled_patient': 'booking_cancelled_by_provider',
-      'reschedule_proposed_patient': 'reschedule_proposed',
-      'reschedule_accepted_provider': 'reschedule_accepted',
-      'reschedule_declined_provider': 'reschedule_declined',
-      'booking_expired_patient': 'booking_expired',
-      'booking_expiring_reminder': 'booking_reminder'
-    };
-    return map[template] || 'booking_reminder';
-  }
-
   getPushConfig(template, data) {
     const messages = {
       'booking_request_sent': { title: 'Request Sent!', body: `Your booking request has been sent to ${data.providerName}` },
@@ -781,16 +760,14 @@ class NotificationService {
       'reschedule_declined_provider': { title: 'Reschedule Declined', body: `${data.patientName} declined the proposed time` },
       'booking_cancelled_provider': { title: 'Booking Cancelled', body: `${data.patientName} cancelled their ${data.serviceName} booking` },
       'booking_cancelled_patient': { title: 'Booking Cancelled', body: `Your booking with ${data.providerName} has been cancelled` },
-      'booking_expiring_reminder': { title: '⚠️ Request Expiring Soon!', body: `Respond to ${data.patientName}\'s request before it expires` }
+      'booking_expiring_reminder': { title: '⚠️ Request Expiring Soon!', body: `Respond to ${data.patientName}'s request before it expires` }
     };
     return messages[template] || { title: 'Findr Health', body: 'You have a new notification' };
   }
 
   async sendPush(fcmToken, template, data) {
     console.log(`[NotificationService] Push notification queued: ${template}`);
-    
     const config = this.getPushConfig(template, data);
-    
     // TODO: Implement Firebase Admin SDK
     // await admin.messaging().send({
     //   token: fcmToken,
