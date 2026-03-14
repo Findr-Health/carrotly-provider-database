@@ -35,6 +35,7 @@ const { scheduleCronJobs } = require('./cron/bookingCron');
 const clarityPriceRoutes = require('./routes/clarityPriceRoutes');
 const { getImageManagementService } = require('./services/clarityPrice/imageManagementService');
 const cron = require('node-cron');
+const messagingRoutes = require('./routes/messaging');
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/clarity-admin/feedback', feedbackRoutes);
 app.use('/api/clarity-price', clarityPriceRoutes);
 app.use('/api/admin/email', emailRoutes);
+app.use('/api/messaging', messagingRoutes);
 // Admin reviews & bookings management
 app.use('/api/admin/reviews', reviewsAdminRoutes);
 app.use('/api/admin/bookings', bookingsAdminRoutes);
