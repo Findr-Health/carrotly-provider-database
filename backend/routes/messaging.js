@@ -42,7 +42,7 @@ const Message = mongoose.models.Message
  */
 router.post('/conversations/find-or-create', authenticateToken, async (req, res) => {
   try {
-    const patientId  = req.user.id || req.user._id;
+    const patientId  = req.userId || req.user.userId;
     const { providerId, programId = 'musclefirst' } = req.body;
 
     if (!providerId) {
@@ -80,7 +80,7 @@ router.get('/messages/:conversationId', authenticateToken, async (req, res) => {
     const messages = await Message.find(query).sort({ timestamp: 1 }).lean();
 
     // Mark unread messages as read for the requesting user
-    const userId = (req.user.id || req.user._id).toString();
+    const userId = (req.userId || req.user.userId).toString();
     await Message.updateMany(
       { conversationId, senderId: { $ne: userId }, read: false },
       { $set: { read: true } }
@@ -101,7 +101,7 @@ router.get('/messages/:conversationId', authenticateToken, async (req, res) => {
  */
 router.post('/messages', authenticateToken, async (req, res) => {
   try {
-    const senderId   = (req.user.id || req.user._id).toString();
+    const senderId   = (req.userId || req.user.userId).toString();
     const { conversationId, body, senderRole } = req.body;
 
     if (!conversationId || !body || !senderRole) {
@@ -126,7 +126,7 @@ router.post('/messages', authenticateToken, async (req, res) => {
  */
 router.get('/conversations', authenticateToken, async (req, res) => {
   try {
-    const providerId = (req.user.id || req.user._id).toString();
+    const providerId = (req.userId || req.user.userId).toString();
     const conversations = await Conversation.find({ providerId })
       .sort({ lastMessageAt: -1 })
       .lean();
@@ -144,7 +144,7 @@ router.get('/conversations', authenticateToken, async (req, res) => {
  */
 router.get('/unread-count', authenticateToken, async (req, res) => {
   try {
-    const userId = (req.user.id || req.user._id).toString();
+    const userId = (req.userId || req.user.userId).toString();
 
     // Find all conversations this user is a participant in
     const convos = await Conversation.find({
